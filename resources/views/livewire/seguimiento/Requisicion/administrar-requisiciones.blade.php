@@ -30,7 +30,7 @@
                     </svg>
                     <div>
                         <p class="font-semibold text-sm">Plazo de seguimiento activo</p>
-                        <p class="text-xs mt-0.5">Puedes gestionar el seguimiento dentro del plazo establecido.</p>
+                        <p class="text-xs mt-0.5">Puedes  gestionar el seguimiento dentro del plazo establecido.</p>
                     </div>
                 </div>
                 <div class="text-right">
