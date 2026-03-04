@@ -61,7 +61,7 @@ class DatabaseSeeder extends Seeder
         $this->call(CategoriasSeeder::class);
         $this->call(CubSeeder::class);
         $this->call(GrupoGastoSeeder::class);
-        $this->call(ObjetoGastosSeeder::class);
+        $this->call(ObjetogastosSeeder::class);
         $this->call(PeiDataSeeder::class);
         $this->call(PeiSeeder::class);
         $this->call(ProcesoCompraSeeder::class);
