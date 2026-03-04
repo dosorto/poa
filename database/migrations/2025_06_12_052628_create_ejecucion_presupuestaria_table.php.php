@@ -19,7 +19,7 @@ return new class extends Migration
                 $table->dateTime('fechaInicioEjecucion')->default(DB::raw('CURRENT_TIMESTAMP'));
                 $table->dateTime('fechaFinEjecucion')->nullable();
 
-                $table->foreignId('idRequisicion')->constrained('Requisicion');
+                $table->foreignId('idRequisicion')->constrained('requisicion');
                 $table->foreignId('idEstadoEjecucion')->constrained('estado_ejecucion_presupuestaria');
 
                 // Auditoría
