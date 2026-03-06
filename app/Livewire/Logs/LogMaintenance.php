@@ -18,7 +18,7 @@ class LogMaintenance extends Component
 
     public function render()
     {
-        return view('livewire.logs.log-maintenance');
+        return view('livewire.Logs.log-maintenance');
     }
 
     public function confirmCleanup()
