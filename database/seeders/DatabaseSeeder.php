@@ -12,7 +12,7 @@ use Database\Seeders\InstitucionSeeder;
 use Database\Seeders\UnidadEjecutoraSeeder;
 use Database\Seeders\FuenteSeeder;
 use Database\Seeders\GrupoGastoSeeder;
-use Database\Seeders\ObjetoGastosSeeder;
+use Database\Seeders\ObjetogastosSeeder;
 use Database\Seeders\CubSeeder;
 use App\Models\Area;
 use Database\Seeders\TechoDeptoSeeder;
