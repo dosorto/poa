@@ -84,7 +84,7 @@ class LogViewerController extends Controller
                  ->count('user_id')
         ];
 
-        return view('livewire.logs.index', compact(
+        return view('livewire.Logs.index', compact(
             'logs',
             'modules',
             'actions',
@@ -99,7 +99,7 @@ class LogViewerController extends Controller
      */
     public function show(ActivityLog $log)
     {
-        return view('livewire.logs.detalleLog', compact('log'));
+        return view('livewire.Logs.detalleLog', compact('log'));
     }
 
     /**
@@ -165,7 +165,7 @@ class LogViewerController extends Controller
                 ];
             });
 
-        return view('livewire.logs.dashboardLog', compact(
+        return view('livewire.Logs.dashboardLog', compact(
             'totalActivities',
             'totalErrors',
             'activeUsersCount',
