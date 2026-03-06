@@ -26,6 +26,8 @@ use Database\Seeders\ActividadesSeeder;
 use Database\Seeders\IndicadoresSeeder;
 use Database\Seeders\PlanificacionsSeeder;
 use Database\Seeders\EmpleadoActividadsSeeder;
+use Database\Seeders\ProcesoCompraSeeder;
+use Database\Seeders\RecursoSeeder;
 use Database\Seeders\TareasSeeder;
 use Database\Seeders\PresupuestosSeeder;
 use Database\Seeders\RevisionesSeeder;
