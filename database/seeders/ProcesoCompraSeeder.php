@@ -15,7 +15,7 @@ class ProcesoCompraSeeder extends Seeder
      */
     public function run()
     {
-        DB::table('Procesos_Compras')->insert([
+        DB::table('procesos_compras')->insert([
             [
                 'nombre_proceso' => 'Sin Asignar',
                 'created_at' => '2024-01-29 20:44:28',
