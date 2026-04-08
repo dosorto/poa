@@ -416,11 +416,13 @@ class Requisicion extends Component
     {
         $this->validate();
         // Asignar automáticamente el departamento y estado
+        $empleadoId = $this->getAuthEmpleadoId();
         $empleadoDepto = \DB::table('empleado_deptos')
-            ->where('idEmpleado', Auth::id())
+            ->where('idEmpleado', $empleadoId)
             ->whereNull('deleted_at')
             ->first();
-        $this->idDepartamento = $empleadoDepto ? $empleadoDepto->idDepto : null;
+
+        $this->idDepartamento = $this->departamentoSeleccionado ?: ($empleadoDepto ? $empleadoDepto->idDepto : null);
         $this->idEstado = $this->getEstadoPresentadoId();
         try {
             $data = [
@@ -523,9 +525,9 @@ class Requisicion extends Component
 
         $this->departamentoSeleccionado = session('departamentoSeleccionado');
         
-        $userId = Auth::id();
-        $this->departamentosUsuario = Departamento::whereHas('empleados', function($q) use ($userId) {
-            $q->where('empleados.id', $userId);
+        $empleadoId = $this->getAuthEmpleadoId();
+        $this->departamentosUsuario = Departamento::whereHas('empleados', function($q) use ($empleadoId) {
+            $q->where('empleados.id', $empleadoId);
         })->with('unidadEjecutora')->get();
 
         $this->mostrarSelector = $this->departamentosUsuario->count() > 1;
@@ -534,13 +536,11 @@ class Requisicion extends Component
             $this->departamentoSeleccionado = $this->departamentosUsuario->first()->id;
         }
         
+        $this->sincronizarFiltroAnioPoa();
+
         $poaYearGuardado = session('poaYearSeleccionado');
-        
-        if ($poaYearGuardado) {
+        if ($poaYearGuardado && in_array((string) $poaYearGuardado, array_map('strval', $this->poaYears), true)) {
             $this->poaYear = $poaYearGuardado;
-        } else {
-            $poa = Poa::activo()->latest()->first();
-            $this->poaYear = $poa?->anio;
         }
 
         $this->verificarPlazoRequisicion();
@@ -654,12 +654,13 @@ class Requisicion extends Component
             $poa = Poa::find($this->idPoa);
             if ($poa) {
                 // Obtener el departamento del usuario actual
+                $empleadoId = $this->getAuthEmpleadoId();
                 $empleadoDepto = \DB::table('empleado_deptos')
-                    ->where('idEmpleado', \Auth::id())
+                    ->where('idEmpleado', $empleadoId)
                     ->whereNull('deleted_at')
                     ->first();
 
-                $idDepartamento = $empleadoDepto ? $empleadoDepto->idDepto : (\Auth::user()->idDepartamento ?? null);
+                $idDepartamento = $this->departamentoSeleccionado ?: ($empleadoDepto ? $empleadoDepto->idDepto : (\Auth::user()->idDepartamento ?? null));
 
                 if (!$idDepartamento) {
                     throw new \Exception('No se pudo determinar el departamento del usuario.');
@@ -844,6 +845,10 @@ class Requisicion extends Component
 
     public function updatedPoaYear()
     {
+        if (!$this->poaYear) {
+            $this->poaYear = $this->obtenerUltimoAnioPoaDisponible();
+        }
+
         // Actualizar el cálculo del plazo cuando se cambia el POA en el select
         $this->verificarPlazoRequisicion();
         $this->resetPage();
@@ -856,9 +861,11 @@ class Requisicion extends Component
     }
      public function render()
     {
-        $userId = Auth::id();
-        $this->departamentosUsuario = Departamento::whereHas('empleados', function($q) use ($userId) {
-            $q->where('empleados.id', $userId);
+        $this->sincronizarFiltroAnioPoa();
+
+        $empleadoId = $this->getAuthEmpleadoId();
+        $this->departamentosUsuario = Departamento::whereHas('empleados', function($q) use ($empleadoId) {
+            $q->where('empleados.id', $empleadoId);
         })->with('unidadEjecutora')->get();
         $this->mostrarSelector = $this->departamentosUsuario->count() > 1;
 
@@ -927,9 +934,6 @@ class Requisicion extends Component
         ];
     }
 
-    $poas = Poa::activo()->get();
-    $this->poaYears = $poas->pluck('anio')->unique()->sort()->values(); // Obtener años únicos de los POA activos
-
     return view('livewire.seguimiento.Requisicion.create-requisiciones', [
         'mostrarSelector' => $this->mostrarSelector,
         'departamentosUsuario' => $this->departamentosUsuario,
@@ -941,5 +945,36 @@ class Requisicion extends Component
         'mensajePlazoRequisicion' => $this->mensajePlazoRequisicion,
         'diasRestantes' => $this->diasRestantes, // Pass remaining days to the view
     ])->layout($this->layout);
+    }
+
+    private function getAuthEmpleadoId(): ?int
+    {
+        return Auth::user()?->idEmpleado;
+    }
+
+    private function sincronizarFiltroAnioPoa(): void
+    {
+        $this->poaYears = Poa::activo()
+            ->orderByDesc('anio')
+            ->pluck('anio')
+            ->unique()
+            ->values()
+            ->toArray();
+
+        if (empty($this->poaYears)) {
+            $this->poaYear = null;
+            return;
+        }
+
+        $anioSeleccionadoValido = in_array((string) $this->poaYear, array_map('strval', $this->poaYears), true);
+
+        if (!$anioSeleccionadoValido) {
+            $this->poaYear = $this->obtenerUltimoAnioPoaDisponible();
+        }
+    }
+
+    private function obtenerUltimoAnioPoaDisponible(): ?int
+    {
+        return Poa::activo()->orderByDesc('anio')->value('anio');
     }
 }

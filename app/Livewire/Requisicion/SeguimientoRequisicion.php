@@ -14,6 +14,8 @@ use Livewire\Attributes\Layout;
 #[Layout('layouts.app')]
 class SeguimientoRequisicion extends Component   
 {
+    use WithPagination;
+
     public $showRecursosModal = false;
     public $recursosRequisicion = [];
     public $isEditing = false;
@@ -67,6 +69,20 @@ class SeguimientoRequisicion extends Component
 
 
     protected string $layout = 'layouts.app';
+
+    public function mount()
+    {
+        $this->sincronizarFiltroAnioPoa();
+    }
+
+    public function updatedPoaYear()
+    {
+        if (!$this->poaYear) {
+            $this->poaYear = $this->obtenerUltimoAnioPoaDisponible();
+        }
+
+        $this->resetPage();
+    }
 
     public function verRecursosRequisicion($id)
     {
@@ -227,6 +243,8 @@ public function cerrarDetalleModal()
 
     public function render()
     {
+        $this->sincronizarFiltroAnioPoa();
+
         // Fetch departments for the user
         $this->departamentosUsuario = auth()->user() && auth()->user()->empleado
             ? auth()->user()->empleado->departamentos()->with('unidadEjecutora')->get()
@@ -276,7 +294,6 @@ public function cerrarDetalleModal()
         $requisiciones = $query->paginate($this->perPage ?? 10);
 
         $poas = Poa::activo()->orderByDesc('anio')->get();
-        $this->poaYears = $poas->pluck('anio')->unique()->sort()->values();
 
         return view('livewire.seguimiento.Requisicion.requisiciones-lista', [
             'requisiciones' => $requisiciones,
@@ -285,5 +302,31 @@ public function cerrarDetalleModal()
             'departamentosUsuario' => $this->departamentosUsuario,
             'poaYears' => $this->poaYears,
         ]);
+    }
+
+    private function sincronizarFiltroAnioPoa(): void
+    {
+        $this->poaYears = Poa::activo()
+            ->orderByDesc('anio')
+            ->pluck('anio')
+            ->unique()
+            ->values()
+            ->toArray();
+
+        if (empty($this->poaYears)) {
+            $this->poaYear = null;
+            return;
+        }
+
+        $anioSeleccionadoValido = in_array((string) $this->poaYear, array_map('strval', $this->poaYears), true);
+
+        if (!$anioSeleccionadoValido) {
+            $this->poaYear = $this->obtenerUltimoAnioPoaDisponible();
+        }
+    }
+
+    private function obtenerUltimoAnioPoaDisponible(): ?int
+    {
+        return Poa::activo()->orderByDesc('anio')->value('anio');
     }
 }

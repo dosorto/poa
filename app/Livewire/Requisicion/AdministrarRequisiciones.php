@@ -46,13 +46,17 @@ class AdministrarRequisiciones extends Component
 
     public function mount()
     {
-        $this->anio = Poa::select('anio')->distinct()->orderByDesc('anio')->value('anio');
+        $this->sincronizarFiltroAnio();
 
         $this->verificarPlazoSeguimientoGeneral();
     }
 
     public function updatedAnio()
     {
+        if (!$this->anio) {
+            $this->anio = Poa::select('anio')->distinct()->orderByDesc('anio')->value('anio');
+        }
+
         $this->verificarPlazoSeguimientoGeneral();
     }
 
@@ -465,6 +469,8 @@ class AdministrarRequisiciones extends Component
 
     public function render()
     {
+        $this->sincronizarFiltroAnio();
+
         $anios = Poa::select('anio')->distinct()->orderByDesc('anio')->pluck('anio');
         $departamentos = Departamento::orderBy('name')->get();
         $estados = [
@@ -510,5 +516,26 @@ class AdministrarRequisiciones extends Component
             'mensajePlazoSeguimiento' => $this->mensajePlazoSeguimiento,
             'puedeSeguimiento' => $this->puedeSeguimiento,
         ]);
+    }
+
+    private function sincronizarFiltroAnio(): void
+    {
+        $aniosDisponibles = Poa::select('anio')
+            ->distinct()
+            ->orderByDesc('anio')
+            ->pluck('anio')
+            ->values()
+            ->toArray();
+
+        if (empty($aniosDisponibles)) {
+            $this->anio = null;
+            return;
+        }
+
+        $anioValido = in_array((string) $this->anio, array_map('strval', $aniosDisponibles), true);
+
+        if (!$anioValido) {
+            $this->anio = (int) $aniosDisponibles[0];
+        }
     }
 }
