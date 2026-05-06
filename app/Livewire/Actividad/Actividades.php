@@ -197,8 +197,20 @@ class Actividades extends Component
                 return;
             }
         } else {
-            // Obtener POA activo
-            $poaActivo = Poa::where('activo', true)->first();
+            // Obtener POA activo del año actual (por defecto)
+            $anioActual = (int) date('Y');
+            $poaActivo = Poa::where('activo', true)
+                ->where('anio', $anioActual)
+                ->orderByDesc('id')
+                ->first();
+
+            // Fallback: si no hay POA activo para el año actual, usar el más reciente activo
+            if (!$poaActivo) {
+                $poaActivo = Poa::where('activo', true)
+                    ->orderByDesc('anio')
+                    ->orderByDesc('id')
+                    ->first();
+            }
             
             if (!$poaActivo) {
                 session()->flash('error', 'No hay un POA activo');
@@ -555,6 +567,13 @@ class Actividades extends Component
 
     public function guardar()
     {
+        // Si no estamos en el último paso y se envía el formulario (ej: presionando Enter),
+        // simplemente avanzamos al siguiente paso.
+        if ($this->currentStep < $this->totalSteps) {
+            $this->nextStep();
+            return;
+        }
+
         $this->validate();
 
         try {

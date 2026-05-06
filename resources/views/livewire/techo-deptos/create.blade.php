@@ -180,7 +180,7 @@
                         {{ __('Cancelar') }}
                     </x-spinner-secondary-button>
                     
-                    <x-spinner-button type="submit" wire:click="save" loadingTarget="save" :loadingText="$isEditing ? 'Actualizando...' : 'Creando...'">
+                    <x-spinner-button type="submit" loadingTarget="save" :loadingText="$isEditing ? 'Actualizando...' : 'Creando...'">
                         {{ $isEditing ? 'Actualizar Asignación' : 'Crear Asignación' }}
                     </x-spinner-button>
                 </div>

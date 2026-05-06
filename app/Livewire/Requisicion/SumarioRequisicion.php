@@ -120,7 +120,8 @@ class SumarioRequisicion extends Component
         $poa = $this->idPoa ? Poa::find($this->idPoa) : null;
 
         $empleadoDepto = DB::table('empleado_deptos')
-            ->where('idEmpleado', $user->id)
+            //->where('idEmpleado', $user->id)
+            ->where('idEmpleado', Auth::user()->idEmpleado)  // Corregido para usar idEmpleado del usuario autenticado
             ->whereNull('deleted_at')
             ->first();
         $this->idDepartamento = $this->departamentoSeleccionado ?? ($empleadoDepto ? $empleadoDepto->idDepto : ($user->idDepartamento ?? null));
@@ -163,7 +164,7 @@ class SumarioRequisicion extends Component
                 ]);
 
                 // Actualizar orden de combustible con el detalle definitivo
-                \DB::table('orden_combustible')
+                DB::table('orden_combustible')
                     ->where('idRecurso', $presupuesto->id)
                     ->where('created_by', $user->id)
                     ->whereNull('idDetalleRequisicion') // solo los que no tienen detalle aún

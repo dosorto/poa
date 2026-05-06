@@ -62,6 +62,7 @@
                                     @if(!$actividadId)
                                         <x-spinner-button 
                                             wire:click="generarConIA" 
+                                            type="button"
                                             loadingTarget="generarConIA" 
                                             :loadingText="__('Generando...')"
                                             class="bg-purple-600 hover:bg-purple-700 focus:ring-purple-500 whitespace-nowrap"
