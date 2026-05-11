@@ -4,6 +4,7 @@ namespace App\Livewire\Tarea;
 
 use Livewire\Component;
 use Livewire\WithPagination;
+use Livewire\Attributes\Renderless;
 use App\Models\Tareas\TareaHistorico;
 use App\Models\GrupoGastos\ObjetoGasto;
 use App\Models\Requisicion\UnidadMedida;
@@ -189,6 +190,21 @@ use Livewire\Attributes\Layout;
             }
         }
 
+        #[Renderless]
+        public function buscarCubs(string $query): array
+        {
+            return Cub::where('descripcion_esp', 'like', "%{$query}%")
+                ->orWhere('IDUNSPSC', 'like', "%{$query}%")
+                ->limit(500)
+                ->get(['id', 'IDUNSPSC', 'descripcion_esp'])
+                ->map(fn($cub) => [
+                    'id'   => $cub->id,
+                    'text' => ($cub->IDUNSPSC ?? '') . ' - ' . ($cub->descripcion_esp ?? ''),
+                ])
+                ->values()
+                ->toArray();
+        }
+
         public function render()
         {
             $recursos = TareaHistorico::with(['objeto', 'unidadMedida', 'procesoCompra', 'cub'])
@@ -209,16 +225,11 @@ use Livewire\Attributes\Layout;
             $procesosCompra = ProcesoCompra::all()->map(function($p) {
                 return ['value' => $p->id, 'text' => $p->nombre_proceso];
             })->toArray();
-            $cubs = Cub::all()->map(function($c) {
-                return ['value' => $c->id, 'text' => $c->descripcion_esp ?? $c->codigo];
-            })->toArray();
-
             return view('livewire.Tareas.Tarea-historico', [
                 'recursos' => $recursos,
                 'objetosGasto' => $objetosGasto,
                 'unidadesMedida' => $unidadesMedida,
                 'procesosCompra' => $procesosCompra,
-                'cubs' => $cubs,
             ]);
         }
     }

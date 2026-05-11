@@ -18,31 +18,55 @@
 
     <x-slot name="content">
         <form wire:submit.prevent="store" id="recurso-form">
+
             <div class="mb-4">
                 <x-label for="nombre" value="{{ __('Nombre del Recurso') }}" />
-                <x-input wire:model="nombre" id="nombre" class="block mt-1 w-full" type="text" placeholder="Ingrese el nombre del recurso" />
+                <x-input
+                    wire:model="nombre"
+                    id="nombre"
+                    class="block mt-1 w-full"
+                    type="text"
+                    placeholder="Ingrese el nombre del recurso"
+                />
                 <x-input-error for="nombre" class="mt-2" />
             </div>
+
             <div class="mb-4">
-                <x-label for="idobjeto" value="{{ __('Objeto de Gasto') }}" />
-                <x-select wire:model="idobjeto" id="idobjeto" :options="$objetosGasto" class="block mt-1 w-full" />
-                <x-input-error for="idobjeto" class="mt-2" />
+                <x-searchable-select
+                    label="{{ __('Objeto de Gasto') }}"
+                    wire:model="idobjeto"
+                    :options="$objetosGasto"
+                    :error="$errors->first('idobjeto')"
+                />
             </div>
+
             <div class="mb-4">
-                <x-label for="idunidad" value="{{ __('Unidad de Medida') }}" />
-                <x-select wire:model="idunidad" id="idunidad" :options="$unidadesMedida" class="block mt-1 w-full" />
-                <x-input-error for="idunidad" class="mt-2" />
+                <x-searchable-select
+                    label="{{ __('Unidad de Medida') }}"
+                    wire:model="idunidad"
+                    :options="$unidadesMedida"
+                    :error="$errors->first('idunidad')"
+                />
             </div>
+
             <div class="mb-4">
-                <x-label for="idProcesoCompra" value="{{ __('Proceso de Compra') }}" />
-                <x-select wire:model="idProcesoCompra" id="idProcesoCompra" :options="$procesosCompra" class="block mt-1 w-full" />
-                <x-input-error for="idProcesoCompra" class="mt-2" />
+                <x-searchable-select
+                    label="{{ __('Proceso de Compra') }}"
+                    wire:model="idProcesoCompra"
+                    :options="$procesosCompra"
+                    :error="$errors->first('idProcesoCompra')"
+                />
             </div>
+
             <div class="mb-4">
-                <x-label for="idCubs" value="{{ __('CUBS') }}" />
-                <x-select wire:model="idCubs" id="idCubs" :options="$cubs" class="block mt-1 w-full" />
-                <x-input-error for="idCubs" class="mt-2" />
+                <x-searchable-select
+                    label="{{ __('CUBS') }}"
+                    wire:model="idCubs"
+                    searchAction="buscarCubs"
+                    :error="$errors->first('idCubs')"
+                />
             </div>
+
         </form>
     </x-slot>
 
@@ -50,7 +74,7 @@
         <x-spinner-secondary-button wire:click="closeModal" type="button" loadingTarget="closeModal" loadingText="Cerrando...">
             {{ __('Cancelar') }}
         </x-spinner-secondary-button>
-        
+
         <x-spinner-button class="ml-3" type="submit" wire:click="store" loadingTarget="store" :loadingText="$isEditing ? 'Actualizando...' : 'Creando...'">
             {{ $isEditing ? __('Actualizar Recurso') : __('Crear Recurso') }}
         </x-spinner-button>
