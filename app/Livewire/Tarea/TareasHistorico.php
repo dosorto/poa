@@ -195,7 +195,7 @@ use Livewire\Attributes\Layout;
         {
             return Cub::where('descripcion_esp', 'like', "%{$query}%")
                 ->orWhere('IDUNSPSC', 'like', "%{$query}%")
-                ->limit(500)
+                ->limit(5)
                 ->get(['id', 'IDUNSPSC', 'descripcion_esp'])
                 ->map(fn($cub) => [
                     'id'   => $cub->id,
