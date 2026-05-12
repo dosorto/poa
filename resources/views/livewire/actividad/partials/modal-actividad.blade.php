@@ -161,6 +161,20 @@
                             </div>
                             {{-- Resultado --}}
                 <div>
+                            {{-- cambio --}}
+                            <x-searchable-select
+                                wire:model="idResultado"
+                                wire:key="resultado-select-{{ $idDimension ?: 'empty' }}"
+                                label="Resultado"
+                                :required="true"
+                                placeholder="Buscar resultado..."
+                                :defaultText="$idDimension ? 'Seleccione un resultado' : 'Primero seleccione una dimension'"
+                                :options="$resultadosPorDimension"
+                                :disabled="!$idDimension"
+                                :error="$errors->first('idResultado')"
+                            />
+                            {{-- fin cambio hecho ok --}}
+                            {{--
                             <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Resultado *</label>
                             <select wire:model="idResultado" 
                                 class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
@@ -171,6 +185,7 @@
                                 @endforeach
                             </select>
                             @error('idResultado') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
+                            --}}
 
                     @if($idDimension && count($resultadosPorDimension) == 0)
                         <p class="mt-1 text-xs text-amber-600 dark:text-amber-400">
@@ -265,4 +280,3 @@
 
 
 </x-dialog-modal>
-
