@@ -104,6 +104,7 @@ class GestionarActividad extends Component
     // Presupuesto de tareas
     public $presupuestosTarea = [];
     public $recursosDisponibles = [];
+    public $detallesTecnicosPorRecurso = [];
     public $fuentesFinanciamiento = [];
     public $unidadesMedida = [];
     public $meses = [];
@@ -1295,11 +1296,8 @@ class GestionarActividad extends Component
 
     private function loadRecursosYCatalogos()
     {
-        // Cargar recursos (Tareas Historicos)
-        $this->recursosDisponibles = TareaHistorico::with('objeto')
-            ->orderBy('nombre')
-            ->get()
-            ->toArray();
+        // Los recursos se buscan bajo demanda para no cargar toda la tabla en el modal.
+        $this->recursosDisponibles = [];
         
         // Cargar fuentes de financiamiento
         $this->fuentesFinanciamiento = Fuente::orderBy('nombre')->get()->toArray();
@@ -1318,9 +1316,32 @@ class GestionarActividad extends Component
         $this->calcularTotal();
     }
 
+    public function searchRecursosPresupuesto($search = '')
+    {
+        return TareaHistorico::query()
+            ->select('id', 'nombre')
+            ->when($search, function ($query) use ($search) {
+                $query->where('nombre', 'like', '%' . $search . '%');
+            })
+            ->orderBy('nombre')
+            ->limit(30)
+            ->get()
+            ->map(fn($recurso) => [
+                'id' => $recurso->id,
+                'text' => $recurso->nombre,
+            ])
+            ->toArray();
+    }
+
     public function updatedNuevoPresupuestoCantidad()
     {
         $this->calcularTotal();
+    }
+
+    public function updatedNuevoPresupuestoIdRecurso($value)
+    {
+        $this->nuevoPresupuesto['detalle_tecnico'] = '';
+        $this->loadDetallesTecnicosPorRecurso($value);
     }
 
     public function updatedNuevoPresupuestoIdfuente($value)
@@ -1347,6 +1368,25 @@ class GestionarActividad extends Component
         $costounitario = floatval($this->nuevoPresupuesto['costounitario'] ?? 0);
         $cantidad = floatval($this->nuevoPresupuesto['cantidad'] ?? 0);
         $this->nuevoPresupuesto['total'] = $costounitario * $cantidad;
+    }
+
+    private function loadDetallesTecnicosPorRecurso($recursoId)
+    {
+        if (empty($recursoId)) {
+            $this->detallesTecnicosPorRecurso = [];
+            return;
+        }
+
+        $this->detallesTecnicosPorRecurso = DB::table('recurso_detalles_tecnicos')
+            ->where('id_tareas_historicos', $recursoId)
+            ->where('estado', true)
+            ->orderBy('nombre')
+            ->get()
+            ->map(fn($detalle) => [
+                'id' => $detalle->nombre,
+                'text' => $detalle->nombre,
+            ])
+            ->toArray();
     }
 
     public function savePresupuesto()
@@ -1572,6 +1612,7 @@ class GestionarActividad extends Component
             'total' => 0
         ];
         $this->presupuestoEditandoId = null;
+        $this->detallesTecnicosPorRecurso = [];
     }
 
     public function editPresupuesto($presupuestoId)
@@ -1588,6 +1629,11 @@ class GestionarActividad extends Component
         
         // Buscar el recurso por nombre en tareas_historicos
         $recurso = TareaHistorico::where('nombre', $presupuesto->recurso)->first();
+        $this->recursosDisponibles = $recurso ? [[
+            'id' => $recurso->id,
+            'nombre' => $recurso->nombre,
+        ]] : [];
+        $this->loadDetallesTecnicosPorRecurso($recurso?->id);
         
         $this->presupuestoEditandoId = $presupuestoId;
         $this->nuevoPresupuesto = [
