@@ -40,4 +40,9 @@ class TareaHistorico extends BaseModel
     {
         return $this->belongsTo(Cub::class, 'idCubs');
     }
+
+    public function detallesTecnicos()
+    {
+        return $this->hasMany(RecursoDetalleTecnico::class, 'id_tareas_historicos');
+    }
 }

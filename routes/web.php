@@ -50,6 +50,11 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     // Ruta para revisar detalles de actividad
     Route::get('/review-actividad-detalle/{id}', \App\Livewire\Revision\ReviewActividadDetalle::class)
         ->name('review-actividad-detalle');
+    
+    // Ruta para detalles técnicos de recursos
+    Route::get('/recurso-detalle-tecnico/{recursoId}', \App\Livewire\Tarea\RecursoDetalleTecnico::class)
+        ->name('recurso-detalle-tecnico')
+        ->middleware('can:configuracion.recursos.ver');
 });
 
 

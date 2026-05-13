@@ -319,6 +319,23 @@ return [
                         ->setItems([])
                         ->setEndBlock('recursos'),
 
+                    RkRoute::make('recurso-detalle-tecnico')
+                        ->setParentId('configuracion')
+                        ->setAccessPermission('acceso-configuracion')
+                        ->setPermissions([
+                            'configuracion.recursos.ver',
+                            'configuracion.recursos.crear',
+                            'configuracion.recursos.editar',
+                            'configuracion.recursos.eliminar',
+                            'acceso-configuracion',
+                        ])
+                        ->setUrlMethod('get')
+                        ->setUrl('recurso-detalle-tecnico/{recursoId}')
+                        ->setUrlController('App\Livewire\Tarea\RecursoDetalleTecnico')
+                        ->setRoles(['super_admin', 'admin'])
+                        ->setItems([])
+                        ->setEndBlock('recurso-detalle-tecnico'),
+
                     RkRoute::make('cubs')
                         ->setParentId('configuracion')
                         ->setAccessPermission('acceso-configuracion')
