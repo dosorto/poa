@@ -790,14 +790,16 @@
                     
                     <div class="grid grid-cols-2 gap-4">
                         <div>
-                            <x-label for="recursoPresupuesto" value="Recurso" />
-                            <select id="recursoPresupuesto" class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 text-sm" wire:model="nuevoPresupuesto.idRecurso">
-                                <option value="">Seleccione un recurso</option>
-                                @foreach($recursosDisponibles as $recurso)
-                                    <option value="{{ $recurso['id'] }}">{{ $recurso['nombre'] }}</option>
-                                @endforeach
-                            </select>
-                            @error('nuevoPresupuesto.idRecurso') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                            <x-searchable-select
+                                wire:model="nuevoPresupuesto.idRecurso"
+                                label="Recurso"
+                                :required="true"
+                                placeholder="Buscar recurso..."
+                                defaultText="Seleccione un recurso"
+                                searchAction="searchRecursosPresupuesto"
+                                :options="collect($recursosDisponibles)->map(fn($recurso) => ['id' => $recurso['id'], 'text' => $recurso['nombre']])->toArray()"
+                                :error="$errors->first('nuevoPresupuesto.idRecurso')"
+                            />
                         </div>
 
                         <div>
@@ -813,9 +815,17 @@
                     </div>
 
                     <div>
-                        <x-label for="detalleTecnico" value="Detalle Técnico" />
-                        <textarea id="detalleTecnico" rows="2" class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 text-sm" wire:model="nuevoPresupuesto.detalle_tecnico"></textarea>
-                        @error('nuevoPresupuesto.detalle_tecnico') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                        <x-searchable-select
+                            wire:model="nuevoPresupuesto.detalle_tecnico"
+                            wire:key="detalle-tecnico-select-{{ $nuevoPresupuesto['idRecurso'] ?: 'empty' }}"
+                            label="Detalle Tecnico"
+                            :required="true"
+                            placeholder="Buscar detalle tecnico..."
+                            :defaultText="$nuevoPresupuesto['idRecurso'] ? 'Seleccione un detalle tecnico' : 'Primero seleccione un recurso'"
+                            :options="$detallesTecnicosPorRecurso"
+                            :disabled="!$nuevoPresupuesto['idRecurso']"
+                            :error="$errors->first('nuevoPresupuesto.detalle_tecnico')"
+                        />
                     </div>
 
                     <div class="grid grid-cols-4 gap-4">

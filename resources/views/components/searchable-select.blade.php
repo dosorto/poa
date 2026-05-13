@@ -28,7 +28,7 @@
     })->filter(fn($i) => $i['id'] !== null)->values()->toJson();
 @endphp
 
-<div {{ $attributes->except('wire:model') }}>
+<div {{ $attributes->except(['wire:model', 'wire:model.live']) }}>
 
     @if ($label)
         <label class="block mb-1 text-sm font-medium text-zinc-700 dark:text-zinc-300">
