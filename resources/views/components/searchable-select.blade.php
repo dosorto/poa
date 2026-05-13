@@ -13,7 +13,8 @@
 ])
 
 @php
-    $wireModel   = $attributes->get('wire:model');
+    $wireModel = $attributes->get('wire:model.live') 
+              ?? $attributes->get('wire:model');
     $isLive      = !is_null($searchAction);
 
     $normalizedOptions = collect($options)->map(function ($option) {
@@ -104,6 +105,7 @@
                 this.open = false;
                 this.search = '';
                 this.results = [];
+                $wire.set('{{ $wireModel }}', id); //Problema de no mostrar el texto seleccionado al cargar con valor inicial, se soluciona seteando el valor manualmente al seleccionar una opción
             },
 
             clearSelection() {
@@ -111,6 +113,7 @@
                 this.selectedLabel = '{{ $defaultText }}';
                 this.search = '';
                 this.results = [];
+                $wire.set('{{ $wireModel }}', null);
             },
         }"
         @click.away="open = false"

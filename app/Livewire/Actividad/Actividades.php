@@ -278,14 +278,17 @@ class Actividades extends Component
 
     public function updatedIdDimension($value)
     {
+          //  dd('corriendo', $value); // temporal
         if ($value) {
             // Los resultados están relacionados con áreas, y las áreas con objetivos que tienen dimensiones
             $this->resultadosPorDimension = Resultado::whereHas('area.objetivo', function($query) use ($value) {
                 $query->where('idDimension', $value);
             })
-            ->with('area.objetivo.dimension')
             ->orderBy('nombre')
-            ->get();
+            ->pluck('nombre', 'id')  // solo id y nombre, nada más
+            ->map(fn($nombre, $id) => ['id' => $id, 'text' => $nombre])
+            ->values()
+            ->toArray();
             $this->idResultado = null;
         } else {
             $this->resultadosPorDimension = [];
