@@ -855,14 +855,16 @@
                         </div>
 
                         <div>
-                            <x-label for="mesEjecucion" value="Mes de Ejecución" />
-                            <select id="mesEjecucion" class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 text-sm" wire:model="nuevoPresupuesto.idMes">
-                                <option value="">Seleccione</option>
-                                @foreach($meses as $mes)
-                                    <option value="{{ $mes['id'] }}">{{ $mes['mes'] }}</option>
-                                @endforeach
-                            </select>
-                            @error('nuevoPresupuesto.idMes') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                            <x-searchable-select
+                                wire:model="nuevoPresupuesto.idMes"
+                                label="Mes de Ejecución"
+                                :required="true"
+                                placeholder="Buscar mes..."
+                                defaultText="Seleccione un mes"
+                                searchAction="searchMeses"
+                                :options="collect($meses)->map(fn($mes) => ['id' => $mes['id'], 'text' => $mes['mes']])->toArray()"
+                                :error="$errors->first('nuevoPresupuesto.idMes')"
+                            />
                         </div>
                     </div>
 

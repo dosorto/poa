@@ -1350,6 +1350,23 @@ class GestionarActividad extends Component
             ->toArray();
     }
 
+    public function searchMeses($search = '')
+    {
+        return Mes::query()
+            ->select('id', 'mes')
+            ->when($search, function ($query) use ($search) {
+                $query->where('mes', 'like', '%' . $search . '%');
+            })
+            ->orderBy('mes')
+            ->limit(30)
+            ->get()
+            ->map(fn($mes) => [
+                'id' => $mes->id,
+                'text' => $mes->mes,
+            ])
+            ->toArray();
+    }
+
     public function updatedNuevoPresupuestoCantidad()
     {
         $this->calcularTotal();
