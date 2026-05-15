@@ -262,6 +262,7 @@ class Requisicion extends Component
                 $this->recursosSeleccionados[] = [
                     'id'                    => $presupuesto->id,
                     'nombre'                => $presupuesto->recurso,
+                    'idHistorico'           => $presupuesto->idHistorico,
                     'actividad'             => $tarea
                         ? (($tarea->actividad->nombre ?? '-') . ' / ' . ($tarea->nombre ?? '-'))
                         : '-',
@@ -318,6 +319,7 @@ class Requisicion extends Component
                         $this->recursosSeleccionados[] = [
                             'id' => $presupuesto->id,
                             'nombre' => $presupuesto->recurso,
+                            'idHistorico' => $presupuesto->idHistorico,
                             'actividad' => ($actividad->actividad->nombre ?? '-') . ' / ' . ($actividad->nombre ?? '-'),
                             'proceso_compra' => $presupuesto->tareaHistorico && $presupuesto->tareaHistorico->procesoCompra ? $presupuesto->tareaHistorico->procesoCompra->nombre_proceso : '-',
                             'cantidad_seleccionada' => $cantidad,
@@ -746,6 +748,20 @@ class Requisicion extends Component
             throw new \Exception('idDetalleRequisicion null');
         }
 
+        // Obtener el idHistorico del recurso seleccionado
+        $recursoSeleccionado = collect($this->recursosSeleccionados)->firstWhere('id', $this->ordenCombustibleRecursoId);
+        $idHistorico = $recursoSeleccionado['idHistorico'] ?? null;
+
+        // Si no está en el array, obtenerlo del presupuesto (por compatibilidad con datos antiguos)
+        if (!$idHistorico) {
+            $presupuesto = Presupuesto::find($this->ordenCombustibleRecursoId);
+            $idHistorico = $presupuesto ? $presupuesto->idHistorico : null;
+        }
+
+        if (!$idHistorico) {
+            throw new \Exception('No se pudo obtener el recurso histórico para la orden de combustible.');
+        }
+
         \DB::table('orden_combustible')->insert([
             'correlativo' => $correlativo,
             //'monto' => 0,
@@ -761,7 +777,7 @@ class Requisicion extends Component
             'actividades_realizar' => $this->ordenCombustibleData['actividades_realizar'],
             'idPoa' => $this->idPoa,
             'idDetalleRequisicion' => $this->ordenCombustibleData['idDetalleRequisicion'],
-            'idRecurso' => $this->ordenCombustibleRecursoId,
+            'idRecurso' => $idHistorico,
             'responsable' => $this->ordenCombustibleData['responsable'],
             'created_by' => \Auth::id(),
             'created_at' => now(),

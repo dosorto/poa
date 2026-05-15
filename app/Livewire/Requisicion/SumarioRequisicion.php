@@ -371,6 +371,22 @@ class SumarioRequisicion extends Component
                     ]);
                     session(["orden_combustible_{$this->ordenCombustibleRecursoId}" => $this->ordenCombustibleData['id']]);
         } else {
+                // Obtener el idHistorico del recurso seleccionado
+                $recursoSeleccionado = collect($this->recursosSeleccionados)->firstWhere('id', $this->ordenCombustibleRecursoId);
+                $idHistorico = $recursoSeleccionado['idHistorico'] ?? null;
+
+                // Si no está en el array, obtenerlo del presupuesto (por compatibilidad con datos antiguos)
+                if (!$idHistorico) {
+                    $presupuesto = Presupuesto::find($this->ordenCombustibleRecursoId);
+                    $idHistorico = $presupuesto ? $presupuesto->idHistorico : null;
+                }
+
+                if (!$idHistorico) {
+                    $this->errorMessage = 'No se pudo obtener el recurso histórico para la orden de combustible.';
+                    $this->showErrorModal = true;
+                    return;
+                }
+
                 // Insertar nueva orden
                 DB::table('orden_combustible')->insert([
                     'correlativo'          => $correlativo,
@@ -385,7 +401,7 @@ class SumarioRequisicion extends Component
                     'actividades_realizar' => $this->ordenCombustibleData['actividades_realizar'],
                     'idPoa'                => $this->idPoa,
                     'idDetalleRequisicion' => $idDetalleRequisicion,
-                    'idRecurso'            => $this->ordenCombustibleRecursoId,
+                    'idRecurso'            => $idHistorico,
                     'responsable'          => $this->ordenCombustibleData['responsable'],
                     'created_by'           => Auth::id(),
                     'created_at'           => now(),
