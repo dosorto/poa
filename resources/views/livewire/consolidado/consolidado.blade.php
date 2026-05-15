@@ -6,7 +6,7 @@
                 Consolidado de Actividades
             </h2>
             <p class="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-                Vista consolidada de todas las actividades por departamento
+                Vista consolidada de actividades por los departamentos asignados al empleado
             </p>
         </div>
 
@@ -52,9 +52,9 @@
                             );
                     },
                     get selectedNombre() {
-                        if (!$wire.departamentoId) return 'Todos los departamentos';
+                        if (!$wire.departamentoId) return 'Seleccione un departamento';
                         const dept = $wire.departamentos.find(d => d.id == $wire.departamentoId);
-                        return dept ? dept.name : 'Todos los departamentos';
+                        return dept ? dept.name : 'Seleccione un departamento';
                     }
                 }" class="relative">
                     <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
@@ -94,17 +94,10 @@
                         x-transition:leave-start="transform opacity-100 scale-100"
                         x-transition:leave-end="transform opacity-0 scale-95">
                         
-                        <!-- Opción "Todos" -->
-                        <button type="button" @click="$wire.departamentoId = ''; search = ''; open = false;"
-                            class="w-full text-left px-4 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-700"
-                            :class="{ 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-900 dark:text-indigo-200': $wire.departamentoId === '', 'text-zinc-900 dark:text-zinc-300': $wire.departamentoId !== '' }">
-                            <span>Todos los departamentos</span>
-                        </button>
-                        
                         <!-- Lista de departamentos filtrados -->
                         <div class="max-h-60 overflow-y-auto">
                             <template x-for="departamento in filteredDepartamentos" :key="departamento.id">
-                                <button type="button" @click="$wire.departamentoId = departamento.id; search = ''; open = false;"
+                                <button type="button" @click="$wire.set('departamentoId', departamento.id); search = ''; open = false;"
                                     class="w-full text-left px-4 py-2 text-sm hover:bg-zinc-100 dark:hover:bg-zinc-700"
                                     :class="{ 'bg-indigo-100 dark:bg-indigo-900/30 text-indigo-900 dark:text-indigo-200': $wire.departamentoId == departamento.id, 'text-zinc-900 dark:text-zinc-300': $wire.departamentoId != departamento.id }">
                                     <span x-text="departamento.name"></span>
