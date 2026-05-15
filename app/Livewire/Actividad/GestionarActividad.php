@@ -1333,6 +1333,23 @@ class GestionarActividad extends Component
             ->toArray();
     }
 
+    public function searchUnidadesMedida($search = '')
+    {
+        return UnidadMedida::query()
+            ->select('id', 'nombre')
+            ->when($search, function ($query) use ($search) {
+                $query->where('nombre', 'like', '%' . $search . '%');
+            })
+            ->orderBy('nombre')
+            ->limit(30)
+            ->get()
+            ->map(fn($unidad) => [
+                'id' => $unidad->id,
+                'text' => $unidad->nombre,
+            ])
+            ->toArray();
+    }
+
     public function updatedNuevoPresupuestoCantidad()
     {
         $this->calcularTotal();

@@ -830,14 +830,16 @@
 
                     <div class="grid grid-cols-4 gap-4">
                         <div>
-                            <x-label for="unidadMedida" value="Unidad de Medida" />
-                            <select id="unidadMedida" class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 text-sm" wire:model="nuevoPresupuesto.idunidad">
-                                <option value="">Seleccione</option>
-                                @foreach($unidadesMedida as $unidad)
-                                    <option value="{{ $unidad['id'] }}">{{ $unidad['nombre'] }}</option>
-                                @endforeach
-                            </select>
-                            @error('nuevoPresupuesto.idunidad') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                            <x-searchable-select
+                                wire:model="nuevoPresupuesto.idunidad"
+                                label="Unidad de Medida"
+                                :required="true"
+                                placeholder="Buscar unidad de medida..."
+                                defaultText="Seleccione una unidad de medida"
+                                searchAction="searchUnidadesMedida"
+                                :options="collect($unidadesMedida)->map(fn($unidad) => ['id' => $unidad['id'], 'text' => $unidad['nombre']])->toArray()"
+                                :error="$errors->first('nuevoPresupuesto.idunidad')"
+                            />
                         </div>
 
                         <div>
