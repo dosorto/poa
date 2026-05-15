@@ -6,9 +6,8 @@ use Livewire\Component;
 use Livewire\WithPagination;
 use App\Models\Actividad\Actividad;
 use App\Models\Dimension\Dimension;
-use App\Models\Departamento\Departamento;
 use App\Models\Poa\Poa;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
 
 #[Layout('layouts.app')]
@@ -24,6 +23,7 @@ class Consolidado extends Component
     public $anios = [];
     public $dimensiones = [];
     public $departamentos = [];
+    public $departamentoIds = [];
 
     public function mount()
     {
@@ -34,24 +34,54 @@ class Consolidado extends Component
         // Obtener dimensiones
         $this->dimensiones = Dimension::orderBy('nombre')->get();
         
-        // Obtener departamentos como array para Alpine.js
-        $this->departamentos = Departamento::orderBy('name')
-            ->get(['id', 'name'])
-            ->toArray();
+        $this->cargarDepartamentosEmpleado();
+    }
+
+    public function cargarDepartamentosEmpleado()
+    {
+        $empleado = Auth::user()?->empleado;
+
+        if (!$empleado) {
+            $this->departamentos = [];
+            $this->departamentoIds = [];
+            $this->departamentoId = '';
+            return;
+        }
+
+        $departamentos = $empleado->departamentos()
+            ->orderBy('name')
+            ->get(['departamentos.id', 'departamentos.name']);
+
+        $this->departamentos = $departamentos->toArray();
+        $this->departamentoIds = $departamentos->pluck('id')->map(fn ($id) => (int) $id)->toArray();
+
+        if (!$this->departamentoId || !in_array((int) $this->departamentoId, $this->departamentoIds, true)) {
+            $this->departamentoId = $this->departamentoIds[0] ?? '';
+        }
     }
 
     public function updatingDepartamentoId()
     {
+        $this->expandedRow = null;
         $this->resetPage();
+    }
+
+    public function updatedDepartamentoId($value)
+    {
+        if (!$value || !in_array((int) $value, $this->departamentoIds, true)) {
+            $this->departamentoId = $this->departamentoIds[0] ?? '';
+        }
     }
 
     public function updatingAnio()
     {
+        $this->expandedRow = null;
         $this->resetPage();
     }
 
     public function updatingDimensionId()
     {
+        $this->expandedRow = null;
         $this->resetPage();
     }
 
@@ -101,7 +131,14 @@ class Consolidado extends Component
             });
         }
 
-        // Filtrar por departamento
+        // Limitar siempre a los departamentos asignados al empleado autenticado
+        if (empty($this->departamentoIds)) {
+            $query->whereRaw('1 = 0');
+        } else {
+            $query->whereIn('idDeptartamento', $this->departamentoIds);
+        }
+
+        // Filtrar por departamento seleccionado dentro de los asignados
         if ($this->departamentoId) {
             $query->where('idDeptartamento', $this->departamentoId);
         }
@@ -115,7 +152,7 @@ class Consolidado extends Component
             return null;
         }
 
-        return Actividad::with([
+        $query = Actividad::with([
             'departamento',
             'poa',
             'unidadEjecutora.institucion',
@@ -128,7 +165,19 @@ class Consolidado extends Component
             'tareas.presupuestos.objetoGasto',
             'tareas.presupuestos.fuente',
             'empleados'
-        ])->find($this->expandedRow);
+        ]);
+
+        if (empty($this->departamentoIds)) {
+            $query->whereRaw('1 = 0');
+        } else {
+            $query->whereIn('idDeptartamento', $this->departamentoIds);
+        }
+
+        if ($this->departamentoId) {
+            $query->where('idDeptartamento', $this->departamentoId);
+        }
+
+        return $query->find($this->expandedRow);
     }
 
     public function render()

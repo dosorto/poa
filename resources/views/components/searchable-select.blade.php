@@ -16,6 +16,7 @@
     $wireModel = $attributes->get('wire:model.live') 
               ?? $attributes->get('wire:model');
     $isLive      = !is_null($searchAction);
+    $modelName = (string) $wireModel;
 
     $normalizedOptions = collect($options)->map(function ($option) {
         if (is_array($option)) {
@@ -42,34 +43,36 @@
             open: false,
             search: '',
             loading: false,
-            selected: @entangle($wireModel),
+            selected: $wire.get(@js($modelName)),
             selectedLabel: '{{ $defaultText }}',
+            modelName: @js($modelName),
             isLive: {{ $isLive ? 'true' : 'false' }},
+            initialOptions: {{ $normalizedOptions }},
             options: {{ $normalizedOptions }},
             results: [],
             debounceTimer: null,
 
             init() {
+                this.syncSelectedLabel();
+
                 if (this.isLive) {
-                    $wire.{{ $searchAction ?? 'search' }}('').then(r => {
-                        if (typeof r === 'string') {
-                            try { r = JSON.parse(r); } catch(e) {}
-                        }
-                        this.results = Array.isArray(r) ? r : [];
-                        if (this.selected) {
-                            const found = this.results.find(o => o.id == this.selected) || this.options.find(o => o.id == this.selected);
-                            if (found) this.selectedLabel = found.text;
-                        }
-                    }).catch(e => {
-                        this.results = [{id: -1, text: 'Error init: ' + (e.message || e)}];
+                    this.fetchResults('');
+                }
+
+                if (window.Livewire) {
+                    Livewire.hook('morphed', () => {
+                        this.options = this.initialOptions;
+                        this.selected = $wire.get(this.modelName);
+                        this.syncSelectedLabel();
                     });
                 }
             },
 
             get displayOptions() {
-                if (this.isLive) return this.results;
-                if (this.search === '') return this.options;
-                return this.options.filter(o => o.text.toLowerCase().includes(this.search.toLowerCase()));
+                const source = this.isLive ? (this.results.length > 0 ? this.results : this.options) : this.options;
+
+                if (this.search === '') return source;
+                return source.filter(o => String(o.text).toLowerCase().includes(this.search.toLowerCase()));
             },
 
             get selectedText() {
@@ -80,22 +83,46 @@
                 return '{{ $defaultText }}';
             },
 
-            doSearch(q) {
-                if (!this.isLive) return;
-                
+            normalizeResults(r) {
+                if (typeof r === 'string') {
+                    try { r = JSON.parse(r); } catch(e) {}
+                }
+
+                return Array.isArray(r) ? r : [];
+            },
+
+            syncSelectedLabel() {
+                if (!this.selected) {
+                    this.selectedLabel = '{{ $defaultText }}';
+                    return;
+                }
+
+                const found = this.options.find(o => o.id == this.selected) || this.results.find(o => o.id == this.selected);
+                if (found) this.selectedLabel = found.text;
+            },
+
+            fetchResults(q) {
                 this.loading = true;
-                clearTimeout(this.debounceTimer);
-                this.debounceTimer = setTimeout(() => {
-                    $wire.{{ $searchAction ?? 'search' }}(q).then(r => {
-                        if (typeof r === 'string') {
-                            try { r = JSON.parse(r); } catch(e) {}
-                        }
-                        this.results = Array.isArray(r) ? r : [];
-                        this.loading = false;
-                    }).catch(e => {
-                        this.results = [{id: -1, text: 'Error search: ' + (e.message || e)}];
+
+                return $wire.{{ $searchAction ?? 'search' }}(q)
+                    .then(r => {
+                        this.results = this.normalizeResults(r);
+                        this.syncSelectedLabel();
+                    })
+                    .catch(e => {
+                        this.results = [];
+                    })
+                    .finally(() => {
                         this.loading = false;
                     });
+            },
+
+            doSearch(q) {
+                if (!this.isLive) return;
+
+                clearTimeout(this.debounceTimer);
+                this.debounceTimer = setTimeout(() => {
+                    this.fetchResults(q);
                 }, 300);
             },
 
@@ -104,16 +131,14 @@
                 this.selectedLabel = text;
                 this.open = false;
                 this.search = '';
-                this.results = [];
-                $wire.set('{{ $wireModel }}', id); //Problema de no mostrar el texto seleccionado al cargar con valor inicial, se soluciona seteando el valor manualmente al seleccionar una opción
+                $wire.set(this.modelName, id);
             },
 
             clearSelection() {
                 this.selected = null;
                 this.selectedLabel = '{{ $defaultText }}';
                 this.search = '';
-                this.results = [];
-                $wire.set('{{ $wireModel }}', null);
+                $wire.set(this.modelName, '');
             },
         }"
         @click.away="open = false"
@@ -122,7 +147,7 @@
         {{-- Botón principal --}}
         <button
             type="button"
-            @click="if (!{{ $disabled ? 'true' : 'false' }}) { open = !open; if(open && isLive && results.length === 0 && search === '') doSearch(''); }"
+            @click="if (!{{ $disabled ? 'true' : 'false' }}) { open = !open; if(open && isLive && results.length === 0 && search === '') fetchResults(''); }"
             :disabled="{{ $disabled ? 'true' : 'false' }}"
             class="relative w-full bg-white dark:bg-zinc-900 border rounded-md shadow-sm pl-3 pr-10 py-2 text-left cursor-pointer focus:outline-none focus:ring-1 sm:text-sm
                 {{ $error    ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
