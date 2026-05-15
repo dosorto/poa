@@ -53,7 +53,7 @@ class SumarioRequisicion extends Component
 
     public function mount()
     {
-        $this->empleados = Empleado::all();
+        $this->cargarEmpleadosOrdenCombustible();
         $this->departamentoSeleccionado = session('departamentoSeleccionado');
         
         $recursosGuardados = session('recursosSeleccionados', []);
@@ -247,7 +247,50 @@ class SumarioRequisicion extends Component
             ];
         }
 
+        $this->cargarEmpleadosOrdenCombustible($this->ordenCombustibleData['responsable']);
         $this->showOrdenCombustibleModal = true;
+    }
+
+    private function cargarEmpleadosOrdenCombustible($responsableId = null)
+    {
+        $empleados = Empleado::query()
+            ->select('id', 'nombre', 'apellido', 'num_empleado')
+            ->orderBy('nombre')
+            ->orderBy('apellido')
+            ->limit(30)
+            ->get();
+
+        if ($responsableId && !$empleados->contains('id', (int) $responsableId)) {
+            $responsable = Empleado::select('id', 'nombre', 'apellido', 'num_empleado')->find($responsableId);
+
+            if ($responsable) {
+                $empleados->prepend($responsable);
+            }
+        }
+
+        $this->empleados = $empleados;
+    }
+
+    public function searchEmpleadosOrdenCombustible($search = '')
+    {
+        return Empleado::query()
+            ->select('id', 'nombre', 'apellido', 'num_empleado')
+            ->when($search, function ($query) use ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('nombre', 'like', '%' . $search . '%')
+                        ->orWhere('apellido', 'like', '%' . $search . '%')
+                        ->orWhere('num_empleado', 'like', '%' . $search . '%');
+                });
+            })
+            ->orderBy('nombre')
+            ->orderBy('apellido')
+            ->limit(30)
+            ->get()
+            ->map(fn ($empleado) => [
+                'id' => $empleado->id,
+                'text' => trim($empleado->nombre . ' ' . $empleado->apellido) . ($empleado->num_empleado ? ' - #' . $empleado->num_empleado : ''),
+            ])
+            ->toArray();
     }
     public function cerrarOrdenCombustibleModal()
     {

@@ -61,14 +61,20 @@
                 </div>
             </div>
             <div class="mb-4">
-                <x-label for="ordenCombustibleData.responsable" value="Empleado Responsable" class="mb-1" />
-                <x-select 
-                    id="ordenCombustibleData.responsable" 
-                    wire:model.defer="ordenCombustibleData.responsable"
-                    :options="$empleados->map(fn($empleado) => ['value' => $empleado->id, 'text' => $empleado->nombre . ' ' . $empleado->apellido])->prepend(['value' => '', 'text' => 'Seleccione un empleado'])->toArray()"
-                    class="mt-1 block w-full"
+                <x-searchable-select
+                    wire:model="ordenCombustibleData.responsable"
+                    wire:key="orden-combustible-responsable-{{ $ordenCombustibleData['responsable'] ?: 'empty' }}"
+                    label="Empleado Responsable"
+                    placeholder="Buscar empleado..."
+                    defaultText="Seleccione un empleado"
+                    clearText="Limpiar selección"
+                    searchAction="searchEmpleadosOrdenCombustible"
+                    :options="$empleados->map(fn($empleado) => [
+                        'id' => $empleado->id,
+                        'text' => trim($empleado->nombre . ' ' . $empleado->apellido) . ($empleado->num_empleado ? ' - #' . $empleado->num_empleado : ''),
+                    ])->toArray()"
+                    :error="$errors->first('ordenCombustibleData.responsable')"
                 />
-                <x-input-error for="ordenCombustibleData.responsable" class="mt-2" />
             </div>
             <div>
                 <x-label value="Actividades a realizar" class="mb-1" />
