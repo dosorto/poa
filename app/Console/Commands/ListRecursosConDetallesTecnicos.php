@@ -5,7 +5,7 @@ namespace App\Console\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
-class ListRecursosCon DetallesTecnicos extends Command
+class ListRecursosConDetallesTecnicos extends Command
 {
     protected $signature = 'list:recursos-con-detalles';
     protected $description = 'Listar todos los recursos con sus detalles técnicos';
