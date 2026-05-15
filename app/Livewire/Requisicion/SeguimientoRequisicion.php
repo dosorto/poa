@@ -286,4 +286,9 @@ public function cerrarDetalleModal()
             'poaYears' => $this->poaYears,
         ]);
     }
+
+    public function updatedDepartamentoSeleccionado()
+    {
+        session(['departamentoSeleccionado' => $this->departamentoSeleccionado]);
+    }
 }
