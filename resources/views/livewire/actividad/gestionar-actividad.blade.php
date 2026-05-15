@@ -792,6 +792,7 @@
                         <div>
                             <x-searchable-select
                                 wire:model="nuevoPresupuesto.idRecurso"
+                                wire:key="presupuesto-recurso-select-{{ $presupuestoEditandoId ?: 'nuevo' }}-{{ $nuevoPresupuesto['idRecurso'] ?: 'empty' }}"
                                 label="Recurso"
                                 :required="true"
                                 placeholder="Buscar recurso..."
@@ -832,6 +833,7 @@
                         <div>
                             <x-searchable-select
                                 wire:model="nuevoPresupuesto.idunidad"
+                                wire:key="presupuesto-unidad-select-{{ $presupuestoEditandoId ?: 'nuevo' }}-{{ $nuevoPresupuesto['idunidad'] ?: 'empty' }}"
                                 label="Unidad de Medida"
                                 :required="true"
                                 placeholder="Buscar unidad de medida..."
@@ -857,6 +859,7 @@
                         <div>
                             <x-searchable-select
                                 wire:model="nuevoPresupuesto.idMes"
+                                wire:key="presupuesto-mes-select-{{ $presupuestoEditandoId ?: 'nuevo' }}-{{ $nuevoPresupuesto['idMes'] ?: 'empty' }}"
                                 label="Mes de Ejecución"
                                 :required="true"
                                 placeholder="Buscar mes..."

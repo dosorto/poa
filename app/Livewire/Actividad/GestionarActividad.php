@@ -1296,8 +1296,13 @@ class GestionarActividad extends Component
 
     private function loadRecursosYCatalogos()
     {
-        // Los recursos se buscan bajo demanda para no cargar toda la tabla en el modal.
-        $this->recursosDisponibles = [];
+        // Cargar una primera tanda para que el selector muestre opciones al abrir.
+        $this->recursosDisponibles = TareaHistorico::query()
+            ->select('id', 'nombre')
+            ->orderBy('nombre')
+            ->limit(30)
+            ->get()
+            ->toArray();
         
         // Cargar fuentes de financiamiento
         $this->fuentesFinanciamiento = Fuente::orderBy('nombre')->get()->toArray();
