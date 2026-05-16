@@ -174,7 +174,7 @@ class Requisicion extends Component
             foreach ($this->recursosSeleccionados as $recurso) {
                 $presupuesto = Presupuesto::find($recurso['id']);
                 if ($presupuesto) {
-                    DetalleRequisicion::create([
+                    $detalle = DetalleRequisicion::create([
                         'idRequisicion' => $requisicion->id,
                         'idPoa' => $this->idPoa,
                         'idPresupuesto' => $presupuesto->id,
@@ -184,6 +184,10 @@ class Requisicion extends Component
                         'entregado' => false,
                         'created_by' => $user->id,
                     ]);
+
+                    if (!empty($recurso['orden_combustible_creada'])) {
+                        $this->vincularOrdenCombustibleConDetalle($detalle, $user->id);
+                    }
                 }
             }
 
@@ -198,6 +202,20 @@ class Requisicion extends Component
         session()->forget('recursosSeleccionados');
         $this->recursosSeleccionados = [];
         $this->presupuestosSeleccionados = [];
+    }
+
+    private function vincularOrdenCombustibleConDetalle(DetalleRequisicion $detalle, int $userId): void
+    {
+        DB::table('orden_combustible')
+            ->where('idPoa', $detalle->idPoa)
+            ->where('idRecurso', $detalle->idRecurso)
+            ->where('created_by', $userId)
+            ->orderByDesc('id')
+            ->limit(1)
+            ->update([
+                'idDetalleRequisicion' => $detalle->id,
+                'updated_at' => now(),
+            ]);
     }
 
     public function agregarRecursoAlSumario($recurso)
