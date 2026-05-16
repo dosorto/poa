@@ -792,6 +792,7 @@
                         <div>
                             <x-searchable-select
                                 wire:model="nuevoPresupuesto.idRecurso"
+                                wire:key="presupuesto-recurso-select-{{ $presupuestoEditandoId ?: 'nuevo' }}-{{ $nuevoPresupuesto['idRecurso'] ?: 'empty' }}"
                                 label="Recurso"
                                 :required="true"
                                 placeholder="Buscar recurso..."
@@ -830,14 +831,17 @@
 
                     <div class="grid grid-cols-4 gap-4">
                         <div>
-                            <x-label for="unidadMedida" value="Unidad de Medida" />
-                            <select id="unidadMedida" class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 text-sm" wire:model="nuevoPresupuesto.idunidad">
-                                <option value="">Seleccione</option>
-                                @foreach($unidadesMedida as $unidad)
-                                    <option value="{{ $unidad['id'] }}">{{ $unidad['nombre'] }}</option>
-                                @endforeach
-                            </select>
-                            @error('nuevoPresupuesto.idunidad') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                            <x-searchable-select
+                                wire:model="nuevoPresupuesto.idunidad"
+                                wire:key="presupuesto-unidad-select-{{ $presupuestoEditandoId ?: 'nuevo' }}-{{ $nuevoPresupuesto['idunidad'] ?: 'empty' }}"
+                                label="Unidad de Medida"
+                                :required="true"
+                                placeholder="Buscar unidad de medida..."
+                                defaultText="Seleccione una unidad de medida"
+                                searchAction="searchUnidadesMedida"
+                                :options="collect($unidadesMedida)->map(fn($unidad) => ['id' => $unidad['id'], 'text' => $unidad['nombre']])->toArray()"
+                                :error="$errors->first('nuevoPresupuesto.idunidad')"
+                            />
                         </div>
 
                         <div>
@@ -853,14 +857,17 @@
                         </div>
 
                         <div>
-                            <x-label for="mesEjecucion" value="Mes de Ejecución" />
-                            <select id="mesEjecucion" class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 text-sm" wire:model="nuevoPresupuesto.idMes">
-                                <option value="">Seleccione</option>
-                                @foreach($meses as $mes)
-                                    <option value="{{ $mes['id'] }}">{{ $mes['mes'] }}</option>
-                                @endforeach
-                            </select>
-                            @error('nuevoPresupuesto.idMes') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                            <x-searchable-select
+                                wire:model="nuevoPresupuesto.idMes"
+                                wire:key="presupuesto-mes-select-{{ $presupuestoEditandoId ?: 'nuevo' }}-{{ $nuevoPresupuesto['idMes'] ?: 'empty' }}"
+                                label="Mes de Ejecución"
+                                :required="true"
+                                placeholder="Buscar mes..."
+                                defaultText="Seleccione un mes"
+                                searchAction="searchMeses"
+                                :options="collect($meses)->map(fn($mes) => ['id' => $mes['id'], 'text' => $mes['mes']])->toArray()"
+                                :error="$errors->first('nuevoPresupuesto.idMes')"
+                            />
                         </div>
                     </div>
 

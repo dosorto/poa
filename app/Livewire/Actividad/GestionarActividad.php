@@ -1296,8 +1296,13 @@ class GestionarActividad extends Component
 
     private function loadRecursosYCatalogos()
     {
-        // Los recursos se buscan bajo demanda para no cargar toda la tabla en el modal.
-        $this->recursosDisponibles = [];
+        // Cargar una primera tanda para que el selector muestre opciones al abrir.
+        $this->recursosDisponibles = TareaHistorico::query()
+            ->select('id', 'nombre')
+            ->orderBy('nombre')
+            ->limit(30)
+            ->get()
+            ->toArray();
         
         // Cargar fuentes de financiamiento
         $this->fuentesFinanciamiento = Fuente::orderBy('nombre')->get()->toArray();
@@ -1329,6 +1334,40 @@ class GestionarActividad extends Component
             ->map(fn($recurso) => [
                 'id' => $recurso->id,
                 'text' => $recurso->nombre,
+            ])
+            ->toArray();
+    }
+
+    public function searchUnidadesMedida($search = '')
+    {
+        return UnidadMedida::query()
+            ->select('id', 'nombre')
+            ->when($search, function ($query) use ($search) {
+                $query->where('nombre', 'like', '%' . $search . '%');
+            })
+            ->orderBy('nombre')
+            ->limit(30)
+            ->get()
+            ->map(fn($unidad) => [
+                'id' => $unidad->id,
+                'text' => $unidad->nombre,
+            ])
+            ->toArray();
+    }
+
+    public function searchMeses($search = '')
+    {
+        return Mes::query()
+            ->select('id', 'mes')
+            ->when($search, function ($query) use ($search) {
+                $query->where('mes', 'like', '%' . $search . '%');
+            })
+            ->orderBy('mes')
+            ->limit(30)
+            ->get()
+            ->map(fn($mes) => [
+                'id' => $mes->id,
+                'text' => $mes->mes,
             ])
             ->toArray();
     }
