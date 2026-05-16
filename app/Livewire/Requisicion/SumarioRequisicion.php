@@ -165,12 +165,12 @@ class SumarioRequisicion extends Component
 
                 // Actualizar orden de combustible con el detalle definitivo
                 DB::table('orden_combustible')
-                    ->where('idRecurso', $presupuesto->id)
+                    ->where('idRecurso', $presupuesto->idHistorico)
                     ->where('created_by', $user->id)
                     ->whereNull('idDetalleRequisicion') // solo los que no tienen detalle aún
                     ->orWhere(function($q) use ($presupuesto, $user) {
                         // o los que tienen un detalle provisional diferente
-                        $q->where('idRecurso', $presupuesto->id)
+                        $q->where('idRecurso', $presupuesto->idHistorico)
                         ->where('created_by', $user->id);
                     })
                     ->orderByDesc('id')
