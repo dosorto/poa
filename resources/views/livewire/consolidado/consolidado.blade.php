@@ -28,16 +28,17 @@
 
                 <!-- Filtro Dimensión -->
                 <div>
-                    <label for="dimension" class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
-                        Dimensión
-                    </label>
-                    <select wire:model.live="dimensionId" id="dimension"
-                        class="block w-full rounded-md border-zinc-300 dark:border-zinc-600 dark:bg-zinc-700 dark:text-zinc-200 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                        <option value="">Todas las dimensiones</option>
-                        @foreach($dimensiones as $dimension)
-                            <option value="{{ $dimension->id }}">{{ $dimension->nombre }}</option>
-                        @endforeach
-                    </select>
+                    <x-searchable-select
+                        wire:model="dimensionId"
+                        label="Dimensión"
+                        placeholder="Buscar dimensión..."
+                        defaultText="Todas las dimensiones"
+                        clearText="Todas las dimensiones"
+                        :options="$dimensiones->map(fn($dimension) => [
+                            'id' => $dimension->id,
+                            'text' => $dimension->nombre,
+                        ])->toArray()"
+                    />
                 </div>
 
                 <!-- Filtro Departamento con buscador integrado -->
