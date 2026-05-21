@@ -131,7 +131,7 @@
                 <!-- Botón Revisar Sumario -->
                 <div class="flex items-center justify-end flex-shrink-0 w-fit ml-auto">
                     @if ($puedeCrearRequisicion)
-                        <x-spinner-button wire:click="irAlSumario"
+                        <x-spinner-button wire:click="abrirModalRequisicion" loadingTarget="abrirModalRequisicion" loadingText="Abriendo..."
                             class="inline-flex items-center px-4 py-2 rounded-md text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
                             <svg class="w-5 h-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
                                 stroke="currentColor">
@@ -336,5 +336,6 @@
                 </div>
             </div>
         </div>
+        @include('livewire.requisiciones.modal-requisicion')
     @endcan
 </div>

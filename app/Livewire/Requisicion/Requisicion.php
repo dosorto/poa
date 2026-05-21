@@ -87,6 +87,11 @@ class Requisicion extends Component
 
     public $puedeCrearRequisicion = false;
     public $mensajePlazoRequisicion = '';
+    public bool $showModalRequisicion = false;
+    public int $pasoActual = 1;
+    public $fechaRequerida = '';
+    public array $ordenesCombustible = [];
+    public string $modalRequisicionError = '';
 
     protected $rules = [
         'correlativo' => 'required|min:3',
@@ -237,6 +242,8 @@ class Requisicion extends Component
             unset($this->presupuestosSeleccionados[$recursoId]);
         }
 
+        unset($this->ordenesCombustible[$recursoId]);
+
         // Sincronizar con sesión
         session(['recursosSeleccionados' => $this->recursosSeleccionados]);
     }
@@ -248,6 +255,16 @@ class Requisicion extends Component
         // Si se actualiza una cantidad en presupuestosSeleccionados, actualiza el sumario
         if (str_starts_with($propertyName, 'presupuestosSeleccionados')) {
             $this->actualizarSumario();
+        }
+
+        if (str_starts_with($propertyName, 'ordenesCombustible.')) {
+            $partes = explode('.', $propertyName);
+            $presupuestoId = $partes[1] ?? null;
+            $campo = $partes[2] ?? null;
+
+            if ($presupuestoId && $campo !== 'confirmada' && isset($this->ordenesCombustible[$presupuestoId])) {
+                $this->ordenesCombustible[$presupuestoId]['confirmada'] = false;
+            }
         }
     }
 
@@ -274,10 +291,7 @@ class Requisicion extends Component
                     }
                 }
 
-                $nombreRecurso = strtoupper($presupuesto->recurso ?? '');
-                $esCombustible = str_contains($nombreRecurso, 'GASOLINA') || str_contains($nombreRecurso, 'DIESEL');
-
-                $this->recursosSeleccionados[] = [
+                $recursoSeleccionado = [
                     'id'                    => $presupuesto->id,
                     'nombre'                => $presupuesto->recurso,
                     'idHistorico'           => $presupuesto->idHistorico,
@@ -291,13 +305,362 @@ class Requisicion extends Component
                     'unidad_medida'         => $presupuesto->unidadMedida->nombre ?? '-',
                     'precio_unitario'       => $presupuesto->costounitario ?? 0,
                     'total'                 => (int)$cantidad * ($presupuesto->costounitario ?? 0),
-                    'es_combustible'        => $esCombustible,
                     'idPoa'                 => $tarea?->idPoa, // ✅ guardar el POA
                 ];
+
+                $recursoSeleccionado['es_combustible'] = $this->esRecursoCombustible($recursoSeleccionado);
+                $this->recursosSeleccionados[] = $recursoSeleccionado;
             }
         }
     }
 }
+    private function esRecursoCombustible(array $presupuesto): bool
+    {
+        return str_contains(strtoupper($presupuesto['nombre'] ?? ''), 'GASOLINA')
+            || str_contains(strtoupper($presupuesto['nombre'] ?? ''), 'DIESEL');
+    }
+
+    public function abrirModalRequisicion()
+    {
+        if (!$this->puedeCrearRequisicion) {
+            $this->modalRequisicionError = $this->mensajePlazoRequisicion;
+            return;
+        }
+
+        $this->actualizarSumario();
+        $this->modalRequisicionError = '';
+
+        if (empty($this->recursosSeleccionados)) {
+            $this->modalRequisicionError = 'Seleccione al menos un recurso para revisar el sumario.';
+            $this->pasoActual = 2;
+            $this->showModalRequisicion = true;
+            return;
+        }
+
+        foreach ($this->recursosSeleccionados as $recurso) {
+            if (!empty($recurso['es_combustible']) && !isset($this->ordenesCombustible[$recurso['id']])) {
+                $this->ordenesCombustible[$recurso['id']] = [
+                    'confirmada' => false,
+                    'modelo_vehiculo' => '',
+                    'placa' => '',
+                    'lugar_salida' => '',
+                    'lugar_destino' => '',
+                    'recorrido_km' => 0,
+                    'fecha_realizar' => '',
+                    'idEmpleado' => null,
+                    'actividades' => '',
+                ];
+            }
+        }
+
+        $this->pasoActual = $this->hayCombustiblesSinConfirmar() ? 1 : 2;
+        $this->showModalRequisicion = true;
+    }
+
+    public function cerrarModalRequisicion()
+    {
+        $this->showModalRequisicion = false;
+        $this->modalRequisicionError = '';
+    }
+
+    public function confirmarOrdenCombustible($presupuestoId)
+    {
+        $this->validate([
+            "ordenesCombustible.$presupuestoId.modelo_vehiculo" => 'required|string|max:255',
+            "ordenesCombustible.$presupuestoId.placa" => 'required|string|max:255',
+            "ordenesCombustible.$presupuestoId.lugar_salida" => 'required|string|max:255',
+            "ordenesCombustible.$presupuestoId.lugar_destino" => 'required|string|max:255',
+            "ordenesCombustible.$presupuestoId.recorrido_km" => 'required|numeric|min:0',
+            "ordenesCombustible.$presupuestoId.fecha_realizar" => 'required|date',
+            "ordenesCombustible.$presupuestoId.idEmpleado" => 'required|exists:empleados,id',
+            "ordenesCombustible.$presupuestoId.actividades" => 'required|string|max:1000',
+        ], [
+            "ordenesCombustible.$presupuestoId.*.required" => 'Este campo es obligatorio.',
+            "ordenesCombustible.$presupuestoId.idEmpleado.exists" => 'Seleccione un empleado valido.',
+        ]);
+
+        $this->ordenesCombustible[$presupuestoId]['confirmada'] = true;
+        $this->modalRequisicionError = '';
+    }
+
+    public function siguientePaso()
+    {
+        $this->modalRequisicionError = '';
+
+        if ($this->pasoActual === 1) {
+            if (!$this->todasLasOrdenesCombustibleConfirmadas()) {
+                $this->modalRequisicionError = 'Debe confirmar todas las ordenes de combustible antes de continuar.';
+                return;
+            }
+
+            $this->pasoActual = 2;
+            return;
+        }
+
+        if ($this->pasoActual === 2) {
+            $this->pasoActual = 3;
+        }
+    }
+
+    public function anteriorPaso()
+    {
+        $this->modalRequisicionError = '';
+
+        if ($this->pasoActual === 3) {
+            $this->pasoActual = 2;
+            return;
+        }
+
+        if ($this->pasoActual === 2 && $this->tieneCombustiblesSeleccionados()) {
+            $this->pasoActual = 1;
+        }
+    }
+
+    public function confirmarRequisicion()
+    {
+        $this->modalRequisicionError = '';
+
+        $this->validate([
+            'descripcion' => 'required|string|max:500',
+            'fechaRequerida' => 'required|date|after_or_equal:today',
+            'observacion' => 'nullable|string|max:1000',
+        ], [
+            'descripcion.required' => 'La descripcion es obligatoria.',
+            'fechaRequerida.required' => 'La fecha requerida es obligatoria.',
+            'fechaRequerida.after_or_equal' => 'La fecha requerida no puede ser anterior a hoy.',
+        ]);
+
+        try {
+            DB::transaction(function () {
+                if (empty($this->recursosSeleccionados)) {
+                    throw new \Exception('No hay recursos seleccionados para crear la requisicion.');
+                }
+
+                foreach ($this->recursosSeleccionados as $recurso) {
+                    $this->validarDisponibilidadRecurso($recurso);
+                }
+
+                if (!$this->todasLasOrdenesCombustibleConfirmadas()) {
+                    throw new \Exception('Debe confirmar todas las ordenes de combustible antes de crear la requisicion.');
+                }
+
+                $user = Auth::user();
+                $this->idPoa = $this->idPoa ?: ($this->recursosSeleccionados[0]['idPoa'] ?? null);
+
+                if (!$this->idPoa) {
+                    $presupuesto = Presupuesto::find($this->recursosSeleccionados[0]['id']);
+                    $tarea = $presupuesto?->idtarea ? Tarea::find($presupuesto->idtarea) : null;
+                    $this->idPoa = $tarea?->idPoa;
+                }
+
+                $poa = $this->idPoa ? Poa::find($this->idPoa) : null;
+                $this->idDepartamento = $this->departamentoSeleccionado ?: (Auth::user()->idDepartamento ?? null);
+
+                if (!$this->idDepartamento) {
+                    $empleadoDepto = DB::table('empleado_deptos')
+                        ->where('idEmpleado', Auth::user()->idEmpleado ?? Auth::id())
+                        ->whereNull('deleted_at')
+                        ->first();
+                    $this->idDepartamento = $empleadoDepto?->idDepto;
+                }
+
+                if (!$this->idPoa || !$this->idDepartamento) {
+                    throw new \Exception('No se pudo determinar el POA o departamento para la requisicion.');
+                }
+
+                $departamento = Departamento::find($this->idDepartamento);
+                $ultimo = RequisicionModel::orderBy('id', 'desc')->first();
+                $numero = $ultimo ? $ultimo->id + 1 : 1;
+                $correlativo = \App\Helpers\CorrelativoHelper::generarCorrelativo(
+                    $departamento->tipo ?? '',
+                    $departamento->name ?? '',
+                    $poa?->anio ?? date('Y'),
+                    $numero
+                );
+
+                $requisicion = RequisicionModel::create([
+                    'correlativo' => $correlativo,
+                    'descripcion' => $this->descripcion,
+                    'observacion' => $this->observacion ?: '',
+                    'created_by' => $user->id,
+                    'approvedBy' => null,
+                    'idPoa' => $this->idPoa,
+                    'idDepartamento' => $this->idDepartamento,
+                    'idEstado' => $this->getEstadoPresentadoId(),
+                    'fechaSolicitud' => now(),
+                    'fechaRequerido' => $this->fechaRequerida,
+                ]);
+
+                foreach ($this->recursosSeleccionados as $recurso) {
+                    $presupuesto = Presupuesto::find($recurso['id']);
+
+                    if (!$presupuesto) {
+                        throw new \Exception("No se encontro el presupuesto del recurso {$recurso['nombre']}.");
+                    }
+
+                    $detalle = DetalleRequisicion::create([
+                        'idRequisicion' => $requisicion->id,
+                        'idPoa' => $this->idPoa,
+                        'idPresupuesto' => $presupuesto->id,
+                        'idRecurso' => $presupuesto->idHistorico,
+                        'cantidad' => $recurso['cantidad_seleccionada'],
+                        'idUnidadMedida' => $presupuesto->idunidad,
+                        'entregado' => false,
+                        'created_by' => $user->id,
+                    ]);
+
+                    if (!empty($recurso['es_combustible'])) {
+                        $orden = $this->ordenesCombustible[$recurso['id']] ?? null;
+
+                        if (!$orden || empty($orden['confirmada'])) {
+                            throw new \Exception("Falta confirmar la orden de combustible para {$recurso['nombre']}.");
+                        }
+
+                        DB::table('orden_combustible')->insert([
+                            'correlativo' => $this->generarCorrelativoOrdenCombustible(),
+                            'monto' => $recurso['total'] ?? 0,
+                            'monto_en_letras' => $this->numeroALetras($recurso['total'] ?? 0),
+                            'modelo_vehiculo' => $orden['modelo_vehiculo'],
+                            'lugar_salida' => $orden['lugar_salida'],
+                            'lugar_destino' => $orden['lugar_destino'],
+                            'placa' => $orden['placa'],
+                            'recorrido_km' => $orden['recorrido_km'],
+                            'fecha_actividad' => $orden['fecha_realizar'],
+                            'actividades_realizar' => $orden['actividades'],
+                            'idPoa' => $this->idPoa,
+                            'idDetalleRequisicion' => $detalle->id,
+                            'idRecurso' => $presupuesto->idHistorico,
+                            'responsable' => $orden['idEmpleado'],
+                            'created_by' => $user->id,
+                            'created_at' => now(),
+                            'updated_at' => now(),
+                        ]);
+                    }
+                }
+            });
+
+            $this->limpiarEstadoModal();
+            session()->flash('message', 'Requisicion creada correctamente.');
+            return redirect()->route('requisicion');
+        } catch (\Throwable $e) {
+            $this->modalRequisicionError = $e->getMessage();
+            $this->showModalRequisicion = true;
+        }
+    }
+
+    public function limpiarEstadoModal()
+    {
+        $this->recursosSeleccionados = [];
+        $this->presupuestosSeleccionados = [];
+        $this->ordenesCombustible = [];
+        $this->descripcion = '';
+        $this->fechaRequerida = '';
+        $this->observacion = '';
+        $this->pasoActual = 1;
+        $this->showModalRequisicion = false;
+        $this->modalRequisicionError = '';
+        session()->forget('recursosSeleccionados');
+        session()->forget('departamentoSeleccionado');
+        session()->forget('poaYearSeleccionado');
+    }
+
+    private function validarDisponibilidadRecurso(array $recurso): void
+    {
+        $presupuesto = Presupuesto::find($recurso['id']);
+
+        if (!$presupuesto) {
+            throw new \Exception("No se encontro el presupuesto del recurso {$recurso['nombre']}.");
+        }
+
+        $cantidadComprometida = DetalleRequisicion::where('idPresupuesto', $presupuesto->id)
+            ->whereHas('requisicion', function ($query) {
+                $query->whereHas('estado', function ($estado) {
+                    $estado->whereIn('estado', ['Presentado', 'Recibido', 'En Proceso de Compra']);
+                });
+            })
+            ->sum('cantidad');
+
+        $disponible = (int) ($presupuesto->cantidad ?? 0) - (int) $cantidadComprometida;
+
+        if ((int) $recurso['cantidad_seleccionada'] > $disponible) {
+            throw new \Exception("El recurso {$recurso['nombre']} ya no tiene cupo suficiente. Disponible actual: {$disponible}.");
+        }
+    }
+
+    private function tieneCombustiblesSeleccionados(): bool
+    {
+        return collect($this->recursosSeleccionados)->contains(fn ($recurso) => !empty($recurso['es_combustible']));
+    }
+
+    private function hayCombustiblesSinConfirmar(): bool
+    {
+        return collect($this->recursosSeleccionados)
+            ->filter(fn ($recurso) => !empty($recurso['es_combustible']))
+            ->contains(fn ($recurso) => empty($this->ordenesCombustible[$recurso['id']]['confirmada']));
+    }
+
+    private function todasLasOrdenesCombustibleConfirmadas(): bool
+    {
+        return collect($this->recursosSeleccionados)
+            ->filter(fn ($recurso) => !empty($recurso['es_combustible']))
+            ->every(fn ($recurso) => !empty($this->ordenesCombustible[$recurso['id']]['confirmada']));
+    }
+
+    private function generarCorrelativoOrdenCombustible(): string
+    {
+        $ultimoId = (int) DB::table('orden_combustible')->max('id');
+        return ($ultimoId + 1) . '-' . now()->format('Y');
+    }
+
+    private function numeroALetras($numero): string
+    {
+        $entero = (int) $numero;
+        $unidades = [
+            '', 'UN', 'DOS', 'TRES', 'CUATRO', 'CINCO', 'SEIS', 'SIETE', 'OCHO', 'NUEVE',
+            'DIEZ', 'ONCE', 'DOCE', 'TRECE', 'CATORCE', 'QUINCE', 'DIECISEIS', 'DIECISIETE',
+            'DIECIOCHO', 'DIECINUEVE',
+        ];
+        $decenas = ['', 'DIEZ', 'VEINTE', 'TREINTA', 'CUARENTA', 'CINCUENTA', 'SESENTA', 'SETENTA', 'OCHENTA', 'NOVENTA'];
+        $centenas = [
+            '', 'CIEN', 'DOSCIENTOS', 'TRESCIENTOS', 'CUATROCIENTOS', 'QUINIENTOS',
+            'SEISCIENTOS', 'SETECIENTOS', 'OCHOCIENTOS', 'NOVECIENTOS',
+        ];
+
+        $convertir = function ($n) use ($unidades, $decenas, $centenas, &$convertir) {
+            if ($n == 0) {
+                return '';
+            }
+
+            if ($n < 20) {
+                return $unidades[$n];
+            }
+
+            if ($n < 100) {
+                $d = intdiv($n, 10);
+                $u = $n % 10;
+                return $decenas[$d] . ($u ? ' Y ' . $unidades[$u] : '');
+            }
+
+            if ($n < 1000) {
+                $c = intdiv($n, 100);
+                $resto = $n % 100;
+                $prefijo = $c == 1 && $resto > 0 ? 'CIENTO' : $centenas[$c];
+                return $prefijo . ($resto ? ' ' . $convertir($resto) : '');
+            }
+
+            if ($n < 1000000) {
+                $miles = intdiv($n, 1000);
+                $resto = $n % 1000;
+                $prefijo = $miles == 1 ? 'MIL' : $convertir($miles) . ' MIL';
+                return $prefijo . ($resto ? ' ' . $convertir($resto) : '');
+            }
+
+            return (string) $n;
+        };
+
+        return $entero == 0 ? 'CERO' : $convertir($entero);
+    }
+
     // Abrir el modal de sumario
     public function abrirSumario()
     {
@@ -671,6 +1034,10 @@ class Requisicion extends Component
         if ($this->departamentoSeleccionado != $id) {
             $this->recursosSeleccionados = [];
             $this->presupuestosSeleccionados = [];
+            $this->ordenesCombustible = [];
+            $this->showModalRequisicion = false;
+            $this->pasoActual = 1;
+            $this->modalRequisicionError = '';
             session()->forget('recursosSeleccionados');
         }
         
@@ -861,6 +1228,10 @@ class Requisicion extends Component
     {
         $this->recursosSeleccionados = [];
         $this->presupuestosSeleccionados = [];
+        $this->ordenesCombustible = [];
+        $this->showModalRequisicion = false;
+        $this->pasoActual = 1;
+        $this->modalRequisicionError = '';
         session()->forget('recursosSeleccionados');
     }
 
@@ -929,6 +1300,10 @@ class Requisicion extends Component
         // Limpiar recursos seleccionados al cambiar de POA
         $this->recursosSeleccionados = [];
         $this->presupuestosSeleccionados = [];
+        $this->ordenesCombustible = [];
+        $this->showModalRequisicion = false;
+        $this->pasoActual = 1;
+        $this->modalRequisicionError = '';
         session()->forget('recursosSeleccionados');
     }
      public function render()
