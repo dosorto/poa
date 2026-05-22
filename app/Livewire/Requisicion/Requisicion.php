@@ -60,6 +60,8 @@ class Requisicion extends Component
     public $detalleRequisiciones = [];
     public $presupuestosSeleccionados = [];
     public $recursosSeleccionados = [];
+    public array $cantidadesInput = [];
+    public array $erroresCantidad = [];
 
     public $poaYear = null;
 	public $poaYears = [];
@@ -92,6 +94,8 @@ class Requisicion extends Component
     public $fechaRequerida = '';
     public array $ordenesCombustible = [];
     public string $modalRequisicionError = '';
+    public ?int $combustibleEnModal = null;
+    public string $modoOrdenCombustible = 'agregar';
 
     protected $rules = [
         'correlativo' => 'required|min:3',
@@ -207,6 +211,8 @@ class Requisicion extends Component
         session()->forget('recursosSeleccionados');
         $this->recursosSeleccionados = [];
         $this->presupuestosSeleccionados = [];
+        $this->cantidadesInput = [];
+        $this->erroresCantidad = [];
     }
 
     private function vincularOrdenCombustibleConDetalle(DetalleRequisicion $detalle, int $userId): void
@@ -242,6 +248,7 @@ class Requisicion extends Component
             unset($this->presupuestosSeleccionados[$recursoId]);
         }
 
+        unset($this->cantidadesInput[$recursoId], $this->erroresCantidad[$recursoId]);
         unset($this->ordenesCombustible[$recursoId]);
 
         // Sincronizar con sesión
@@ -257,6 +264,13 @@ class Requisicion extends Component
             $this->actualizarSumario();
         }
 
+        if (str_starts_with($propertyName, 'cantidadesInput.')) {
+            $presupuestoId = (int) (explode('.', $propertyName)[1] ?? 0);
+            if ($presupuestoId > 0) {
+                $this->validarCantidadInput($presupuestoId);
+            }
+        }
+
         if (str_starts_with($propertyName, 'ordenesCombustible.')) {
             $partes = explode('.', $propertyName);
             $presupuestoId = $partes[1] ?? null;
@@ -269,55 +283,251 @@ class Requisicion extends Component
     }
 
     // Actualizar el sumario de recursos seleccionados
-   public function actualizarSumario()
-{
-    $this->recursosSeleccionados = [];
+    public function actualizarSumario()
+    {
+        $this->recursosSeleccionados = [];
 
-    foreach ($this->presupuestosSeleccionados as $presupuestoId => $cantidad) {
-        if ($cantidad !== null && $cantidad !== '' && (int)$cantidad > 0) {
-            $presupuesto = Presupuesto::with(['unidadMedida'])->find($presupuestoId);
-            if ($presupuesto) {
-                $tarea = $presupuesto->idtarea ? Tarea::with('actividad')->find($presupuesto->idtarea) : null;
-
-                if ($this->departamentoSeleccionado && $tarea) {
-                    if ($tarea->idDeptartamento != $this->departamentoSeleccionado) {
-                        continue; // Saltar recursos de otro departamento
-                    }
-                }
-
-                if ($this->poaYear && $tarea && $tarea->poa) {
-                    if ($tarea->poa->anio != $this->poaYear) {
-                        continue; // Saltar recursos de otros POA
-                    }
-                }
-
-                $recursoSeleccionado = [
-                    'id'                    => $presupuesto->id,
-                    'nombre'                => $presupuesto->recurso,
-                    'idHistorico'           => $presupuesto->idHistorico,
-                    'actividad'             => $tarea
-                        ? (($tarea->actividad->nombre ?? '-') . ' / ' . ($tarea->nombre ?? '-'))
-                        : '-',
-                    'proceso_compra'        => $presupuesto->tareaHistorico && $presupuesto->tareaHistorico->procesoCompra
-                        ? $presupuesto->tareaHistorico->procesoCompra->nombre_proceso
-                        : '-',
-                    'cantidad_seleccionada' => (int)$cantidad,
-                    'unidad_medida'         => $presupuesto->unidadMedida->nombre ?? '-',
-                    'precio_unitario'       => $presupuesto->costounitario ?? 0,
-                    'total'                 => (int)$cantidad * ($presupuesto->costounitario ?? 0),
-                    'idPoa'                 => $tarea?->idPoa, // ✅ guardar el POA
-                ];
-
-                $recursoSeleccionado['es_combustible'] = $this->esRecursoCombustible($recursoSeleccionado);
-                $this->recursosSeleccionados[] = $recursoSeleccionado;
+        foreach ($this->presupuestosSeleccionados as $presupuestoId => $cantidad) {
+            if ($cantidad === null || $cantidad === '' || (int) $cantidad <= 0) {
+                continue;
             }
+
+            $presupuesto = Presupuesto::with(['unidadMedida'])->find($presupuestoId);
+            if (!$presupuesto) {
+                continue;
+            }
+
+            $tarea = $presupuesto->idtarea ? Tarea::with('actividad')->find($presupuesto->idtarea) : null;
+
+            if ($this->departamentoSeleccionado && $tarea && $tarea->idDeptartamento != $this->departamentoSeleccionado) {
+                continue;
+            }
+
+            if ($this->poaYear && $tarea && $tarea->poa && $tarea->poa->anio != $this->poaYear) {
+                continue;
+            }
+
+            $this->recursosSeleccionados[] = $this->construirRecursoSeleccionado($presupuesto, (int) $cantidad);
         }
     }
-}
+
     private function esRecursoCombustible(array $presupuesto): bool
     {
         return str_contains(strtoupper($presupuesto['nombre'] ?? ''), 'GASOLINA')
             || str_contains(strtoupper($presupuesto['nombre'] ?? ''), 'DIESEL');
+    }
+
+    public function agregarRecurso(int $presupuestoId)
+    {
+        if (isset($this->presupuestosSeleccionados[$presupuestoId])) {
+            unset($this->erroresCantidad[$presupuestoId]);
+            return;
+        }
+
+        if (!$this->validarCantidadInput($presupuestoId)) {
+            return;
+        }
+
+        $presupuesto = Presupuesto::with(['unidadMedida'])->find($presupuestoId);
+        if (!$presupuesto) {
+            $this->erroresCantidad[$presupuestoId] = 'No se encontro el recurso seleccionado.';
+            return;
+        }
+
+        $cantidad = (int) $this->cantidadesInput[$presupuestoId];
+        $recurso = $this->construirRecursoSeleccionado($presupuesto, $cantidad);
+
+        if ($this->esRecursoCombustible($recurso)) {
+            $this->combustibleEnModal = $presupuestoId;
+            $this->modoOrdenCombustible = 'agregar';
+            $this->ordenCombustibleRecursoId = $presupuestoId;
+            $this->ordenCombustibleRecursoNombre = $recurso['nombre'] ?? '';
+            $this->ordenCombustibleData = $this->ordenCombustibleDataDesdeOrden($this->ordenesCombustible[$presupuestoId] ?? []);
+            $this->ordenCombustibleData['monto'] = $recurso['total'] ?? 0;
+            $this->ordenCombustibleData['monto_en_letras'] = $this->numeroALetras($recurso['total'] ?? 0);
+            $this->cargarEmpleadosOrdenCombustible($this->ordenCombustibleData['responsable'] ?? null);
+            $this->showOrdenCombustibleModal = true;
+            return;
+        }
+
+        $this->presupuestosSeleccionados[$presupuestoId] = $cantidad;
+        $this->actualizarSumario();
+        unset($this->erroresCantidad[$presupuestoId]);
+        session(['recursosSeleccionados' => $this->recursosSeleccionados]);
+    }
+
+    public function confirmarOrdenYAgregar()
+    {
+        if (!$this->combustibleEnModal) {
+            return;
+        }
+
+        $presupuestoId = $this->combustibleEnModal;
+
+        if (!$this->validarCantidadInput($presupuestoId)) {
+            return;
+        }
+
+        $this->validarOrdenCombustibleData();
+        $this->ordenesCombustible[$presupuestoId] = $this->ordenDesdeOrdenCombustibleData();
+        $this->presupuestosSeleccionados[$presupuestoId] = (int) $this->cantidadesInput[$presupuestoId];
+        $this->actualizarSumario();
+        $this->cerrarModalOrdenCombustibleActual();
+        session(['recursosSeleccionados' => $this->recursosSeleccionados]);
+    }
+
+    public function editarOrdenCombustible(int $presupuestoId)
+    {
+        if (!isset($this->presupuestosSeleccionados[$presupuestoId])) {
+            return;
+        }
+
+        $recurso = collect($this->recursosSeleccionados)->firstWhere('id', $presupuestoId);
+        if (!$recurso || empty($recurso['es_combustible'])) {
+            return;
+        }
+
+        $this->combustibleEnModal = $presupuestoId;
+        $this->modoOrdenCombustible = 'editar';
+        $this->ordenCombustibleRecursoId = $presupuestoId;
+        $this->ordenCombustibleRecursoNombre = $recurso['nombre'] ?? '';
+        $this->cantidadesInput[$presupuestoId] = $recurso['cantidad_seleccionada'] ?? ($this->cantidadesInput[$presupuestoId] ?? 1);
+        $this->ordenCombustibleData = $this->ordenCombustibleDataDesdeOrden($this->ordenesCombustible[$presupuestoId] ?? []);
+        $this->ordenCombustibleData['monto'] = $recurso['total'] ?? 0;
+        $this->ordenCombustibleData['monto_en_letras'] = $this->numeroALetras($recurso['total'] ?? 0);
+        $this->cargarEmpleadosOrdenCombustible($this->ordenCombustibleData['responsable'] ?? null);
+        $this->showOrdenCombustibleModal = true;
+    }
+
+    public function confirmarEdicionOrden()
+    {
+        if (!$this->combustibleEnModal) {
+            return;
+        }
+
+        $this->validarOrdenCombustibleData();
+        $this->ordenesCombustible[$this->combustibleEnModal] = $this->ordenDesdeOrdenCombustibleData();
+        $this->cerrarModalOrdenCombustibleActual();
+    }
+
+    public function cerrarModalOrdenCombustibleActual()
+    {
+        $this->showOrdenCombustibleModal = false;
+        $this->combustibleEnModal = null;
+        $this->modoOrdenCombustible = 'agregar';
+        $this->ordenCombustibleRecursoId = null;
+        $this->ordenCombustibleRecursoNombre = '';
+        $this->ordenCombustibleData = $this->ordenCombustibleDataDesdeOrden([]);
+        $this->resetValidation();
+    }
+
+    private function validarCantidadInput(int $presupuestoId): bool
+    {
+        unset($this->erroresCantidad[$presupuestoId]);
+
+        $cantidad = $this->cantidadesInput[$presupuestoId] ?? null;
+        if ($cantidad === null || $cantidad === '' || (int) $cantidad <= 0) {
+            $this->erroresCantidad[$presupuestoId] = 'Ingrese una cantidad mayor a 0.';
+            return false;
+        }
+
+        $disponible = $this->obtenerCantidadDisponible($presupuestoId);
+        if ((int) $cantidad > $disponible) {
+            $this->erroresCantidad[$presupuestoId] = "La cantidad no puede superar el disponible ({$disponible}).";
+            return false;
+        }
+
+        return true;
+    }
+
+    private function obtenerCantidadDisponible(int $presupuestoId): int
+    {
+        $presupuesto = Presupuesto::find($presupuestoId);
+        if (!$presupuesto) {
+            return 0;
+        }
+
+        $cantidadComprometida = DetalleRequisicion::where('idPresupuesto', $presupuesto->id)
+            ->whereHas('requisicion', function ($query) {
+                $query->whereHas('estado', function ($estado) {
+                    $estado->whereIn('estado', ['Presentado', 'Recibido', 'En Proceso de Compra']);
+                });
+            })
+            ->sum('cantidad');
+
+        return max(0, (int) ($presupuesto->cantidad ?? 0) - (int) $cantidadComprometida);
+    }
+
+    private function construirRecursoSeleccionado(Presupuesto $presupuesto, int $cantidad): array
+    {
+        $tarea = $presupuesto->idtarea ? Tarea::with('actividad')->find($presupuesto->idtarea) : null;
+
+        $recursoSeleccionado = [
+            'id'                    => $presupuesto->id,
+            'nombre'                => $presupuesto->recurso,
+            'idHistorico'           => $presupuesto->idHistorico,
+            'actividad'             => $tarea
+                ? (($tarea->actividad->nombre ?? '-') . ' / ' . ($tarea->nombre ?? '-'))
+                : '-',
+            'proceso_compra'        => $presupuesto->tareaHistorico && $presupuesto->tareaHistorico->procesoCompra
+                ? $presupuesto->tareaHistorico->procesoCompra->nombre_proceso
+                : '-',
+            'cantidad_seleccionada' => $cantidad,
+            'unidad_medida'         => $presupuesto->unidadMedida->nombre ?? '-',
+            'precio_unitario'       => $presupuesto->costounitario ?? 0,
+            'total'                 => $cantidad * ($presupuesto->costounitario ?? 0),
+            'idPoa'                 => $tarea?->idPoa,
+        ];
+
+        $recursoSeleccionado['es_combustible'] = $this->esRecursoCombustible($recursoSeleccionado);
+
+        return $recursoSeleccionado;
+    }
+
+    private function validarOrdenCombustibleData(): void
+    {
+        $this->validate([
+            'ordenCombustibleData.modelo_vehiculo' => 'required|string|max:255',
+            'ordenCombustibleData.placa' => 'required|string|max:255',
+            'ordenCombustibleData.lugar_salida' => 'required|string|max:255',
+            'ordenCombustibleData.lugar_destino' => 'required|string|max:255',
+            'ordenCombustibleData.recorrido_km' => 'required|numeric|min:0',
+            'ordenCombustibleData.fecha_actividad' => 'required|date',
+            'ordenCombustibleData.responsable' => 'required|exists:empleados,id',
+            'ordenCombustibleData.actividades_realizar' => 'required|string|max:1000',
+        ], [
+            'ordenCombustibleData.*.required' => 'Este campo es obligatorio.',
+            'ordenCombustibleData.responsable.exists' => 'Seleccione un empleado valido.',
+        ]);
+    }
+
+    private function ordenDesdeOrdenCombustibleData(): array
+    {
+        return [
+            'confirmada' => true,
+            'modelo_vehiculo' => $this->ordenCombustibleData['modelo_vehiculo'] ?? '',
+            'placa' => $this->ordenCombustibleData['placa'] ?? '',
+            'lugar_salida' => $this->ordenCombustibleData['lugar_salida'] ?? '',
+            'lugar_destino' => $this->ordenCombustibleData['lugar_destino'] ?? '',
+            'recorrido_km' => $this->ordenCombustibleData['recorrido_km'] ?? 0,
+            'fecha_realizar' => $this->ordenCombustibleData['fecha_actividad'] ?? '',
+            'idEmpleado' => $this->ordenCombustibleData['responsable'] ?? null,
+            'actividades' => $this->ordenCombustibleData['actividades_realizar'] ?? '',
+        ];
+    }
+
+    private function ordenCombustibleDataDesdeOrden(array $orden): array
+    {
+        return [
+            'modelo_vehiculo' => $orden['modelo_vehiculo'] ?? '',
+            'placa' => $orden['placa'] ?? '',
+            'lugar_salida' => $orden['lugar_salida'] ?? '',
+            'lugar_destino' => $orden['lugar_destino'] ?? '',
+            'recorrido_km' => $orden['recorrido_km'] ?? 0,
+            'fecha_actividad' => $orden['fecha_realizar'] ?? '',
+            'responsable' => $orden['idEmpleado'] ?? '',
+            'actividades_realizar' => $orden['actividades'] ?? '',
+        ];
     }
 
     public function abrirModalRequisicion()
@@ -327,33 +537,14 @@ class Requisicion extends Component
             return;
         }
 
-        $this->actualizarSumario();
         $this->modalRequisicionError = '';
 
         if (empty($this->recursosSeleccionados)) {
             $this->modalRequisicionError = 'Seleccione al menos un recurso para revisar el sumario.';
-            $this->pasoActual = 2;
-            $this->showModalRequisicion = true;
             return;
         }
 
-        foreach ($this->recursosSeleccionados as $recurso) {
-            if (!empty($recurso['es_combustible']) && !isset($this->ordenesCombustible[$recurso['id']])) {
-                $this->ordenesCombustible[$recurso['id']] = [
-                    'confirmada' => false,
-                    'modelo_vehiculo' => '',
-                    'placa' => '',
-                    'lugar_salida' => '',
-                    'lugar_destino' => '',
-                    'recorrido_km' => 0,
-                    'fecha_realizar' => '',
-                    'idEmpleado' => null,
-                    'actividades' => '',
-                ];
-            }
-        }
-
-        $this->pasoActual = $this->hayCombustiblesSinConfirmar() ? 1 : 2;
+        $this->pasoActual = 1;
         $this->showModalRequisicion = true;
     }
 
@@ -388,17 +579,7 @@ class Requisicion extends Component
         $this->modalRequisicionError = '';
 
         if ($this->pasoActual === 1) {
-            if (!$this->todasLasOrdenesCombustibleConfirmadas()) {
-                $this->modalRequisicionError = 'Debe confirmar todas las ordenes de combustible antes de continuar.';
-                return;
-            }
-
             $this->pasoActual = 2;
-            return;
-        }
-
-        if ($this->pasoActual === 2) {
-            $this->pasoActual = 3;
         }
     }
 
@@ -406,12 +587,7 @@ class Requisicion extends Component
     {
         $this->modalRequisicionError = '';
 
-        if ($this->pasoActual === 3) {
-            $this->pasoActual = 2;
-            return;
-        }
-
-        if ($this->pasoActual === 2 && $this->tieneCombustiblesSeleccionados()) {
+        if ($this->pasoActual === 2) {
             $this->pasoActual = 1;
         }
     }
@@ -552,6 +728,8 @@ class Requisicion extends Component
     {
         $this->recursosSeleccionados = [];
         $this->presupuestosSeleccionados = [];
+        $this->cantidadesInput = [];
+        $this->erroresCantidad = [];
         $this->ordenesCombustible = [];
         $this->descripcion = '';
         $this->fechaRequerida = '';
@@ -901,6 +1079,7 @@ class Requisicion extends Component
             $this->recursosSeleccionados = $recursosGuardados;
             foreach ($recursosGuardados as $recurso) {
                 $this->presupuestosSeleccionados[$recurso['id']] = $recurso['cantidad_seleccionada'];
+                $this->cantidadesInput[$recurso['id']] = $recurso['cantidad_seleccionada'];
             }
         }
 
@@ -934,6 +1113,9 @@ class Requisicion extends Component
         $this->resetPage();
     }
 
+    // LEGADO: este método pertenece al flujo anterior de orden de
+    // combustible con persistencia directa en DB. Se conserva comentado
+    // por referencia. No usar en el flujo actual.
     public function abrirOrdenCombustibleModal($recursoId)
     {
         $recurso = collect($this->recursosSeleccionados)->firstWhere('id', $recursoId);
@@ -995,6 +1177,9 @@ class Requisicion extends Component
             ->toArray();
     }
 
+    // LEGADO: este método pertenece al flujo anterior de orden de
+    // combustible con persistencia directa en DB. Se conserva comentado
+    // por referencia. No usar en el flujo actual.
     public function cerrarOrdenCombustibleModal()
     {
         $this->showOrdenCombustibleModal = false;
@@ -1034,6 +1219,8 @@ class Requisicion extends Component
         if ($this->departamentoSeleccionado != $id) {
             $this->recursosSeleccionados = [];
             $this->presupuestosSeleccionados = [];
+            $this->cantidadesInput = [];
+            $this->erroresCantidad = [];
             $this->ordenesCombustible = [];
             $this->showModalRequisicion = false;
             $this->pasoActual = 1;
@@ -1045,6 +1232,9 @@ class Requisicion extends Component
         $this->resetPage();
     }
 
+    // LEGADO: este método pertenece al flujo anterior de orden de
+    // combustible con persistencia directa en DB. Se conserva comentado
+    // por referencia. No usar en el flujo actual.
     public function guardarOrdenCombustible()
     {
         $this->validate([
@@ -1228,6 +1418,8 @@ class Requisicion extends Component
     {
         $this->recursosSeleccionados = [];
         $this->presupuestosSeleccionados = [];
+        $this->cantidadesInput = [];
+        $this->erroresCantidad = [];
         $this->ordenesCombustible = [];
         $this->showModalRequisicion = false;
         $this->pasoActual = 1;
@@ -1300,6 +1492,8 @@ class Requisicion extends Component
         // Limpiar recursos seleccionados al cambiar de POA
         $this->recursosSeleccionados = [];
         $this->presupuestosSeleccionados = [];
+        $this->cantidadesInput = [];
+        $this->erroresCantidad = [];
         $this->ordenesCombustible = [];
         $this->showModalRequisicion = false;
         $this->pasoActual = 1;

@@ -1,7 +1,12 @@
 <x-dialog-modal wire:model="showOrdenCombustibleModal" maxWidth="4xl">
     <x-slot name="title">
-        <div class="flex items-center gap-2">
-            <span class="font-semibold text-zinc-800 dark:text-zinc-100">Orden de Combustible ({{ $ordenCombustibleRecursoNombre ?? '' }})</span>
+        <div class="flex flex-col gap-1">
+            <span class="font-semibold text-zinc-800 dark:text-zinc-100">
+                Orden de Combustible ({{ $ordenCombustibleRecursoNombre ?? '' }})
+            </span>
+            <span class="text-sm text-zinc-500 dark:text-zinc-400">
+                Cantidad seleccionada: {{ $combustibleEnModal ? ($cantidadesInput[$combustibleEnModal] ?? '-') : '-' }}
+            </span>
         </div>
     </x-slot>
     <x-slot name="content">
@@ -36,28 +41,34 @@
                 <div>
                     <x-label value="Modelo de Vehículo" class="mb-1" />
                     <x-input type="text" wire:model.defer="ordenCombustibleData.modelo_vehiculo" class="w-full" />
+                    @error('ordenCombustibleData.modelo_vehiculo') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
                 </div>
                 <div>
                     <x-label value="No. de Placa" class="mb-1" />
                     <x-input type="text" wire:model.defer="ordenCombustibleData.placa" class="w-full" />
+                    @error('ordenCombustibleData.placa') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
                 </div>
                 <div>
                     <x-label value="Lugar de salida" class="mb-1" />
                     <x-input type="text" wire:model.defer="ordenCombustibleData.lugar_salida" class="w-full" />
+                    @error('ordenCombustibleData.lugar_salida') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
                 </div>
             </div>
             <div class="grid grid-cols-3 gap-4 mb-4">
                 <div>
                     <x-label value="Lugar de destino" class="mb-1" />
                     <x-input type="text" wire:model.defer="ordenCombustibleData.lugar_destino" class="w-full" />
+                    @error('ordenCombustibleData.lugar_destino') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
                 </div>
                 <div>
                     <x-label value="Recorrido en km" class="mb-1" />
                     <x-input type="number" wire:model.defer="ordenCombustibleData.recorrido_km" class="w-full" />
+                    @error('ordenCombustibleData.recorrido_km') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
                 </div>
                 <div>
                     <x-label value="Fecha a realizar" class="mb-1" />
                     <x-input type="date" wire:model.defer="ordenCombustibleData.fecha_actividad" class="w-full" />
+                    @error('ordenCombustibleData.fecha_actividad') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
                 </div>
             </div>
             <div class="mb-4">
@@ -79,15 +90,22 @@
             <div>
                 <x-label value="Actividades a realizar" class="mb-1" />
                 <x-textarea wire:model.defer="ordenCombustibleData.actividades_realizar" class="w-full"></x-textarea>
+                @error('ordenCombustibleData.actividades_realizar') <span class="text-xs text-red-500">{{ $message }}</span> @enderror
             </div>
         </div>
     </x-slot>
     <x-slot name="footer">
-        <x-spinner-secondary-button wire:click="cerrarOrdenCombustibleModal" type="button" loadingTarget="cerrarOrdenCombustibleModal" loadingText="Cerrando...">
+        <x-spinner-secondary-button wire:click="cerrarModalOrdenCombustibleActual" type="button" loadingTarget="cerrarModalOrdenCombustibleActual" loadingText="Cerrando...">
             Cancelar
         </x-spinner-secondary-button>
-        <x-spinner-button wire:click="guardarOrdenCombustible" type="button" loadingTarget="guardarOrdenCombustible" loadingText="Guardando...">
-            Confirmar
-        </x-spinner-button>
+        @if ($modoOrdenCombustible === 'editar')
+            <x-spinner-button wire:click="confirmarEdicionOrden" type="button" loadingTarget="confirmarEdicionOrden" loadingText="Guardando...">
+                Confirmar
+            </x-spinner-button>
+        @else
+            <x-spinner-button wire:click="confirmarOrdenYAgregar" type="button" loadingTarget="confirmarOrdenYAgregar" loadingText="Agregando...">
+                Confirmar
+            </x-spinner-button>
+        @endif
     </x-slot>
 </x-dialog-modal>

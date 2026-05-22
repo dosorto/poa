@@ -131,14 +131,19 @@
                 <!-- Botón Revisar Sumario -->
                 <div class="flex items-center justify-end flex-shrink-0 w-fit ml-auto">
                     @if ($puedeCrearRequisicion)
-                        <x-spinner-button wire:click="abrirModalRequisicion" loadingTarget="abrirModalRequisicion" loadingText="Abriendo..."
-                            class="inline-flex items-center px-4 py-2 rounded-md text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
-                            <svg class="w-5 h-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                                stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                            </svg>
-                            {{ __('Revisar sumario') }}
-                        </x-spinner-button>
+                        <div class="flex flex-col items-end gap-1">
+                            <x-spinner-button wire:click="abrirModalRequisicion" loadingTarget="abrirModalRequisicion" loadingText="Abriendo..."
+                                class="inline-flex items-center px-4 py-2 rounded-md text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
+                                <svg class="w-5 h-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                    stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
+                                </svg>
+                                {{ __('Revisar sumario') }}
+                            </x-spinner-button>
+                            @if ($modalRequisicionError && empty($recursosSeleccionados))
+                                <span class="text-right text-xs text-red-500">{{ $modalRequisicionError }}</span>
+                            @endif
+                        </div>
                     @else
                         <div class="relative group">
                             <button disabled
@@ -233,15 +238,36 @@
                                             </div>
                                         </td>
                                         <td class="px-3 py-2 text-xs text-zinc-600 dark:text-zinc-400">
-                                            <label
-                                                class="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Cantidad</label>
-                                            <input type="number" step="1" min="0"
-                                                max="{{ $valores['cantidad_disponible'] }}"
-                                                class="w-16 text-xs border-zinc-300 dark:border-zinc-700 rounded focus:ring-indigo-500 focus:border-indigo-500 dark:bg-zinc-800 dark:text-zinc-100"
-                                                wire:model.live="presupuestosSeleccionados.{{ $presupuesto->id }}" />
-                                            @error('presupuestosSeleccionados.' . $presupuesto->id)
-                                                <span class="text-red-500 text-xs">{{ $message }}</span>
-                                            @enderror
+                                            @php
+                                                $agregado = isset($presupuestosSeleccionados[$presupuesto->id]);
+                                                $errorCantidad = $erroresCantidad[$presupuesto->id] ?? null;
+                                            @endphp
+                                            <div class="flex flex-col gap-2">
+                                                <label class="block text-xs font-medium text-zinc-700 dark:text-zinc-300">Cantidad</label>
+                                                <input type="number" step="1" min="1"
+                                                    max="{{ $valores['cantidad_disponible'] }}"
+                                                    class="w-20 text-xs border-zinc-300 dark:border-zinc-700 rounded focus:ring-indigo-500 focus:border-indigo-500 dark:bg-zinc-800 dark:text-zinc-100 disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-400 dark:disabled:bg-zinc-700"
+                                                    wire:model.live="cantidadesInput.{{ $presupuesto->id }}"
+                                                    @disabled($agregado) />
+                                                @if ($errorCantidad)
+                                                    <span class="text-red-500 text-xs">{{ $errorCantidad }}</span>
+                                                @endif
+                                                @error('cantidadesInput.' . $presupuesto->id)
+                                                    <span class="text-red-500 text-xs">{{ $message }}</span>
+                                                @enderror
+                                                <button type="button"
+                                                    wire:click="agregarRecurso({{ $presupuesto->id }})"
+                                                    wire:loading.attr="disabled"
+                                                    wire:target="agregarRecurso({{ $presupuesto->id }})"
+                                                    @disabled($agregado || $errorCantidad)
+                                                    class="inline-flex items-center justify-center rounded-md px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition
+                                                        {{ $agregado ? 'cursor-not-allowed bg-emerald-600' : ($errorCantidad ? 'cursor-not-allowed bg-zinc-300 dark:bg-zinc-700' : 'bg-indigo-600 hover:bg-indigo-700') }}">
+                                                    <span wire:loading.remove wire:target="agregarRecurso({{ $presupuesto->id }})">
+                                                        {{ $agregado ? 'Agregado' : 'Agregar' }}
+                                                    </span>
+                                                    <span wire:loading wire:target="agregarRecurso({{ $presupuesto->id }})">Agregando...</span>
+                                                </button>
+                                            </div>
                                         </td>
                                     </tr>
                                 @endforeach
@@ -337,5 +363,6 @@
             </div>
         </div>
         @include('livewire.requisiciones.modal-requisicion')
+        @include('livewire.seguimiento.Requisicion.orden-combustible')
     @endcan
 </div>
