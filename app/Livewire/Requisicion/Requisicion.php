@@ -80,6 +80,8 @@ class Requisicion extends Component
         'fecha_actividad' => '',
         'responsable' => '',
         'actividades_realizar' => '',
+        'monto' => 0,
+        'monto_en_letras' => '',
     ];
     public $empleados = [];
 
@@ -95,6 +97,7 @@ class Requisicion extends Component
     public array $ordenesCombustible = [];
     public string $modalRequisicionError = '';
     public ?int $combustibleEnModal = null;
+    public ?int $cantidadDisponibleCombustibleModal = null;
     public string $modoOrdenCombustible = 'agregar';
 
     protected $rules = [
@@ -267,7 +270,12 @@ class Requisicion extends Component
         if (str_starts_with($propertyName, 'cantidadesInput.')) {
             $presupuestoId = (int) (explode('.', $propertyName)[1] ?? 0);
             if ($presupuestoId > 0) {
-                $this->validarCantidadInput($presupuestoId);
+                if ($this->combustibleEnModal === $presupuestoId) {
+                    $this->validarCantidadInput($presupuestoId);
+                    $this->actualizarMontoOrdenCombustible($presupuestoId);
+                } elseif ($this->showModalRequisicion && $this->pasoActual === 1) {
+                    $this->validarCantidadInput($presupuestoId);
+                }
             }
         }
 
@@ -288,7 +296,7 @@ class Requisicion extends Component
         $this->recursosSeleccionados = [];
 
         foreach ($this->presupuestosSeleccionados as $presupuestoId => $cantidad) {
-            if ($cantidad === null || $cantidad === '' || (int) $cantidad <= 0) {
+            if ($cantidad === null || $cantidad === '') {
                 continue;
             }
 
@@ -324,34 +332,37 @@ class Requisicion extends Component
             return;
         }
 
-        if (!$this->validarCantidadInput($presupuestoId)) {
-            return;
-        }
-
         $presupuesto = Presupuesto::with(['unidadMedida'])->find($presupuestoId);
         if (!$presupuesto) {
             $this->erroresCantidad[$presupuestoId] = 'No se encontro el recurso seleccionado.';
             return;
         }
 
-        $cantidad = (int) $this->cantidadesInput[$presupuestoId];
+        $disponible = $this->obtenerCantidadDisponible($presupuestoId);
+        if ($disponible <= 0) {
+            $this->erroresCantidad[$presupuestoId] = 'Este recurso esta agotado.';
+            return;
+        }
+
+        $cantidad = (int) ($this->cantidadesInput[$presupuestoId] ?? 0);
         $recurso = $this->construirRecursoSeleccionado($presupuesto, $cantidad);
 
         if ($this->esRecursoCombustible($recurso)) {
             $this->combustibleEnModal = $presupuestoId;
+            $this->cantidadDisponibleCombustibleModal = $disponible;
             $this->modoOrdenCombustible = 'agregar';
             $this->ordenCombustibleRecursoId = $presupuestoId;
             $this->ordenCombustibleRecursoNombre = $recurso['nombre'] ?? '';
+            $this->cantidadesInput[$presupuestoId] = $cantidad > 0 ? $cantidad : 1;
             $this->ordenCombustibleData = $this->ordenCombustibleDataDesdeOrden($this->ordenesCombustible[$presupuestoId] ?? []);
-            $this->ordenCombustibleData['monto'] = $recurso['total'] ?? 0;
-            $this->ordenCombustibleData['monto_en_letras'] = $this->numeroALetras($recurso['total'] ?? 0);
+            $this->actualizarMontoOrdenCombustible($presupuestoId);
             $this->cargarEmpleadosOrdenCombustible($this->ordenCombustibleData['responsable'] ?? null);
             $this->showOrdenCombustibleModal = true;
             return;
         }
 
-        $this->presupuestosSeleccionados[$presupuestoId] = $cantidad;
-        $this->actualizarSumario();
+        $this->presupuestosSeleccionados[$presupuestoId] = 0;
+        $this->recursosSeleccionados[] = $recurso;
         unset($this->erroresCantidad[$presupuestoId]);
         session(['recursosSeleccionados' => $this->recursosSeleccionados]);
     }
@@ -388,13 +399,13 @@ class Requisicion extends Component
         }
 
         $this->combustibleEnModal = $presupuestoId;
+        $this->cantidadDisponibleCombustibleModal = $recurso['cantidad_disponible'] ?? $this->obtenerCantidadDisponible($presupuestoId);
         $this->modoOrdenCombustible = 'editar';
         $this->ordenCombustibleRecursoId = $presupuestoId;
         $this->ordenCombustibleRecursoNombre = $recurso['nombre'] ?? '';
         $this->cantidadesInput[$presupuestoId] = $recurso['cantidad_seleccionada'] ?? ($this->cantidadesInput[$presupuestoId] ?? 1);
         $this->ordenCombustibleData = $this->ordenCombustibleDataDesdeOrden($this->ordenesCombustible[$presupuestoId] ?? []);
-        $this->ordenCombustibleData['monto'] = $recurso['total'] ?? 0;
-        $this->ordenCombustibleData['monto_en_letras'] = $this->numeroALetras($recurso['total'] ?? 0);
+        $this->actualizarMontoOrdenCombustible($presupuestoId);
         $this->cargarEmpleadosOrdenCombustible($this->ordenCombustibleData['responsable'] ?? null);
         $this->showOrdenCombustibleModal = true;
     }
@@ -405,8 +416,15 @@ class Requisicion extends Component
             return;
         }
 
+        if (!$this->validarCantidadInput($this->combustibleEnModal)) {
+            return;
+        }
+
         $this->validarOrdenCombustibleData();
         $this->ordenesCombustible[$this->combustibleEnModal] = $this->ordenDesdeOrdenCombustibleData();
+        $this->presupuestosSeleccionados[$this->combustibleEnModal] = (int) $this->cantidadesInput[$this->combustibleEnModal];
+        $this->actualizarSumario();
+        session(['recursosSeleccionados' => $this->recursosSeleccionados]);
         $this->cerrarModalOrdenCombustibleActual();
     }
 
@@ -414,6 +432,7 @@ class Requisicion extends Component
     {
         $this->showOrdenCombustibleModal = false;
         $this->combustibleEnModal = null;
+        $this->cantidadDisponibleCombustibleModal = null;
         $this->modoOrdenCombustible = 'agregar';
         $this->ordenCombustibleRecursoId = null;
         $this->ordenCombustibleRecursoNombre = '';
@@ -458,6 +477,16 @@ class Requisicion extends Component
         return max(0, (int) ($presupuesto->cantidad ?? 0) - (int) $cantidadComprometida);
     }
 
+    private function actualizarMontoOrdenCombustible(int $presupuestoId): void
+    {
+        $presupuesto = Presupuesto::find($presupuestoId);
+        $cantidad = (int) ($this->cantidadesInput[$presupuestoId] ?? 0);
+        $monto = max(0, $cantidad) * (float) ($presupuesto->costounitario ?? 0);
+
+        $this->ordenCombustibleData['monto'] = $monto;
+        $this->ordenCombustibleData['monto_en_letras'] = $this->numeroALetras($monto);
+    }
+
     private function construirRecursoSeleccionado(Presupuesto $presupuesto, int $cantidad): array
     {
         $tarea = $presupuesto->idtarea ? Tarea::with('actividad')->find($presupuesto->idtarea) : null;
@@ -477,6 +506,7 @@ class Requisicion extends Component
             'precio_unitario'       => $presupuesto->costounitario ?? 0,
             'total'                 => $cantidad * ($presupuesto->costounitario ?? 0),
             'idPoa'                 => $tarea?->idPoa,
+            'cantidad_disponible'   => $this->obtenerCantidadDisponible($presupuesto->id),
         ];
 
         $recursoSeleccionado['es_combustible'] = $this->esRecursoCombustible($recursoSeleccionado);
@@ -527,6 +557,8 @@ class Requisicion extends Component
             'fecha_actividad' => $orden['fecha_realizar'] ?? '',
             'responsable' => $orden['idEmpleado'] ?? '',
             'actividades_realizar' => $orden['actividades'] ?? '',
+            'monto' => $orden['monto'] ?? 0,
+            'monto_en_letras' => $orden['monto_en_letras'] ?? '',
         ];
     }
 
@@ -579,7 +611,17 @@ class Requisicion extends Component
         $this->modalRequisicionError = '';
 
         if ($this->pasoActual === 1) {
+            if (!$this->validarCantidadesSumario()) {
+                return;
+            }
+
+            $this->aplicarCantidadesSumario();
             $this->pasoActual = 2;
+            return;
+        }
+
+        if ($this->pasoActual === 2) {
+            $this->pasoActual = 3;
         }
     }
 
@@ -587,14 +629,58 @@ class Requisicion extends Component
     {
         $this->modalRequisicionError = '';
 
-        if ($this->pasoActual === 2) {
-            $this->pasoActual = 1;
+        if ($this->pasoActual > 1) {
+            $this->pasoActual--;
         }
+    }
+
+    private function validarCantidadesSumario(): bool
+    {
+        $valido = true;
+
+        foreach ($this->recursosSeleccionados as $recurso) {
+            if (!empty($recurso['es_combustible'])) {
+                continue;
+            }
+
+            if (!$this->validarCantidadInput((int) $recurso['id'])) {
+                $valido = false;
+            }
+        }
+
+        if (!$valido) {
+            $this->modalRequisicionError = 'Revise las cantidades antes de continuar.';
+        }
+
+        return $valido;
+    }
+
+    private function aplicarCantidadesSumario(): void
+    {
+        foreach ($this->recursosSeleccionados as $index => $recurso) {
+            if (!empty($recurso['es_combustible'])) {
+                continue;
+            }
+
+            $cantidad = (int) ($this->cantidadesInput[$recurso['id']] ?? 0);
+            $this->recursosSeleccionados[$index]['cantidad_seleccionada'] = $cantidad;
+            $this->recursosSeleccionados[$index]['total'] = $cantidad * (float) ($recurso['precio_unitario'] ?? 0);
+            $this->presupuestosSeleccionados[$recurso['id']] = $cantidad;
+        }
+
+        session(['recursosSeleccionados' => $this->recursosSeleccionados]);
     }
 
     public function confirmarRequisicion()
     {
         $this->modalRequisicionError = '';
+
+        if (!$this->validarCantidadesSumario()) {
+            $this->showModalRequisicion = true;
+            return;
+        }
+
+        $this->aplicarCantidadesSumario();
 
         $this->validate([
             'descripcion' => 'required|string|max:500',
@@ -692,25 +778,7 @@ class Requisicion extends Component
                             throw new \Exception("Falta confirmar la orden de combustible para {$recurso['nombre']}.");
                         }
 
-                        DB::table('orden_combustible')->insert([
-                            'correlativo' => $this->generarCorrelativoOrdenCombustible(),
-                            'monto' => $recurso['total'] ?? 0,
-                            'monto_en_letras' => $this->numeroALetras($recurso['total'] ?? 0),
-                            'modelo_vehiculo' => $orden['modelo_vehiculo'],
-                            'lugar_salida' => $orden['lugar_salida'],
-                            'lugar_destino' => $orden['lugar_destino'],
-                            'placa' => $orden['placa'],
-                            'recorrido_km' => $orden['recorrido_km'],
-                            'fecha_actividad' => $orden['fecha_realizar'],
-                            'actividades_realizar' => $orden['actividades'],
-                            'idPoa' => $this->idPoa,
-                            'idDetalleRequisicion' => $detalle->id,
-                            'idRecurso' => $presupuesto->idHistorico,
-                            'responsable' => $orden['idEmpleado'],
-                            'created_by' => $user->id,
-                            'created_at' => now(),
-                            'updated_at' => now(),
-                        ]);
+                        $this->crearOrdenesCombustibleParaDetalle($orden, $recurso, $presupuesto, $detalle, $user->id);
                     }
                 }
             });
@@ -788,6 +856,34 @@ class Requisicion extends Component
     {
         $ultimoId = (int) DB::table('orden_combustible')->max('id');
         return ($ultimoId + 1) . '-' . now()->format('Y');
+    }
+
+    private function crearOrdenesCombustibleParaDetalle(array $orden, array $recurso, Presupuesto $presupuesto, DetalleRequisicion $detalle, int $userId): void
+    {
+        $cantidadOrdenes = max(1, (int) ($recurso['cantidad_seleccionada'] ?? 1));
+        $montoPorOrden = (float) ($recurso['precio_unitario'] ?? $presupuesto->costounitario ?? 0);
+
+        for ($i = 0; $i < $cantidadOrdenes; $i++) {
+            DB::table('orden_combustible')->insert([
+                'correlativo' => $this->generarCorrelativoOrdenCombustible(),
+                'monto' => $montoPorOrden,
+                'monto_en_letras' => $this->numeroALetras($montoPorOrden),
+                'modelo_vehiculo' => $orden['modelo_vehiculo'],
+                'lugar_salida' => $orden['lugar_salida'],
+                'lugar_destino' => $orden['lugar_destino'],
+                'placa' => $orden['placa'],
+                'recorrido_km' => $orden['recorrido_km'],
+                'fecha_actividad' => $orden['fecha_realizar'],
+                'actividades_realizar' => $orden['actividades'],
+                'idPoa' => $this->idPoa,
+                'idDetalleRequisicion' => $detalle->id,
+                'idRecurso' => $presupuesto->idHistorico,
+                'responsable' => $orden['idEmpleado'],
+                'created_by' => $userId,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]);
+        }
     }
 
     private function numeroALetras($numero): string

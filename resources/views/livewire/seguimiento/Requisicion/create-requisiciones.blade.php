@@ -241,32 +241,31 @@
                                             @php
                                                 $agregado = isset($presupuestosSeleccionados[$presupuesto->id]);
                                                 $errorCantidad = $erroresCantidad[$presupuesto->id] ?? null;
+                                                $agotado = ($valores['cantidad_disponible'] ?? 0) <= 0;
                                             @endphp
                                             <div class="flex flex-col gap-2">
-                                                <label class="block text-xs font-medium text-zinc-700 dark:text-zinc-300">Cantidad</label>
-                                                <input type="number" step="1" min="1"
-                                                    max="{{ $valores['cantidad_disponible'] }}"
-                                                    class="w-20 text-xs border-zinc-300 dark:border-zinc-700 rounded focus:ring-indigo-500 focus:border-indigo-500 dark:bg-zinc-800 dark:text-zinc-100 disabled:cursor-not-allowed disabled:bg-zinc-100 disabled:text-zinc-400 dark:disabled:bg-zinc-700"
-                                                    wire:model.live="cantidadesInput.{{ $presupuesto->id }}"
-                                                    @disabled($agregado) />
                                                 @if ($errorCantidad)
                                                     <span class="text-red-500 text-xs">{{ $errorCantidad }}</span>
                                                 @endif
-                                                @error('cantidadesInput.' . $presupuesto->id)
-                                                    <span class="text-red-500 text-xs">{{ $message }}</span>
-                                                @enderror
-                                                <button type="button"
-                                                    wire:click="agregarRecurso({{ $presupuesto->id }})"
-                                                    wire:loading.attr="disabled"
-                                                    wire:target="agregarRecurso({{ $presupuesto->id }})"
-                                                    @disabled($agregado || $errorCantidad)
-                                                    class="inline-flex items-center justify-center rounded-md px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition
-                                                        {{ $agregado ? 'cursor-not-allowed bg-emerald-600' : ($errorCantidad ? 'cursor-not-allowed bg-zinc-300 dark:bg-zinc-700' : 'bg-indigo-600 hover:bg-indigo-700') }}">
-                                                    <span wire:loading.remove wire:target="agregarRecurso({{ $presupuesto->id }})">
-                                                        {{ $agregado ? 'Agregado' : 'Agregar' }}
-                                                    </span>
-                                                    <span wire:loading wire:target="agregarRecurso({{ $presupuesto->id }})">Agregando...</span>
-                                                </button>
+                                                @if ($agotado)
+                                                    <button type="button" disabled
+                                                        class="inline-flex cursor-not-allowed items-center justify-center rounded-md bg-zinc-300 px-3 py-1.5 text-xs font-semibold text-zinc-600 shadow-sm dark:bg-zinc-700 dark:text-zinc-400">
+                                                        Agotado
+                                                    </button>
+                                                @else
+                                                    <button type="button"
+                                                        wire:click="agregarRecurso({{ $presupuesto->id }})"
+                                                        wire:loading.attr="disabled"
+                                                        wire:target="agregarRecurso({{ $presupuesto->id }})"
+                                                        @disabled($agregado || $errorCantidad)
+                                                        class="inline-flex items-center justify-center rounded-md px-3 py-1.5 text-xs font-semibold text-white shadow-sm transition
+                                                            {{ $agregado ? 'cursor-not-allowed bg-emerald-600' : ($errorCantidad ? 'cursor-not-allowed bg-zinc-300 dark:bg-zinc-700' : 'bg-indigo-600 hover:bg-indigo-700') }}">
+                                                        <span wire:loading.remove wire:target="agregarRecurso({{ $presupuesto->id }})">
+                                                            {{ $agregado ? 'Agregado' : 'Agregar' }}
+                                                        </span>
+                                                        <span wire:loading wire:target="agregarRecurso({{ $presupuesto->id }})">Agregando...</span>
+                                                    </button>
+                                                @endif
                                             </div>
                                         </td>
                                     </tr>
@@ -325,7 +324,7 @@
                                     <div class="grid grid-cols-1 sm:grid-cols-3 gap-1 sm:gap-2 text-[10px] sm:text-xs">
                                         <div class="flex items-center text-zinc-600 dark:text-zinc-400">
                                             <span class="font-medium">Cantidad:</span>
-                                            {{ $recurso['cantidad_seleccionada'] ?? '-' }}
+                                            {{ ($recurso['cantidad_seleccionada'] ?? 0) > 0 ? $recurso['cantidad_seleccionada'] : 'Pendiente' }}
                                         </div>
 
                                         <div class="flex items-center text-zinc-600 dark:text-zinc-400">

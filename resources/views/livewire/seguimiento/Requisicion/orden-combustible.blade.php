@@ -4,14 +4,29 @@
             <span class="font-semibold text-zinc-800 dark:text-zinc-100">
                 Orden de Combustible ({{ $ordenCombustibleRecursoNombre ?? '' }})
             </span>
-            <span class="text-sm text-zinc-500 dark:text-zinc-400">
-                Cantidad seleccionada: {{ $combustibleEnModal ? ($cantidadesInput[$combustibleEnModal] ?? '-') : '-' }}
-            </span>
         </div>
     </x-slot>
     <x-slot name="content">
 
         <div class="dark:bg-zinc-900 bg-white rounded-lg p-4">
+            @if($combustibleEnModal)
+                <div class="mb-4">
+                    <x-label value="Cantidad" class="mb-1" />
+                    <input
+                        type="number"
+                        min="1"
+                        step="1"
+                        inputmode="numeric"
+                        placeholder="Ingrese la cantidad"
+                        wire:key="cantidad-combustible-{{ $combustibleEnModal }}"
+                        wire:model.live.debounce.300ms="cantidadesInput.{{ $combustibleEnModal }}"
+                        class="block w-full rounded-md border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                    />
+                    @if(!empty($erroresCantidad[$combustibleEnModal]))
+                        <span class="text-xs text-red-500">{{ $erroresCantidad[$combustibleEnModal] }}</span>
+                    @endif
+                </div>
+            @endif
             {{-- Monto calculado automáticamente --}}
             <div class="grid grid-cols-2 gap-4 mb-4">
                 <div class="bg-green-50 dark:bg-green-800 rounded p-3 flex items-center gap-2">
