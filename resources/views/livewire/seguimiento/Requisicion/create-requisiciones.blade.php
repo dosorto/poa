@@ -362,6 +362,7 @@
             </div>
         </div>
         @include('livewire.requisiciones.modal-requisicion')
+        @include('livewire.seguimiento.Requisicion.modal-cantidad-recurso')
         @include('livewire.seguimiento.Requisicion.orden-combustible')
     @endcan
 </div>

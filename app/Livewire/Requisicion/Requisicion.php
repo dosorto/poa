@@ -96,6 +96,9 @@ class Requisicion extends Component
     public $fechaRequerida = '';
     public array $ordenesCombustible = [];
     public string $modalRequisicionError = '';
+    public bool $modalCantidad = false;
+    public ?array $recursoEnModalCantidad = null;
+    public $cantidadTemporal = 1;
     public ?int $combustibleEnModal = null;
     public ?int $cantidadDisponibleCombustibleModal = null;
     public string $modoOrdenCombustible = 'agregar';
@@ -216,6 +219,7 @@ class Requisicion extends Component
         $this->presupuestosSeleccionados = [];
         $this->cantidadesInput = [];
         $this->erroresCantidad = [];
+        $this->cerrarModalCantidad();
     }
 
     private function vincularOrdenCombustibleConDetalle(DetalleRequisicion $detalle, int $userId): void
@@ -262,9 +266,11 @@ class Requisicion extends Component
     // Detectar cambios en las cantidades solicitadas
     public function updated($propertyName)
     {
-        // Si se actualiza una cantidad en presupuestosSeleccionados, actualiza el sumario
-        if (str_starts_with($propertyName, 'presupuestosSeleccionados')) {
-            $this->actualizarSumario();
+        if (str_starts_with($propertyName, 'presupuestosSeleccionados.')) {
+            $presupuestoId = (int) (explode('.', $propertyName)[1] ?? 0);
+            if ($presupuestoId > 0) {
+                $this->actualizarCantidadRecursoSeleccionado($presupuestoId);
+            }
         }
 
         if (str_starts_with($propertyName, 'cantidadesInput.')) {
@@ -273,8 +279,6 @@ class Requisicion extends Component
                 if ($this->combustibleEnModal === $presupuestoId) {
                     $this->validarCantidadInput($presupuestoId);
                     $this->actualizarMontoOrdenCombustible($presupuestoId);
-                } elseif ($this->showModalRequisicion && $this->pasoActual === 1) {
-                    $this->validarCantidadInput($presupuestoId);
                 }
             }
         }
@@ -361,10 +365,102 @@ class Requisicion extends Component
             return;
         }
 
-        $this->presupuestosSeleccionados[$presupuestoId] = 0;
-        $this->recursosSeleccionados[] = $recurso;
+        $this->abrirModalCantidad($presupuestoId);
+    }
+
+    public function abrirModalCantidad(int $id)
+    {
+        $presupuesto = Presupuesto::with(['unidadMedida'])->find($id);
+        if (!$presupuesto) {
+            $this->erroresCantidad[$id] = 'No se encontro el recurso seleccionado.';
+            return;
+        }
+
+        $disponible = $this->obtenerCantidadDisponible($id);
+        if ($disponible <= 0) {
+            $this->erroresCantidad[$id] = 'Este recurso esta agotado.';
+            return;
+        }
+
+        $recurso = $this->construirRecursoSeleccionado($presupuesto, (int) ($this->presupuestosSeleccionados[$id] ?? 1));
+        $this->recursoEnModalCantidad = $recurso;
+        $this->cantidadTemporal = max(1, (int) ($this->presupuestosSeleccionados[$id] ?? 1));
+        unset($this->erroresCantidad[$id]);
+        $this->modalCantidad = true;
+    }
+
+    public function confirmarCantidad()
+    {
+        if (!$this->recursoEnModalCantidad || empty($this->recursoEnModalCantidad['id'])) {
+            return;
+        }
+
+        $presupuestoId = (int) $this->recursoEnModalCantidad['id'];
+        $cantidad = (int) $this->cantidadTemporal;
+        $disponible = $this->obtenerCantidadDisponible($presupuestoId);
+
         unset($this->erroresCantidad[$presupuestoId]);
+
+        if ($cantidad <= 0) {
+            $this->erroresCantidad[$presupuestoId] = 'Ingrese una cantidad mayor a 0.';
+            return;
+        }
+
+        if ($cantidad > $disponible) {
+            $this->erroresCantidad[$presupuestoId] = "La cantidad no puede superar el disponible ({$disponible}).";
+            return;
+        }
+
+        $presupuesto = Presupuesto::with(['unidadMedida'])->find($presupuestoId);
+        if (!$presupuesto) {
+            $this->erroresCantidad[$presupuestoId] = 'No se encontro el recurso seleccionado.';
+            return;
+        }
+
+        $this->presupuestosSeleccionados[$presupuestoId] = $cantidad;
+        $recurso = $this->construirRecursoSeleccionado($presupuesto, $cantidad);
+
+        $index = collect($this->recursosSeleccionados)->search(fn($item) => (int) $item['id'] === $presupuestoId);
+        if ($index === false) {
+            $this->recursosSeleccionados[] = $recurso;
+        } else {
+            $this->recursosSeleccionados[$index] = array_merge($this->recursosSeleccionados[$index], $recurso);
+        }
+
         session(['recursosSeleccionados' => $this->recursosSeleccionados]);
+        $this->cerrarModalCantidad();
+    }
+
+    public function cerrarModalCantidad()
+    {
+        $this->modalCantidad = false;
+        $this->recursoEnModalCantidad = null;
+        $this->cantidadTemporal = 1;
+    }
+
+    public function updatedCantidadTemporal()
+    {
+        if (!$this->recursoEnModalCantidad || empty($this->recursoEnModalCantidad['id'])) {
+            return;
+        }
+
+        $presupuestoId = (int) $this->recursoEnModalCantidad['id'];
+        $disponible = $this->obtenerCantidadDisponible($presupuestoId);
+        $cantidad = (int) $this->cantidadTemporal;
+
+        unset($this->erroresCantidad[$presupuestoId]);
+
+        if ($cantidad <= 0) {
+            $cantidad = 1;
+            $this->erroresCantidad[$presupuestoId] = 'Ingrese una cantidad mayor a 0.';
+        }
+
+        if ($disponible > 0 && $cantidad > $disponible) {
+            $cantidad = $disponible;
+            $this->erroresCantidad[$presupuestoId] = "La cantidad no puede superar el disponible ({$disponible}).";
+        }
+
+        $this->cantidadTemporal = $cantidad;
     }
 
     public function confirmarOrdenYAgregar()
@@ -485,6 +581,44 @@ class Requisicion extends Component
 
         $this->ordenCombustibleData['monto'] = $monto;
         $this->ordenCombustibleData['monto_en_letras'] = $this->numeroALetras($monto);
+    }
+
+    private function actualizarCantidadRecursoSeleccionado(int $presupuestoId): void
+    {
+        $recurso = collect($this->recursosSeleccionados)->firstWhere('id', $presupuestoId);
+        if (!$recurso || !empty($recurso['es_combustible'])) {
+            return;
+        }
+
+        $disponible = $this->obtenerCantidadDisponible($presupuestoId);
+        $cantidad = (int) ($this->presupuestosSeleccionados[$presupuestoId] ?? 1);
+
+        unset($this->erroresCantidad[$presupuestoId]);
+
+        if ($cantidad <= 0) {
+            $cantidad = 1;
+            $this->erroresCantidad[$presupuestoId] = 'Ingrese una cantidad mayor a 0.';
+        }
+
+        if ($disponible > 0 && $cantidad > $disponible) {
+            $cantidad = $disponible;
+            $this->erroresCantidad[$presupuestoId] = "La cantidad no puede superar el disponible ({$disponible}).";
+        }
+
+        $this->presupuestosSeleccionados[$presupuestoId] = $cantidad;
+
+        foreach ($this->recursosSeleccionados as $index => $item) {
+            if ((int) $item['id'] !== $presupuestoId) {
+                continue;
+            }
+
+            $this->recursosSeleccionados[$index]['cantidad_seleccionada'] = $cantidad;
+            $this->recursosSeleccionados[$index]['total'] = $cantidad * (float) ($item['precio_unitario'] ?? 0);
+            $this->recursosSeleccionados[$index]['cantidad_disponible'] = $disponible;
+            break;
+        }
+
+        session(['recursosSeleccionados' => $this->recursosSeleccionados]);
     }
 
     private function construirRecursoSeleccionado(Presupuesto $presupuesto, int $cantidad): array
@@ -611,17 +745,7 @@ class Requisicion extends Component
         $this->modalRequisicionError = '';
 
         if ($this->pasoActual === 1) {
-            if (!$this->validarCantidadesSumario()) {
-                return;
-            }
-
-            $this->aplicarCantidadesSumario();
             $this->pasoActual = 2;
-            return;
-        }
-
-        if ($this->pasoActual === 2) {
-            $this->pasoActual = 3;
         }
     }
 
@@ -634,53 +758,9 @@ class Requisicion extends Component
         }
     }
 
-    private function validarCantidadesSumario(): bool
-    {
-        $valido = true;
-
-        foreach ($this->recursosSeleccionados as $recurso) {
-            if (!empty($recurso['es_combustible'])) {
-                continue;
-            }
-
-            if (!$this->validarCantidadInput((int) $recurso['id'])) {
-                $valido = false;
-            }
-        }
-
-        if (!$valido) {
-            $this->modalRequisicionError = 'Revise las cantidades antes de continuar.';
-        }
-
-        return $valido;
-    }
-
-    private function aplicarCantidadesSumario(): void
-    {
-        foreach ($this->recursosSeleccionados as $index => $recurso) {
-            if (!empty($recurso['es_combustible'])) {
-                continue;
-            }
-
-            $cantidad = (int) ($this->cantidadesInput[$recurso['id']] ?? 0);
-            $this->recursosSeleccionados[$index]['cantidad_seleccionada'] = $cantidad;
-            $this->recursosSeleccionados[$index]['total'] = $cantidad * (float) ($recurso['precio_unitario'] ?? 0);
-            $this->presupuestosSeleccionados[$recurso['id']] = $cantidad;
-        }
-
-        session(['recursosSeleccionados' => $this->recursosSeleccionados]);
-    }
-
     public function confirmarRequisicion()
     {
         $this->modalRequisicionError = '';
-
-        if (!$this->validarCantidadesSumario()) {
-            $this->showModalRequisicion = true;
-            return;
-        }
-
-        $this->aplicarCantidadesSumario();
 
         $this->validate([
             'descripcion' => 'required|string|max:500',
@@ -805,6 +885,7 @@ class Requisicion extends Component
         $this->pasoActual = 1;
         $this->showModalRequisicion = false;
         $this->modalRequisicionError = '';
+        $this->cerrarModalCantidad();
         session()->forget('recursosSeleccionados');
         session()->forget('departamentoSeleccionado');
         session()->forget('poaYearSeleccionado');
@@ -1175,7 +1256,6 @@ class Requisicion extends Component
             $this->recursosSeleccionados = $recursosGuardados;
             foreach ($recursosGuardados as $recurso) {
                 $this->presupuestosSeleccionados[$recurso['id']] = $recurso['cantidad_seleccionada'];
-                $this->cantidadesInput[$recurso['id']] = $recurso['cantidad_seleccionada'];
             }
         }
 
@@ -1321,6 +1401,7 @@ class Requisicion extends Component
             $this->showModalRequisicion = false;
             $this->pasoActual = 1;
             $this->modalRequisicionError = '';
+            $this->cerrarModalCantidad();
             session()->forget('recursosSeleccionados');
         }
         
@@ -1520,6 +1601,7 @@ class Requisicion extends Component
         $this->showModalRequisicion = false;
         $this->pasoActual = 1;
         $this->modalRequisicionError = '';
+        $this->cerrarModalCantidad();
         session()->forget('recursosSeleccionados');
     }
 
@@ -1594,6 +1676,7 @@ class Requisicion extends Component
         $this->showModalRequisicion = false;
         $this->pasoActual = 1;
         $this->modalRequisicionError = '';
+        $this->cerrarModalCantidad();
         session()->forget('recursosSeleccionados');
     }
      public function render()

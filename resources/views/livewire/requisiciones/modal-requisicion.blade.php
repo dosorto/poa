@@ -1,9 +1,8 @@
 @php
     $montoTotal = collect($recursosSeleccionados)->sum('total');
     $pasos = [
-        ['numero' => 1, 'titulo' => 'Cantidad'],
-        ['numero' => 2, 'titulo' => 'Resumen'],
-        ['numero' => 3, 'titulo' => 'Crear requisicion'],
+        ['numero' => 1, 'titulo' => 'Resumen'],
+        ['numero' => 2, 'titulo' => 'Crear requisicion'],
     ];
 @endphp
 
@@ -56,55 +55,6 @@
 
             @if ($pasoActual === 1)
                 <div class="space-y-4">
-                    <div class="rounded-lg border border-zinc-200 bg-zinc-50 px-4 py-3 text-sm text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                        Ingrese la cantidad a requisar para los recursos agregados.
-                    </div>
-
-                    <div class="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-700">
-                        <table class="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700">
-                            <thead class="bg-zinc-50 dark:bg-zinc-800">
-                                <tr>
-                                    <th class="px-3 py-2 text-left text-xs font-medium uppercase text-zinc-500">Recurso</th>
-                                    <th class="px-3 py-2 text-left text-xs font-medium uppercase text-zinc-500">Actividad</th>
-                                    <th class="px-3 py-2 text-right text-xs font-medium uppercase text-zinc-500">Disponible</th>
-                                    <th class="px-3 py-2 text-right text-xs font-medium uppercase text-zinc-500">Cantidad</th>
-                                </tr>
-                            </thead>
-                            <tbody class="divide-y divide-zinc-200 bg-white dark:divide-zinc-700 dark:bg-zinc-900">
-                                @forelse ($recursosSeleccionados as $recurso)
-                                    <tr>
-                                        <td class="px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100">{{ $recurso['nombre'] ?? '-' }}</td>
-                                        <td class="px-3 py-2 text-sm text-zinc-600 dark:text-zinc-400">{{ $recurso['actividad'] ?? '-' }}</td>
-                                        <td class="px-3 py-2 text-right text-sm text-zinc-600 dark:text-zinc-400">{{ $recurso['cantidad_disponible'] ?? '-' }}</td>
-                                        <td class="px-3 py-2 text-right text-sm">
-                                            @if (!empty($recurso['es_combustible']))
-                                                <span class="text-zinc-600 dark:text-zinc-400">{{ $recurso['cantidad_seleccionada'] ?? 0 }}</span>
-                                            @else
-                                                <div class="inline-flex flex-col items-end gap-1">
-                                                    <x-input type="number" min="1" step="1"
-                                                        max="{{ $recurso['cantidad_disponible'] ?? '' }}"
-                                                        wire:model.live="cantidadesInput.{{ $recurso['id'] }}"
-                                                        class="w-24 text-right" />
-                                                    @if (!empty($erroresCantidad[$recurso['id']]))
-                                                        <span class="text-xs text-red-500">{{ $erroresCantidad[$recurso['id']] }}</span>
-                                                    @endif
-                                                </div>
-                                            @endif
-                                        </td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="4" class="px-3 py-8 text-center text-sm text-zinc-500">No hay recursos seleccionados.</td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            @endif
-
-            @if ($pasoActual === 2)
-                <div class="space-y-4">
                     <div class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-blue-800 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-300">
                         <div class="flex items-center justify-between gap-4">
                             <span class="text-sm font-semibold">Monto total acumulado</span>
@@ -120,6 +70,7 @@
                                     <th class="px-3 py-2 text-left text-xs font-medium uppercase text-zinc-500">Actividad</th>
                                     <th class="px-3 py-2 text-left text-xs font-medium uppercase text-zinc-500">Proceso</th>
                                     <th class="px-3 py-2 text-left text-xs font-medium uppercase text-zinc-500">Unidad</th>
+                                    <th class="px-3 py-2 text-right text-xs font-medium uppercase text-zinc-500">Disponible</th>
                                     <th class="px-3 py-2 text-right text-xs font-medium uppercase text-zinc-500">Cantidad</th>
                                     <th class="px-3 py-2 text-right text-xs font-medium uppercase text-zinc-500">Precio</th>
                                     <th class="px-3 py-2 text-right text-xs font-medium uppercase text-zinc-500">Total</th>
@@ -142,7 +93,22 @@
                                         <td class="px-3 py-2 text-sm text-zinc-600 dark:text-zinc-400">{{ $recurso['actividad'] ?? '-' }}</td>
                                         <td class="px-3 py-2 text-sm text-zinc-600 dark:text-zinc-400">{{ $recurso['proceso_compra'] ?? '-' }}</td>
                                         <td class="px-3 py-2 text-sm text-zinc-600 dark:text-zinc-400">{{ $recurso['unidad_medida'] ?? '-' }}</td>
-                                        <td class="px-3 py-2 text-right text-sm text-zinc-600 dark:text-zinc-400">{{ $recurso['cantidad_seleccionada'] ?? 0 }}</td>
+                                        <td class="px-3 py-2 text-right text-sm text-zinc-600 dark:text-zinc-400">{{ $recurso['cantidad_disponible'] ?? '-' }}</td>
+                                        <td class="px-3 py-2 text-right text-sm">
+                                            @if (!empty($recurso['es_combustible']))
+                                                <span class="text-zinc-600 dark:text-zinc-400">{{ $recurso['cantidad_seleccionada'] ?? 0 }}</span>
+                                            @else
+                                                <div class="inline-flex flex-col items-end gap-1">
+                                                    <x-input type="number" min="1" step="1"
+                                                        max="{{ $recurso['cantidad_disponible'] ?? '' }}"
+                                                        wire:model.live.debounce.300ms="presupuestosSeleccionados.{{ $recurso['id'] }}"
+                                                        class="w-24 text-right" />
+                                                    @if (!empty($erroresCantidad[$recurso['id']]))
+                                                        <span class="text-xs text-red-500">{{ $erroresCantidad[$recurso['id']] }}</span>
+                                                    @endif
+                                                </div>
+                                            @endif
+                                        </td>
                                         <td class="px-3 py-2 text-right text-sm text-zinc-600 dark:text-zinc-400">L {{ number_format($recurso['precio_unitario'] ?? 0, 2) }}</td>
                                         <td class="px-3 py-2 text-right text-sm font-semibold text-zinc-900 dark:text-zinc-100">L {{ number_format($recurso['total'] ?? 0, 2) }}</td>
                                         <td class="px-3 py-2 text-right text-sm">
@@ -162,7 +128,7 @@
                                     </tr>
                                 @empty
                                     <tr>
-                                        <td colspan="8" class="px-3 py-8 text-center text-sm text-zinc-500">No hay recursos seleccionados.</td>
+                                        <td colspan="9" class="px-3 py-8 text-center text-sm text-zinc-500">No hay recursos seleccionados.</td>
                                     </tr>
                                 @endforelse
                             </tbody>
@@ -171,7 +137,7 @@
                 </div>
             @endif
 
-            @if ($pasoActual === 3)
+            @if ($pasoActual === 2)
                 <div class="space-y-4">
                     <div class="rounded-lg border border-blue-200 bg-blue-50 px-4 py-3 text-blue-800 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-300">
                         <div class="flex items-center justify-between gap-4">
@@ -213,11 +179,11 @@
                     </x-spinner-secondary-button>
                 @endif
 
-                @if ($pasoActual < 3)
+                @if ($pasoActual < 2)
                     <x-spinner-button wire:click="siguientePaso" type="button" loadingTarget="siguientePaso" loadingText="Continuando...">
                         Siguiente
                     </x-spinner-button>
-                @elseif ($pasoActual === 3)
+                @elseif ($pasoActual === 2)
                     <x-spinner-button wire:click="confirmarRequisicion" type="button" loadingTarget="confirmarRequisicion" loadingText="Enviando...">
                         Enviar
                     </x-spinner-button>
