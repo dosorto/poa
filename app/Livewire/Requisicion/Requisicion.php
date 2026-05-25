@@ -101,7 +101,7 @@ class Requisicion extends Component
     public $cantidadTemporal = 1;
     public ?int $combustibleEnModal = null;
     public ?int $cantidadDisponibleCombustibleModal = null;
-    public string $modoOrdenCombustible = 'agregar';
+    public ?string $modoOrdenCombustible = 'agregar';
 
     protected $rules = [
         'correlativo' => 'required|min:3',
@@ -433,9 +433,17 @@ class Requisicion extends Component
 
     public function cerrarModalCantidad()
     {
-        $this->modalCantidad = false;
+        $presupuestoId = $this->recursoEnModalCantidad['id'] ?? null;
+
+        if ($presupuestoId) {
+            unset($this->erroresCantidad[$presupuestoId]);
+            unset($this->cantidadesInput[$presupuestoId]);
+        }
+
         $this->recursoEnModalCantidad = null;
-        $this->cantidadTemporal = 1;
+        $this->cantidadTemporal = null;
+        $this->modalCantidad = false;
+        $this->resetValidation();
     }
 
     public function updatedCantidadTemporal()
@@ -526,13 +534,20 @@ class Requisicion extends Component
 
     public function cerrarModalOrdenCombustibleActual()
     {
-        $this->showOrdenCombustibleModal = false;
+        $presupuestoId = $this->combustibleEnModal;
+
+        if ($presupuestoId) {
+            unset($this->erroresCantidad[$presupuestoId]);
+            unset($this->cantidadesInput[$presupuestoId]);
+        }
+
         $this->combustibleEnModal = null;
         $this->cantidadDisponibleCombustibleModal = null;
-        $this->modoOrdenCombustible = 'agregar';
+        $this->modoOrdenCombustible = null;
         $this->ordenCombustibleRecursoId = null;
-        $this->ordenCombustibleRecursoNombre = '';
-        $this->ordenCombustibleData = $this->ordenCombustibleDataDesdeOrden([]);
+        $this->ordenCombustibleRecursoNombre = null;
+        $this->ordenCombustibleData = null;
+        $this->showOrdenCombustibleModal = false;
         $this->resetValidation();
     }
 

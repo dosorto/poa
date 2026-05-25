@@ -89,7 +89,7 @@
             <div class="mb-4">
                 <x-searchable-select
                     wire:model="ordenCombustibleData.responsable"
-                    wire:key="orden-combustible-responsable-{{ $ordenCombustibleData['responsable'] ?: 'empty' }}"
+                    wire:key="orden-combustible-responsable-{{ $ordenCombustibleData['responsable'] ?? 'empty' }}"
                     label="Empleado Responsable"
                     placeholder="Buscar empleado..."
                     defaultText="Seleccione un empleado"
