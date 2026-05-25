@@ -792,7 +792,7 @@
                         <div>
                             <x-searchable-select
                                 wire:model="nuevoPresupuesto.idRecurso"
-                                wire:key="presupuesto-recurso-select-{{ $presupuestoEditandoId ?: 'nuevo' }}-{{ $nuevoPresupuesto['idRecurso'] ?: 'empty' }}"
+                            wire:key="presupuesto-recurso-select-{{ $presupuestoEditandoId ?: 'nuevo' }}"
                                 label="Recurso"
                                 :required="true"
                                 placeholder="Buscar recurso..."
