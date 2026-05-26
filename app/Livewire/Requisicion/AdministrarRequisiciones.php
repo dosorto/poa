@@ -13,6 +13,7 @@ use App\Models\EjecucionPresupuestaria\EjecucionPresupuestaria;
 use App\Models\EjecucionPresupuestaria\EjecucionPresupuestariaLog;
 use App\Models\EjecucionPresupuestaria\EstadoEjecucionPresupuestaria;
 use App\Models\Actas\ActaEntrega;
+use App\Services\RequisicionCorreoService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -211,6 +212,7 @@ class AdministrarRequisiciones extends Component
             'idRequisicion' => $requisicion->id,
             'created_by' => auth()->id(),
         ]);
+        $this->enviarCorreoEstadoActualizado($requisicion, $estadoRecibido ? $estadoRecibido->estado : 'Recibido');
         $this->detalleRequisicion['estado'] = $estadoRecibido ? $estadoRecibido->estado : 'Recibido';
         session()->flash('message', 'Requisición marcada como Recibida.');
     }
@@ -239,6 +241,7 @@ class AdministrarRequisiciones extends Component
             'idRequisicion' => $requisicion->id,
             'created_by' => auth()->id(),
         ]);
+        $this->enviarCorreoEstadoActualizado($requisicion, $estadoRechazado ? $estadoRechazado->estado : 'Rechazado');
         $this->detalleRequisicion['estado'] = $estadoRechazado ? $estadoRechazado->estado : 'Rechazado';
         $this->cerrarDetalleModal();
         session()->flash('message', 'Requisición marcada como Rechazada.');
@@ -268,6 +271,7 @@ class AdministrarRequisiciones extends Component
             'idRequisicion' => $requisicion->id,
             'created_by' => auth()->id(),
         ]);
+        $this->enviarCorreoEstadoActualizado($requisicion, $estadoAprobado ? $estadoAprobado->estado : 'Aprobado');
         $this->detalleRequisicion['estado'] = $estadoAprobado ? $estadoAprobado->estado : 'Aprobado';
         session()->flash('message', 'Requisición marcada como Aprobada.');
     }
@@ -320,6 +324,8 @@ class AdministrarRequisiciones extends Component
 
             DB::commit();
 
+            $this->enviarCorreoEstadoActualizado($requisicion, $estadoProcesoCompra->estado);
+
             session()->flash('message', 'Requisición marcada como "En Proceso de Compra" correctamente.');
             
             // Refrescar el modal en lugar de cerrarlo
@@ -334,6 +340,11 @@ class AdministrarRequisiciones extends Component
             ]);
             session()->flash('error', 'Error: ' . $e->getMessage());
         }
+    }
+
+    private function enviarCorreoEstadoActualizado(Requisicion $requisicion, string $nuevoEstado): void
+    {
+        app(RequisicionCorreoService::class)->enviarEstadoActualizado($requisicion, $nuevoEstado);
     }
 
     protected function crearEjecucionPresupuestaria($requisicion)

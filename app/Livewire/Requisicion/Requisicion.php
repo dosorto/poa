@@ -3,6 +3,7 @@
 namespace App\Livewire\Requisicion;
 
 use App\Models\Requisicion\Requisicion as RequisicionModel;
+use App\Services\RequisicionCorreoService;
 use Illuminate\Support\Facades\Validator;
 use App\Models\Requisicion\EstadoRequisicion;
 use App\Models\Empleados\Empleado;
@@ -206,6 +207,8 @@ class Requisicion extends Component
                 }
             }
 
+            $this->enviarCorreoRequisicionCreada($requisicion);
+
             $this->showSumarioModal = false;
             $this->resetInputFields();
             session()->flash('message', 'Requisición creada correctamente.');
@@ -234,6 +237,11 @@ class Requisicion extends Component
                 'idDetalleRequisicion' => $detalle->id,
                 'updated_at' => now(),
             ]);
+    }
+
+    private function enviarCorreoRequisicionCreada(RequisicionModel $requisicion): void
+    {
+        app(RequisicionCorreoService::class)->enviarCreada($requisicion);
     }
 
     public function agregarRecursoAlSumario($recurso)
@@ -788,7 +796,9 @@ class Requisicion extends Component
         ]);
 
         try {
-            DB::transaction(function () {
+            $requisicionCreada = null;
+
+            DB::transaction(function () use (&$requisicionCreada) {
                 if (empty($this->recursosSeleccionados)) {
                     throw new \Exception('No hay recursos seleccionados para crear la requisicion.');
                 }
@@ -847,6 +857,7 @@ class Requisicion extends Component
                     'fechaSolicitud' => now(),
                     'fechaRequerido' => $this->fechaRequerida,
                 ]);
+                $requisicionCreada = $requisicion;
 
                 foreach ($this->recursosSeleccionados as $recurso) {
                     $presupuesto = Presupuesto::find($recurso['id']);
@@ -877,6 +888,10 @@ class Requisicion extends Component
                     }
                 }
             });
+
+            if ($requisicionCreada) {
+                $this->enviarCorreoRequisicionCreada($requisicionCreada);
+            }
 
             $this->limpiarEstadoModal();
             session()->flash('message', 'Requisicion creada correctamente.');

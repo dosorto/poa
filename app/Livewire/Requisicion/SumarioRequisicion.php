@@ -9,6 +9,7 @@ use App\Models\Requisicion\DetalleRequisicion;
 use App\models\Empleados\Empleado;
 use App\Models\Tareas\Tarea;
 use App\Models\Poa\Poa;
+use App\Services\RequisicionCorreoService;
 use Livewire\Component;
 use Livewire\Attributes\Layout;
 use Illuminate\Support\Facades\Auth;
@@ -178,6 +179,7 @@ class SumarioRequisicion extends Component
                     ->update(['idDetalleRequisicion' => $detalle->id]); // apuntar al detalle real
             }
         }
+            app(RequisicionCorreoService::class)->enviarCreada($requisicion);
             session()->forget('recursosSeleccionados');
             $this->showCrearRequisicionModal = false;
             session()->flash('message', 'Requisición creada correctamente.');
