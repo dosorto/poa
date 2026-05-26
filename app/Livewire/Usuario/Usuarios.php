@@ -6,6 +6,7 @@ use App\Services\LogService;
 use Auth;
 use Livewire\Component;
 use Livewire\WithPagination;
+use App\Models\Empleados\Empleado;
 use App\Models\User;
 use Spatie\Permission\Models\Role;
 use Illuminate\Support\Facades\Hash;
@@ -35,6 +36,7 @@ class Usuarios extends Component
     public $sortField = 'id';
     public $sortDirection = 'asc';
     public $idEmpleado = null;
+    public $empleadosIniciales = [];
 
     protected $rules = [
         'name' => 'required',
@@ -49,6 +51,7 @@ class Usuarios extends Component
     public function mount()
     {
         $this->roles = Role::all();
+        $this->cargarEmpleadosIniciales();
     }
 
     public function render()
@@ -68,22 +71,10 @@ class Usuarios extends Component
         // Obtener usuarios paginados
         $users = $query->paginate($this->perPage ?? 10);
         
-        // Obtener lista de empleados para el select
-        // Excluir empleados que ya tienen usuario asignado (excepto el actual al editar)
-        $empleados = \App\Models\Empleados\Empleado::orderBy('nombre')->orderBy('apellido')
-            ->whereDoesntHave('user', function($query) {
-                // Si estamos editando, permitir el empleado actual
-                if ($this->user && $this->user->idEmpleado) {
-                    $query->where('empleados.id', '!=', $this->user->idEmpleado);
-                }
-            })
-            ->orWhere('id', $this->user->idEmpleado ?? null) // Incluir el empleado actual si existe
-            ->get();
-
         return view('livewire.Usuario.usuarios', [
             'users' => $users,
             'roles' => $this->roles,
-            'empleados' => $empleados
+            'empleadosIniciales' => $this->empleadosIniciales,
         ]);
     }
 
@@ -180,10 +171,63 @@ class Usuarios extends Component
         $this->email = $user->email;
         $this->profile_photo_path = $user->profile_photo_path;
         $this->idEmpleado = $user->idEmpleado;
+        $this->cargarEmpleadosIniciales($this->idEmpleado);
         $this->selectedRoles = $user->roles->pluck('id')->toArray();
         $this->roles = Role::all();
         $this->isOpen = true;
         $this->isEditing = true;
+    }
+
+    public function searchEmpleados($search = '')
+    {
+        return $this->empleadosQuery($search, $this->idEmpleado)
+            ->limit(30)
+            ->get()
+            ->map(fn ($empleado) => $this->formatearEmpleadoOption($empleado))
+            ->toArray();
+    }
+
+    private function cargarEmpleadosIniciales($empleadoActualId = null): void
+    {
+        $this->empleadosIniciales = $this->empleadosQuery('', $empleadoActualId)
+            ->limit(30)
+            ->get()
+            ->map(fn ($empleado) => $this->formatearEmpleadoOption($empleado))
+            ->toArray();
+    }
+
+    private function empleadosQuery(string $search = '', $empleadoActualId = null)
+    {
+        return Empleado::query()
+            ->select('id', 'nombre', 'apellido', 'dni', 'num_empleado')
+            ->where(function ($query) use ($empleadoActualId) {
+                $query->whereDoesntHave('user');
+
+                if ($empleadoActualId) {
+                    $query->orWhere('id', $empleadoActualId);
+                }
+            })
+            ->when($search, function ($query) use ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('nombre', 'like', '%' . $search . '%')
+                        ->orWhere('apellido', 'like', '%' . $search . '%')
+                        ->orWhere('dni', 'like', '%' . $search . '%')
+                        ->orWhere('num_empleado', 'like', '%' . $search . '%');
+                });
+            })
+            ->orderBy('nombre')
+            ->orderBy('apellido');
+    }
+
+    private function formatearEmpleadoOption(Empleado $empleado): array
+    {
+        $identificador = $empleado->dni ?: $empleado->num_empleado;
+
+        return [
+            'id' => $empleado->id,
+            'text' => trim($empleado->nombre . ' ' . $empleado->apellido)
+                . ($identificador ? ' - ' . $identificador : ''),
+        ];
     }
 
     public function update()
@@ -347,7 +391,9 @@ class Usuarios extends Component
         $this->email = '';
         $this->profile_photo_path = '';
         $this->password = '';
+        $this->idEmpleado = null;
         $this->selectedRoles = [];
+        $this->cargarEmpleadosIniciales();
     }
 
     public function sortBy($field)
