@@ -42,6 +42,79 @@
                     </select>
                     <x-input-error for="idInstitucion" class="mt-2" />
                 </div>
+
+                <div class="border-t border-zinc-200 dark:border-zinc-700 pt-4">
+                    <h3 class="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                        {{ __('Roles (Usuarios)') }}
+                    </h3>
+                    <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                        {{ __('Asignación opcional de usuarios por rol dentro de la unidad ejecutora.') }}
+                    </p>
+                </div>
+
+                <div>
+                    <x-label for="idAsistenteEstrategico" value="{{ __('Asistente Estratégico') }}" />
+                    <select
+                        id="idAsistenteEstrategico"
+                        wire:model="idAsistenteEstrategico"
+                        class="mt-1 block w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm"
+                    >
+                        <option value="">{{ __('-- Seleccionar --') }}</option>
+                        @foreach($users as $user)
+                            @php($nombreEmpleado = preg_replace('/\s+/', ' ', trim($user->empleado->nombre . ' ' . $user->empleado->apellido)))
+                            <option value="{{ $user->id }}">{{ $nombreEmpleado }}</option>
+                        @endforeach
+                    </select>
+                    <x-input-error for="idAsistenteEstrategico" class="mt-2" />
+                </div>
+
+                <div>
+                    <x-label for="idAdministrador" value="{{ __('Administrador') }}" />
+                    <select
+                        id="idAdministrador"
+                        wire:model="idAdministrador"
+                        class="mt-1 block w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm"
+                    >
+                        <option value="">{{ __('-- Seleccionar --') }}</option>
+                        @foreach($users as $user)
+                            @php($nombreEmpleado = preg_replace('/\s+/', ' ', trim($user->empleado->nombre . ' ' . $user->empleado->apellido)))
+                            <option value="{{ $user->id }}">{{ $nombreEmpleado }}</option>
+                        @endforeach
+                    </select>
+                    <x-input-error for="idAdministrador" class="mt-2" />
+                </div>
+
+                <div>
+                    <x-label for="idEncargadoCompra" value="{{ __('Encargado de Compra') }}" />
+                    <select
+                        id="idEncargadoCompra"
+                        wire:model="idEncargadoCompra"
+                        class="mt-1 block w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm"
+                    >
+                        <option value="">{{ __('-- Seleccionar --') }}</option>
+                        @foreach($users as $user)
+                            @php($nombreEmpleado = preg_replace('/\s+/', ' ', trim($user->empleado->nombre . ' ' . $user->empleado->apellido)))
+                            <option value="{{ $user->id }}">{{ $nombreEmpleado }}</option>
+                        @endforeach
+                    </select>
+                    <x-input-error for="idEncargadoCompra" class="mt-2" />
+                </div>
+
+                <div>
+                    <x-label for="idDirectorDecano" value="{{ __('Director / Decano') }}" />
+                    <select
+                        id="idDirectorDecano"
+                        wire:model="idDirectorDecano"
+                        class="mt-1 block w-full border-gray-300 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-300 focus:border-indigo-500 dark:focus:border-indigo-600 focus:ring-indigo-500 dark:focus:ring-indigo-600 rounded-md shadow-sm"
+                    >
+                        <option value="">{{ __('-- Seleccionar --') }}</option>
+                        @foreach($users as $user)
+                            @php($nombreEmpleado = preg_replace('/\s+/', ' ', trim($user->empleado->nombre . ' ' . $user->empleado->apellido)))
+                            <option value="{{ $user->id }}">{{ $nombreEmpleado }}</option>
+                        @endforeach
+                    </select>
+                    <x-input-error for="idDirectorDecano" class="mt-2" />
+                </div>
             </div>
         </x-slot>
 

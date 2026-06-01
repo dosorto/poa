@@ -71,6 +71,10 @@
                     ['key' => 'descripcion', 'label' => 'Descripción', 'sortable' => false],
                     ['key' => 'estructura', 'label' => 'Estructura', 'sortable' => true],
                     ['key' => 'institucion', 'label' => 'Institución', 'sortable' => false],
+                    ['key' => 'asistente', 'label' => 'Asistente Estratégico', 'sortable' => false],
+                    ['key' => 'admin', 'label' => 'Administrador', 'sortable' => false],
+                    ['key' => 'compras', 'label' => 'Encargado Compra', 'sortable' => false],
+                    ['key' => 'director', 'label' => 'Director / Decano', 'sortable' => false],
                     ['key' => 'actions', 'label' => 'Acciones', 'sortable' => false]
                 ]"
                 empty-message="{{ __('No se encontraron unidades ejecutoras')}}"
@@ -96,6 +100,46 @@
                         <td class="px-6 py-4 whitespace-nowrap text-zinc-900 dark:text-zinc-300">
                             {{ $unidadEjecutora->institucion->nombre ?? 'Sin institución' }}
                         </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-zinc-900 dark:text-zinc-300">
+                            @if($unidadEjecutora->asistenteEstrategico)
+                                <div class="flex flex-col">
+                                    <span class="text-sm font-medium">{{ $unidadEjecutora->asistenteEstrategico->name }}</span>
+                                    <span class="text-xs text-zinc-500 dark:text-zinc-400">{{ $unidadEjecutora->asistenteEstrategico->email }}</span>
+                                </div>
+                            @else
+                                <span class="text-sm text-zinc-500 dark:text-zinc-400">—</span>
+                            @endif
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-zinc-900 dark:text-zinc-300">
+                            @if($unidadEjecutora->administrador)
+                                <div class="flex flex-col">
+                                    <span class="text-sm font-medium">{{ $unidadEjecutora->administrador->name }}</span>
+                                    <span class="text-xs text-zinc-500 dark:text-zinc-400">{{ $unidadEjecutora->administrador->email }}</span>
+                                </div>
+                            @else
+                                <span class="text-sm text-zinc-500 dark:text-zinc-400">—</span>
+                            @endif
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-zinc-900 dark:text-zinc-300">
+                            @if($unidadEjecutora->encargadoCompra)
+                                <div class="flex flex-col">
+                                    <span class="text-sm font-medium">{{ $unidadEjecutora->encargadoCompra->name }}</span>
+                                    <span class="text-xs text-zinc-500 dark:text-zinc-400">{{ $unidadEjecutora->encargadoCompra->email }}</span>
+                                </div>
+                            @else
+                                <span class="text-sm text-zinc-500 dark:text-zinc-400">—</span>
+                            @endif
+                        </td>
+                        <td class="px-6 py-4 whitespace-nowrap text-zinc-900 dark:text-zinc-300">
+                            @if($unidadEjecutora->directorDecano)
+                                <div class="flex flex-col">
+                                    <span class="text-sm font-medium">{{ $unidadEjecutora->directorDecano->name }}</span>
+                                    <span class="text-xs text-zinc-500 dark:text-zinc-400">{{ $unidadEjecutora->directorDecano->email }}</span>
+                                </div>
+                            @else
+                                <span class="text-sm text-zinc-500 dark:text-zinc-400">—</span>
+                            @endif
+                        </td>
                         <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <div class="flex space-x-2">
                                 @can('configuracion.unidades-ejecutoras.editar')
@@ -120,7 +164,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="6" class="px-6 py-4 text-center text-zinc-500 dark:text-zinc-400">
+                        <td colspan="10" class="px-6 py-4 text-center text-zinc-500 dark:text-zinc-400">
                             {{ __('No se encontraron unidades ejecutoras') }}
                         </td>
                     </tr>

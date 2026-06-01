@@ -4,6 +4,7 @@ namespace App\Models\UnidadEjecutora;
 use App\Models\BaseModel;
 use App\Models\Instituciones\Institucion;
 use App\Models\Departamento\Departamento;
+use App\Models\User;
 
 class UnidadEjecutora extends BaseModel
 {
@@ -14,6 +15,10 @@ class UnidadEjecutora extends BaseModel
         'descripcion',
         'estructura',
         'idInstitucion',
+        'idAsistenteEstrategico',
+        'idAdministrador',
+        'idEncargadoCompra',
+        'idDirectorDecano',
         // Los campos de auditoría ya están en BaseModel
     ];
 
@@ -39,5 +44,25 @@ class UnidadEjecutora extends BaseModel
     public function empleados()
     {
         return $this->hasMany(\App\Models\Empleados\Empleado::class, 'idUnidadEjecutora');
+    }
+
+    public function asistenteEstrategico()
+    {
+        return $this->belongsTo(User::class, 'idAsistenteEstrategico');
+    }
+
+    public function administrador()
+    {
+        return $this->belongsTo(User::class, 'idAdministrador');
+    }
+
+    public function encargadoCompra()
+    {
+        return $this->belongsTo(User::class, 'idEncargadoCompra');
+    }
+
+    public function directorDecano()
+    {
+        return $this->belongsTo(User::class, 'idDirectorDecano');
     }
 }

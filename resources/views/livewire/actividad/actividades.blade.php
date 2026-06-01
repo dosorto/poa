@@ -170,6 +170,7 @@
                 sort-direction="{{ $sortDirection }}" 
                 :columns="[
                     ['key' => 'nombre', 'label' => 'Actividad', 'sortable' => true],
+                    ['key' => 'correlativo', 'label' => 'Correlativo', 'sortable' => true],
                     ['key' => 'tipo', 'label' => 'Tipo'],
                     ['key' => 'pei', 'label' => 'Vinculación PEI'],
                     ['key' => 'estado', 'label' => 'Estado'],
@@ -190,6 +191,11 @@
                                         {{ Str::limit($actividad->descripcion, 60) }}
                                     </div>
                                 @endif
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <div class="text-sm text-zinc-900 dark:text-zinc-100 font-mono">
+                                    {{ $actividad->correlativo_formateado ?? $actividad->correlativo ?? 'N/A' }}
+                                </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <span class="text-sm text-zinc-900 dark:text-zinc-100">
@@ -276,7 +282,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="px-6 py-12 text-center text-zinc-500 dark:text-zinc-400">
+                            <td colspan="6" class="px-6 py-12 text-center text-zinc-500 dark:text-zinc-400">
                                 No se encontraron actividades
                             </td>
                         </tr>
@@ -323,6 +329,10 @@
                             </div>
                             
                             <div class="text-sm text-zinc-600 dark:text-zinc-400 space-y-2 mb-3">
+                                <div>
+                                    <span class="font-medium">Correlativo:</span>
+                                    <span class="font-mono">{{ $actividad->correlativo_formateado ?? $actividad->correlativo ?? 'N/A' }}</span>
+                                </div>
                                 <div>
                                     <span class="font-medium">Tipo:</span> {{ $actividad->tipo->tipo ?? 'N/A' }}
                                 </div>

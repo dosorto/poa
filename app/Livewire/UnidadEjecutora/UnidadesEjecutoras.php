@@ -4,6 +4,7 @@ namespace App\Livewire\UnidadEjecutora;
 
 use App\Models\UnidadEjecutora\UnidadEjecutora;
 use App\Models\Instituciones\Institucion;
+use App\Models\User;
 use Livewire\Component;
 use Livewire\WithPagination;
 use Livewire\Attributes\Layout;
@@ -19,6 +20,10 @@ class UnidadesEjecutoras extends Component
     public $descripcion;
     public $estructura;
     public $idInstitucion;
+    public $idAsistenteEstrategico;
+    public $idAdministrador;
+    public $idEncargadoCompra;
+    public $idDirectorDecano;
     public $unidadEjecutoraId;
     public $search = '';
     public $perPage = 10;
@@ -29,12 +34,17 @@ class UnidadesEjecutoras extends Component
     public $unidadEjecutoraToDelete;
     public $errorMessage = '';
     public $showErrorModal = false;
+    public $users = [];
 
     protected $rules = [
         'name' => 'required|min:3|max:255',
         'descripcion' => 'nullable|max:1000',
         'estructura' => 'required|max:50',
         'idInstitucion' => 'required|exists:institucions,id',
+        'idAsistenteEstrategico' => 'nullable|exists:users,id',
+        'idAdministrador' => 'nullable|exists:users,id',
+        'idEncargadoCompra' => 'nullable|exists:users,id',
+        'idDirectorDecano' => 'nullable|exists:users,id',
     ];
 
     protected $messages = [
@@ -96,6 +106,10 @@ class UnidadesEjecutoras extends Component
         $this->descripcion = '';
         $this->estructura = '';
         $this->idInstitucion = '';
+        $this->idAsistenteEstrategico = null;
+        $this->idAdministrador = null;
+        $this->idEncargadoCompra = null;
+        $this->idDirectorDecano = null;
         $this->unidadEjecutoraId = null;
         $this->resetValidation();
     }
@@ -124,6 +138,10 @@ class UnidadesEjecutoras extends Component
         $this->descripcion = is_array($this->descripcion) ? '' : trim($this->descripcion ?? '');
         $this->estructura = is_array($this->estructura) ? '' : trim($this->estructura ?? '');
         $this->idInstitucion = is_array($this->idInstitucion) ? null : $this->idInstitucion;
+        $this->idAsistenteEstrategico = is_array($this->idAsistenteEstrategico) ? null : ($this->idAsistenteEstrategico ?: null);
+        $this->idAdministrador = is_array($this->idAdministrador) ? null : ($this->idAdministrador ?: null);
+        $this->idEncargadoCompra = is_array($this->idEncargadoCompra) ? null : ($this->idEncargadoCompra ?: null);
+        $this->idDirectorDecano = is_array($this->idDirectorDecano) ? null : ($this->idDirectorDecano ?: null);
 
         $this->validate();
 
@@ -133,6 +151,10 @@ class UnidadesEjecutoras extends Component
                 'descripcion' => $this->descripcion,
                 'estructura' => $this->estructura,
                 'idInstitucion' => $this->idInstitucion,
+                'idAsistenteEstrategico' => $this->idAsistenteEstrategico,
+                'idAdministrador' => $this->idAdministrador,
+                'idEncargadoCompra' => $this->idEncargadoCompra,
+                'idDirectorDecano' => $this->idDirectorDecano,
                 'created_by' => auth()->id(),
                 'updated_by' => auth()->id(),
             ]);
@@ -157,6 +179,10 @@ class UnidadesEjecutoras extends Component
         $this->descripcion = $unidadEjecutora->descripcion;
         $this->estructura = $unidadEjecutora->estructura;
         $this->idInstitucion = $unidadEjecutora->idInstitucion;
+        $this->idAsistenteEstrategico = $unidadEjecutora->idAsistenteEstrategico ?? null;
+        $this->idAdministrador = $unidadEjecutora->idAdministrador ?? null;
+        $this->idEncargadoCompra = $unidadEjecutora->idEncargadoCompra ?? null;
+        $this->idDirectorDecano = $unidadEjecutora->idDirectorDecano ?? null;
 
         $this->openModal();
     }
@@ -220,12 +246,26 @@ class UnidadesEjecutoras extends Component
 
     public function render()
     {
+        $this->users = User::with('empleado:id,nombre,apellido')
+            ->join('empleados', 'users.idEmpleado', '=', 'empleados.id')
+            ->select('users.id', 'users.name', 'users.email', 'users.idEmpleado')
+            ->orderBy('empleados.nombre')
+            ->orderBy('empleados.apellido')
+            ->orderBy('users.name')
+            ->get();
+
         // Obtener institución del usuario autenticado
         $user = auth()->user();
         $userInstitucionId = $user->empleado?->unidadEjecutora?->idInstitucion;
         $userUE = $user->empleado?->idUnidadEjecutora;
 
-        $unidadesEjecutoras = UnidadEjecutora::with('institucion')
+        $unidadesEjecutoras = UnidadEjecutora::with([
+                'institucion',
+                'asistenteEstrategico',
+                'administrador',
+                'encargadoCompra',
+                'directorDecano',
+            ])
             // Filtrar por institución del usuario (solo muestra UEs de su institución)
             ->when($userInstitucionId, function ($query) use ($userInstitucionId) {
                 $query->where('idInstitucion', $userInstitucionId);
