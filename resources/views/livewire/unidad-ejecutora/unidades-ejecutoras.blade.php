@@ -103,7 +103,7 @@
                         <td class="px-6 py-4 whitespace-nowrap text-zinc-900 dark:text-zinc-300">
                             @if($unidadEjecutora->asistenteEstrategico)
                                 <div class="flex flex-col">
-                                    <span class="text-sm font-medium">{{ $unidadEjecutora->asistenteEstrategico->name }}</span>
+                                    <span class="text-sm font-medium">{{ $unidadEjecutora->asistenteEstrategico->empleado?->nombre ?? '' }} {{ $unidadEjecutora->asistenteEstrategico->empleado?->apellido ?? '' }}</span>
                                     <span class="text-xs text-zinc-500 dark:text-zinc-400">{{ $unidadEjecutora->asistenteEstrategico->email }}</span>
                                 </div>
                             @else
@@ -113,7 +113,7 @@
                         <td class="px-6 py-4 whitespace-nowrap text-zinc-900 dark:text-zinc-300">
                             @if($unidadEjecutora->administrador)
                                 <div class="flex flex-col">
-                                    <span class="text-sm font-medium">{{ $unidadEjecutora->administrador->name }}</span>
+                                    <span class="text-sm font-medium">{{ $unidadEjecutora->administrador->empleado?->nombre ?? '' }} {{ $unidadEjecutora->administrador->empleado?->apellido ?? '' }}</span>
                                     <span class="text-xs text-zinc-500 dark:text-zinc-400">{{ $unidadEjecutora->administrador->email }}</span>
                                 </div>
                             @else
@@ -123,7 +123,7 @@
                         <td class="px-6 py-4 whitespace-nowrap text-zinc-900 dark:text-zinc-300">
                             @if($unidadEjecutora->encargadoCompra)
                                 <div class="flex flex-col">
-                                    <span class="text-sm font-medium">{{ $unidadEjecutora->encargadoCompra->name }}</span>
+                                    <span class="text-sm font-medium">{{ $unidadEjecutora->encargadoCompra->empleado?->nombre ?? '' }} {{ $unidadEjecutora->encargadoCompra->empleado?->apellido ?? '' }}</span>
                                     <span class="text-xs text-zinc-500 dark:text-zinc-400">{{ $unidadEjecutora->encargadoCompra->email }}</span>
                                 </div>
                             @else
@@ -133,7 +133,7 @@
                         <td class="px-6 py-4 whitespace-nowrap text-zinc-900 dark:text-zinc-300">
                             @if($unidadEjecutora->directorDecano)
                                 <div class="flex flex-col">
-                                    <span class="text-sm font-medium">{{ $unidadEjecutora->directorDecano->name }}</span>
+                                    <span class="text-sm font-medium">{{ $unidadEjecutora->directorDecano->empleado?->nombre ?? '' }} {{ $unidadEjecutora->directorDecano->empleado?->apellido ?? '' }}</span>
                                     <span class="text-xs text-zinc-500 dark:text-zinc-400">{{ $unidadEjecutora->directorDecano->email }}</span>
                                 </div>
                             @else
