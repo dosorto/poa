@@ -34,7 +34,7 @@ class UnidadesEjecutoras extends Component
     public $unidadEjecutoraToDelete;
     public $errorMessage = '';
     public $showErrorModal = false;
-    public $users = [];
+    public $usersIniciales = [];
 
     protected $rules = [
         'name' => 'required|min:3|max:255',
@@ -63,6 +63,42 @@ class UnidadesEjecutoras extends Component
         'sortField' => ['except' => 'id'],
         'sortDirection' => ['except' => 'desc'],
     ];
+
+    public function mount()
+    {
+        $this->usersIniciales = $this->searchUsers('');
+    }
+
+    public function searchUsers($search = '')
+    {
+        return User::query()
+            ->whereNotNull('idEmpleado')
+            ->with(['empleado:id,nombre,apellido'])
+            ->when($search, function ($query) use ($search) {
+                $s = '%' . $search . '%';
+                $query->whereHas('empleado', function ($q) use ($s) {
+                    $q->where('nombre', 'like', $s)
+                        ->orWhere('apellido', 'like', $s);
+                })->orWhere('name', 'like', $s)
+                  ->orWhere('email', 'like', $s);
+            })
+            ->orderBy('name')
+            ->limit(30)
+            ->get(['id', 'name', 'email', 'idEmpleado'])
+            ->map(function ($user) {
+                $empleado = $user->empleado;
+                $nombreEmpleado = $empleado
+                    ? preg_replace('/\s+/', ' ', trim($empleado->nombre . ' ' . $empleado->apellido))
+                    : $user->name;
+
+                return [
+                    'id' => $user->id,
+                    'text' => $nombreEmpleado,
+                ];
+            })
+            ->values()
+            ->toArray();
+    }
 
     public function updatedName($value)
     {
@@ -246,14 +282,6 @@ class UnidadesEjecutoras extends Component
 
     public function render()
     {
-        $this->users = User::with('empleado:id,nombre,apellido')
-            ->join('empleados', 'users.idEmpleado', '=', 'empleados.id')
-            ->select('users.id', 'users.name', 'users.email', 'users.idEmpleado')
-            ->orderBy('empleados.nombre')
-            ->orderBy('empleados.apellido')
-            ->orderBy('users.name')
-            ->get();
-
         // Obtener institución del usuario autenticado
         $user = auth()->user();
         $userInstitucionId = $user->empleado?->unidadEjecutora?->idInstitucion;
