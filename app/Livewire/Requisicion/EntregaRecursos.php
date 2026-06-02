@@ -13,12 +13,15 @@ use App\Models\Actas\ActaEntrega;
 use App\Models\Actas\DetalleActaEntrega;
 use App\Models\Actas\TipoActaEntrega;
 use Livewire\Attributes\Layout;
+use Livewire\WithFileUploads;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
 
 #[Layout('layouts.app')]
 class EntregaRecursos extends Component
 {
+    use WithFileUploads;
+
     public $requisicionId;
     public $requisicion; 
     public $detalleRequisicion = [];
@@ -30,6 +33,8 @@ class EntregaRecursos extends Component
     public $cantidadEjecutada;
     public $montoUnitarioEjecutado;
     public $factura;
+    public $archivoFactura;
+    public $rutaArchivoFacturaActual;
     public $observacionEjecucion;
     public $fechaEjecucion;
 
@@ -50,6 +55,7 @@ class EntregaRecursos extends Component
         'cantidadEjecutada' => 'required|numeric|min:0',
         'montoUnitarioEjecutado' => 'required|numeric|min:0',
         'factura' => 'nullable|string|max:255',
+        'archivoFactura' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
         'observacionEjecucion' => 'nullable|string|max:500',
         'fechaEjecucion' => 'required|date',
     ];
@@ -61,6 +67,9 @@ class EntregaRecursos extends Component
         'montoUnitarioEjecutado.required' => 'El monto unitario es obligatorio.',
         'montoUnitarioEjecutado.numeric' => 'El monto debe ser un número.',
         'montoUnitarioEjecutado.min' => 'El monto debe ser mayor o igual a 0.',
+        'archivoFactura.file' => 'El archivo de factura debe ser un archivo válido.',
+        'archivoFactura.mimes' => 'El archivo de factura debe ser PDF, JPG, JPEG o PNG.',
+        'archivoFactura.max' => 'El archivo de factura no debe superar los 5 MB.',
         'fechaEjecucion.required' => 'La fecha de ejecución es obligatoria.',
         'fechaEjecucion.date' => 'La fecha debe ser válida.',
     ];
@@ -127,6 +136,7 @@ class EntregaRecursos extends Component
                 'detalle_tecnico' => $presupuesto->detalle_tecnico ?? '-',
                 'observacion' => $ultimaEjecucion->observacion ?? '-',
                 'factura' => $ultimaEjecucion->referenciaActaEntrega ?? '-',
+                'ruta_archivo_factura' => $ultimaEjecucion->ruta_archivo_factura ?? null,
                 'fecha_ejecucion' => $fechaEjecucion,
                 'cantidad' => $detalle->cantidad ?? '-',
                 'monto_requerido' => ($detalle->cantidad ?? 0) * ($presupuesto->costounitario ?? 0),
@@ -158,6 +168,8 @@ class EntregaRecursos extends Component
                 $this->cantidadEjecutada = $ultimaEjecucion->cant_ejecutada;
                 $this->montoUnitarioEjecutado = $ultimaEjecucion->monto_unitario_ejecutado;
                 $this->factura = $ultimaEjecucion->referenciaActaEntrega ?? '';
+                $this->archivoFactura = null;
+                $this->rutaArchivoFacturaActual = $ultimaEjecucion->ruta_archivo_factura ?? null;
                 $this->observacionEjecucion = $ultimaEjecucion->observacion ?? '';
                 $this->fechaEjecucion = $ultimaEjecucion->fechaEjecucion ? $ultimaEjecucion->fechaEjecucion->format('Y-m-d') : now()->format('Y-m-d');
             } else {
@@ -165,6 +177,8 @@ class EntregaRecursos extends Component
                 $this->cantidadEjecutada = 0;
                 $this->montoUnitarioEjecutado = $recurso['cantidad'] > 0 ? round($recurso['monto_requerido'] / $recurso['cantidad'], 2) : 0;
                 $this->factura = '';
+                $this->archivoFactura = null;
+                $this->rutaArchivoFacturaActual = null;
                 $this->observacionEjecucion = '';
                 $this->fechaEjecucion = now()->format('Y-m-d');
             }
@@ -236,10 +250,14 @@ class EntregaRecursos extends Component
 
             // Crear el detalle de ejecución presupuestaria
             $montoTotalEjecutado = $this->cantidadEjecutada * $this->montoUnitarioEjecutado;
+            $rutaArchivoFactura = $this->archivoFactura
+                ? $this->archivoFactura->store('facturas/ejecuciones', 'public')
+                : null;
             
             $detalleEjecucion = DetalleEjecucionPresupuestaria::create([
                 'observacion' => $this->observacionEjecucion,
                 'referenciaActaEntrega' => $this->factura,
+                'ruta_archivo_factura' => $rutaArchivoFactura,
                 'cant_ejecutada' => $this->cantidadEjecutada,
                 'monto_unitario_ejecutado' => $this->montoUnitarioEjecutado,
                 'monto_total_ejecutado' => $montoTotalEjecutado,
@@ -416,6 +434,8 @@ class EntregaRecursos extends Component
             'cantidadEjecutada',
             'montoUnitarioEjecutado',
             'factura',
+            'archivoFactura',
+            'rutaArchivoFacturaActual',
             'observacionEjecucion',
             'fechaEjecucion'
         ]);

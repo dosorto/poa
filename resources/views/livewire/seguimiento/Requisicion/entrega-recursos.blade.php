@@ -202,6 +202,28 @@
                         @enderror
                     </div>
 
+                    {{-- Archivo de factura --}}
+                    <div>
+                        <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">
+                            Archivo de factura:
+                        </label>
+                        <input type="file" wire:model="archivoFactura" accept=".pdf,.jpg,.jpeg,.png"
+                            class="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 dark:bg-zinc-800 dark:text-zinc-100 file:mr-4 file:rounded-md file:border-0 file:bg-blue-50 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-blue-700 hover:file:bg-blue-100" />
+                        <div wire:loading wire:target="archivoFactura"
+                            class="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
+                            Cargando archivo...
+                        </div>
+                        @if ($rutaArchivoFacturaActual)
+                            <a href="{{ asset('storage/' . $rutaArchivoFacturaActual) }}" target="_blank"
+                                class="inline-flex items-center mt-2 text-xs font-semibold text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
+                                Ver archivo actual
+                            </a>
+                        @endif
+                        @error('archivoFactura')
+                            <span class="text-red-500 text-xs mt-1 block">{{ $message }}</span>
+                        @enderror
+                    </div>
+
                     {{-- Total ejecutado --}}
                     <div
                         class="bg-green-50 dark:bg-green-900/20 rounded-lg p-4 border-2 border-green-300 dark:border-green-700">

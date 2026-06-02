@@ -18,6 +18,7 @@ class DetalleEjecucionPresupuestaria extends Model
     protected $fillable = [
         'observacion',
         'referenciaActaEntrega',
+        'ruta_archivo_factura',
         'cant_ejecutada',
         'monto_unitario_ejecutado',
         'monto_total_ejecutado',
