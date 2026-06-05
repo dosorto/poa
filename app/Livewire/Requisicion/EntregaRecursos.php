@@ -12,10 +12,12 @@ use App\Models\EjecucionPresupuestaria\EstadoEjecucionPresupuestaria;
 use App\Models\Actas\ActaEntrega;
 use App\Models\Actas\DetalleActaEntrega;
 use App\Models\Actas\TipoActaEntrega;
+use App\Services\RequisicionCorreoService;
 use Livewire\Attributes\Layout;
 use Livewire\WithFileUploads;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 #[Layout('layouts.app')]
 class EntregaRecursos extends Component
@@ -459,6 +461,8 @@ class EntregaRecursos extends Component
 
     public function finalizarRequisicion()
     {
+        $actaEntrega = null;
+
         try {
             DB::beginTransaction();
 
@@ -466,6 +470,7 @@ class EntregaRecursos extends Component
 
             // Verificar que el estado actual no sea "Finalizado"
             if ($requisicion->estado->estado === 'Finalizado') {
+                DB::rollBack();
                 session()->flash('error', 'Esta requisición ya está finalizada.');
                 return;
             }
@@ -509,10 +514,14 @@ class EntregaRecursos extends Component
                 ]);
 
                 // Crear Acta de Entrega
-                $this->crearActaEntrega($requisicion, $ejecucionPresupuestaria);
+                $actaEntrega = $this->crearActaEntrega($requisicion, $ejecucionPresupuestaria);
             }
 
             DB::commit();
+
+            if ($actaEntrega) {
+                app(RequisicionCorreoService::class)->enviarActaFinal($requisicion, $actaEntrega);
+            }
 
             // Recargar los datos
             $this->mount($this->requisicionId);
@@ -591,23 +600,26 @@ class EntregaRecursos extends Component
                         'idDetalleEjecucionPresupuestaria' => $detalleEjecucion->id,
                         'created_by' => Auth::id(),
                     ]);
+
+                    $totalDetallesCreados++;
                 }
             }
 
-            \Log::info('Detalles de acta creados', [
+            Log::info('Detalles de acta creados', [
                 'acta_id' => $actaEntrega->id,
-                'total_detalles' => $detallesEjecucion->count()
+                'total_detalles' => $totalDetallesCreados,
             ]);
 
             return $actaEntrega;
 
         } catch (\Exception $e) {
-            Log::info('Detalles de acta creados', [
-            'acta_id' => $actaEntrega->id,
-            'total_detalles' => $totalDetallesCreados,
-    ]);
+            Log::error('Error al crear acta de entrega final.', [
+                'requisicion_id' => $requisicion->id ?? null,
+                'ejecucion_presupuestaria_id' => $ejecucionPresupuestaria->id ?? null,
+                'error' => $e->getMessage(),
+            ]);
 
-    return $actaEntrega;
+            throw $e;
         }
     }
 

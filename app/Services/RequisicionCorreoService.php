@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Mail\RequisicionCreada;
+use App\Mail\RequisicionActaFinal;
 use App\Mail\RequisicionEstadoActualizado;
+use App\Models\Actas\ActaEntrega;
 use App\Models\Requisicion\Requisicion;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
@@ -62,6 +64,36 @@ class RequisicionCorreoService
             Log::error('Error al enviar correo de estado actualizado.', [
                 'requisicion_id' => $requisicion->id,
                 'nuevo_estado' => $nuevoEstado,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    public function enviarActaFinal(Requisicion $requisicion, ActaEntrega $actaEntrega): void
+    {
+        try {
+            $requisicion->loadMissing('creador');
+            $email = $requisicion->creador->email ?? null;
+
+            if (!$email) {
+                Log::warning('No se envio correo de acta final porque el creador no tiene email.', [
+                    'requisicion_id' => $requisicion->id,
+                    'acta_id' => $actaEntrega->id,
+                ]);
+                return;
+            }
+
+            Mail::to($email)->send(new RequisicionActaFinal($requisicion, $actaEntrega));
+
+            Log::info('Correo de acta final enviado.', [
+                'requisicion_id' => $requisicion->id,
+                'acta_id' => $actaEntrega->id,
+                'email' => $email,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Error al enviar correo de acta final.', [
+                'requisicion_id' => $requisicion->id,
+                'acta_id' => $actaEntrega->id,
                 'error' => $e->getMessage(),
             ]);
         }
