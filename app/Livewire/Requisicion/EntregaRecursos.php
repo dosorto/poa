@@ -520,7 +520,20 @@ class EntregaRecursos extends Component
             DB::commit();
 
             if ($actaEntrega) {
-                app(RequisicionCorreoService::class)->enviarActaFinal($requisicion, $actaEntrega);
+                \Log::info('Acta de entrega creada pero envío por correo deshabilitado.', [
+                    'requisicion_id' => $requisicion->id,
+                    'acta_id' => $actaEntrega->id,
+                ]);
+            }
+
+            // Enviar también el PDF de la requisición con el estado actualizado
+            try {
+                app(RequisicionCorreoService::class)->enviarEstadoActualizado($requisicion, 'Finalizado');
+            } catch (\Throwable $e) {
+                \Log::error('Error al enviar correo de requisición finalizada:', [
+                    'requisicion_id' => $requisicion->id,
+                    'error' => $e->getMessage(),
+                ]);
             }
 
             // Recargar los datos
