@@ -792,13 +792,13 @@
                         <div>
                             <x-searchable-select
                                 wire:model="nuevoPresupuesto.idRecurso"
-                            wire:key="presupuesto-recurso-select-{{ $presupuestoEditandoId ?: 'nuevo' }}"
+                                wire:key="presupuesto-recurso-select-{{ $presupuestoEditandoId ?: 'nuevo' }}-{{ (string) ($nuevoPresupuesto['idRecurso'] ?? '') }}"
                                 label="Recurso"
                                 :required="true"
                                 placeholder="Buscar recurso..."
                                 defaultText="Seleccione un recurso"
                                 searchAction="searchRecursosPresupuesto"
-                                :options="collect($recursosDisponibles)->map(fn($recurso) => ['id' => $recurso['id'], 'text' => $recurso['nombre']])->toArray()"
+                                :options="$recursosPresupuestoOptions"
                                 :error="$errors->first('nuevoPresupuesto.idRecurso')"
                             />
                         </div>

@@ -104,6 +104,8 @@ class GestionarActividad extends Component
     // Presupuesto de tareas
     public $presupuestosTarea = [];
     public $recursosDisponibles = [];
+    public $recursosPresupuestoOptions = [];
+    public $recursoPresupuestoOption = null;
     public $detallesTecnicosPorRecurso = [];
     public $fuentesFinanciamiento = [];
     public $unidadesMedida = [];
@@ -1314,6 +1316,8 @@ class GestionarActividad extends Component
         $this->meses = Mes::whereHas('trimestre', function($query) {
             // Aquí podrías filtrar por año si es necesario
         })->orderBy('mes')->get()->toArray();
+
+        $this->refreshRecursosPresupuestoOptions();
     }
 
     public function updatedNuevoPresupuestoCostounitario()
@@ -1321,9 +1325,56 @@ class GestionarActividad extends Component
         $this->calcularTotal();
     }
 
+    private function refreshRecursosPresupuestoOptions(): void
+    {
+        $options = collect($this->recursosDisponibles)->map(fn ($recurso) => [
+            'id' => (string) ($recurso['id'] ?? ''),
+            'text' => $recurso['nombre'] ?? '',
+        ])->filter(fn ($option) => $option['id'] !== '');
+
+        if ($this->recursoPresupuestoOption) {
+            $selectedId = (string) $this->recursoPresupuestoOption['id'];
+
+            if (! $options->contains(fn ($option) => (string) $option['id'] === $selectedId)) {
+                $options->prepend([
+                    'id' => $selectedId,
+                    'text' => $this->recursoPresupuestoOption['text'],
+                ]);
+            }
+        }
+
+        $this->recursosPresupuestoOptions = $options->values()->toArray();
+    }
+
+    private function syncRecursoPresupuestoOption($value): void
+    {
+        if ($value === '' || $value === null) {
+            $this->recursoPresupuestoOption = null;
+            $this->refreshRecursosPresupuestoOptions();
+            return;
+        }
+
+        $recurso = TareaHistorico::query()
+            ->select('id', 'nombre')
+            ->find((int) $value);
+
+        if (! $recurso) {
+            $this->recursoPresupuestoOption = null;
+            $this->refreshRecursosPresupuestoOptions();
+            return;
+        }
+
+        $this->recursoPresupuestoOption = [
+            'id' => (string) $recurso->id,
+            'text' => $recurso->nombre,
+        ];
+
+        $this->refreshRecursosPresupuestoOptions();
+    }
+
     public function searchRecursosPresupuesto($search = '')
     {
-        return TareaHistorico::query()
+        $results = TareaHistorico::query()
             ->select('id', 'nombre')
             ->when($search, function ($query) use ($search) {
                 $query->where('nombre', 'like', '%' . $search . '%');
@@ -1331,11 +1382,24 @@ class GestionarActividad extends Component
             ->orderBy('nombre')
             ->limit(30)
             ->get()
-            ->map(fn($recurso) => [
-                'id' => $recurso->id,
+            ->map(fn ($recurso) => [
+                'id' => (string) $recurso->id,
                 'text' => $recurso->nombre,
             ])
             ->toArray();
+
+        if ($this->recursoPresupuestoOption) {
+            $selectedId = (string) $this->recursoPresupuestoOption['id'];
+
+            if (! collect($results)->contains(fn ($option) => (string) $option['id'] === $selectedId)) {
+                array_unshift($results, [
+                    'id' => $selectedId,
+                    'text' => $this->recursoPresupuestoOption['text'],
+                ]);
+            }
+        }
+
+        return $results;
     }
 
     public function searchUnidadesMedida($search = '')
@@ -1379,8 +1443,13 @@ class GestionarActividad extends Component
 
     public function updatedNuevoPresupuestoIdRecurso($value)
     {
+        $this->nuevoPresupuesto['idRecurso'] = ($value !== '' && $value !== null)
+            ? (string) $value
+            : '';
+
+        $this->syncRecursoPresupuestoOption($this->nuevoPresupuesto['idRecurso']);
         $this->nuevoPresupuesto['detalle_tecnico'] = '';
-        $this->loadDetallesTecnicosPorRecurso($value);
+        $this->loadDetallesTecnicosPorRecurso($this->nuevoPresupuesto['idRecurso']);
     }
 
     public function updatedNuevoPresupuestoIdfuente($value)
@@ -1651,6 +1720,8 @@ class GestionarActividad extends Component
             'total' => 0
         ];
         $this->presupuestoEditandoId = null;
+        $this->recursoPresupuestoOption = null;
+        $this->refreshRecursosPresupuestoOptions();
         $this->detallesTecnicosPorRecurso = [];
     }
 
@@ -1676,7 +1747,7 @@ class GestionarActividad extends Component
         
         $this->presupuestoEditandoId = $presupuestoId;
         $this->nuevoPresupuesto = [
-            'idRecurso' => $recurso ? $recurso->id : '',
+            'idRecurso' => $recurso ? (string) $recurso->id : '',
             'detalle_tecnico' => $presupuesto->detalle_tecnico,
             'idfuente' => $presupuesto->idfuente,
             'idunidad' => $presupuesto->idunidad,
@@ -1685,7 +1756,8 @@ class GestionarActividad extends Component
             'idMes' => $presupuesto->idMes,
             'total' => $presupuesto->total
         ];
-        
+        $this->syncRecursoPresupuestoOption($this->nuevoPresupuesto['idRecurso']);
+
         // Actualizar la info del techo con la fuente seleccionada
         $tarea = Tarea::find($this->tareaSeleccionada);
         if ($tarea) {
