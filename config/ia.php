@@ -79,8 +79,8 @@ return [
         ],
         'ollama' => [
             'model' => env('OLLAMA_MODEL', 'qwen2.5:7b-instruct-q8_0'),
-            'temperature' => 0.7,
-            'max_tokens' => 1200,
+            'temperature' => 0.2,
+            'max_tokens' => 600,
         ],
     ],
 

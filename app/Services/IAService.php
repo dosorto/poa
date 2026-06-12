@@ -230,7 +230,7 @@ class IAService
             'model' => $modelName
         ]);
 
-        $response = Http::timeout(180)
+        $response = Http::timeout(60)
             ->withHeaders([
                 'Content-Type' => 'application/json',
             ])
@@ -246,8 +246,8 @@ class IAService
                         'content' => $prompt
                     ]
                 ],
-                'temperature' => 0.7,
-                'max_tokens' => 1200,
+                'temperature' => 0.3,
+                'max_tokens' => 600,
             ]);
 
         if (!$response->successful()) {
