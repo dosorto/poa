@@ -462,21 +462,18 @@ class Requisicion extends Component
 
         $presupuestoId = (int) $this->recursoEnModalCantidad['id'];
         $disponible = $this->obtenerCantidadDisponible($presupuestoId);
-        $cantidad = (int) $this->cantidadTemporal;
+        $cantidad = $this->cantidadTemporal;
 
         unset($this->erroresCantidad[$presupuestoId]);
 
-        if ($cantidad <= 0) {
-            $cantidad = 1;
+        if ($cantidad === null || $cantidad === '' || (int) $cantidad <= 0) {
             $this->erroresCantidad[$presupuestoId] = 'Ingrese una cantidad mayor a 0.';
+            return;
         }
 
-        if ($disponible > 0 && $cantidad > $disponible) {
-            $cantidad = $disponible;
+        if ($disponible > 0 && (int) $cantidad > $disponible) {
             $this->erroresCantidad[$presupuestoId] = "La cantidad no puede superar el disponible ({$disponible}).";
         }
-
-        $this->cantidadTemporal = $cantidad;
     }
 
     public function confirmarOrdenYAgregar()

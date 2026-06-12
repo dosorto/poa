@@ -51,7 +51,7 @@
                         step="1"
                         max="{{ $recursoEnModalCantidad['cantidad_disponible'] ?? '' }}"
                         inputmode="numeric"
-                        wire:model.live.debounce.300ms="cantidadTemporal"
+                        wire:model="cantidadTemporal"
                         class="w-full" />
                     @if (!empty($erroresCantidad[$recursoId]))
                         <span class="text-xs text-red-500">{{ $erroresCantidad[$recursoId] }}</span>

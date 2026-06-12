@@ -12,13 +12,18 @@ use App\Models\EjecucionPresupuestaria\EstadoEjecucionPresupuestaria;
 use App\Models\Actas\ActaEntrega;
 use App\Models\Actas\DetalleActaEntrega;
 use App\Models\Actas\TipoActaEntrega;
+use App\Services\RequisicionCorreoService;
 use Livewire\Attributes\Layout;
+use Livewire\WithFileUploads;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Log;
 
 #[Layout('layouts.app')]
 class EntregaRecursos extends Component
 {
+    use WithFileUploads;
+
     public $requisicionId;
     public $requisicion; 
     public $detalleRequisicion = [];
@@ -30,6 +35,8 @@ class EntregaRecursos extends Component
     public $cantidadEjecutada;
     public $montoUnitarioEjecutado;
     public $factura;
+    public $archivoFactura;
+    public $rutaArchivoFacturaActual;
     public $observacionEjecucion;
     public $fechaEjecucion;
 
@@ -50,6 +57,7 @@ class EntregaRecursos extends Component
         'cantidadEjecutada' => 'required|numeric|min:0',
         'montoUnitarioEjecutado' => 'required|numeric|min:0',
         'factura' => 'nullable|string|max:255',
+        'archivoFactura' => 'nullable|file|mimes:pdf,jpg,jpeg,png|max:5120',
         'observacionEjecucion' => 'nullable|string|max:500',
         'fechaEjecucion' => 'required|date',
     ];
@@ -61,6 +69,9 @@ class EntregaRecursos extends Component
         'montoUnitarioEjecutado.required' => 'El monto unitario es obligatorio.',
         'montoUnitarioEjecutado.numeric' => 'El monto debe ser un número.',
         'montoUnitarioEjecutado.min' => 'El monto debe ser mayor o igual a 0.',
+        'archivoFactura.file' => 'El archivo de factura debe ser un archivo válido.',
+        'archivoFactura.mimes' => 'El archivo de factura debe ser PDF, JPG, JPEG o PNG.',
+        'archivoFactura.max' => 'El archivo de factura no debe superar los 5 MB.',
         'fechaEjecucion.required' => 'La fecha de ejecución es obligatoria.',
         'fechaEjecucion.date' => 'La fecha debe ser válida.',
     ];
@@ -127,6 +138,7 @@ class EntregaRecursos extends Component
                 'detalle_tecnico' => $presupuesto->detalle_tecnico ?? '-',
                 'observacion' => $ultimaEjecucion->observacion ?? '-',
                 'factura' => $ultimaEjecucion->referenciaActaEntrega ?? '-',
+                'ruta_archivo_factura' => $ultimaEjecucion->ruta_archivo_factura ?? null,
                 'fecha_ejecucion' => $fechaEjecucion,
                 'cantidad' => $detalle->cantidad ?? '-',
                 'monto_requerido' => ($detalle->cantidad ?? 0) * ($presupuesto->costounitario ?? 0),
@@ -158,6 +170,8 @@ class EntregaRecursos extends Component
                 $this->cantidadEjecutada = $ultimaEjecucion->cant_ejecutada;
                 $this->montoUnitarioEjecutado = $ultimaEjecucion->monto_unitario_ejecutado;
                 $this->factura = $ultimaEjecucion->referenciaActaEntrega ?? '';
+                $this->archivoFactura = null;
+                $this->rutaArchivoFacturaActual = $ultimaEjecucion->ruta_archivo_factura ?? null;
                 $this->observacionEjecucion = $ultimaEjecucion->observacion ?? '';
                 $this->fechaEjecucion = $ultimaEjecucion->fechaEjecucion ? $ultimaEjecucion->fechaEjecucion->format('Y-m-d') : now()->format('Y-m-d');
             } else {
@@ -165,6 +179,8 @@ class EntregaRecursos extends Component
                 $this->cantidadEjecutada = 0;
                 $this->montoUnitarioEjecutado = $recurso['cantidad'] > 0 ? round($recurso['monto_requerido'] / $recurso['cantidad'], 2) : 0;
                 $this->factura = '';
+                $this->archivoFactura = null;
+                $this->rutaArchivoFacturaActual = null;
                 $this->observacionEjecucion = '';
                 $this->fechaEjecucion = now()->format('Y-m-d');
             }
@@ -236,10 +252,14 @@ class EntregaRecursos extends Component
 
             // Crear el detalle de ejecución presupuestaria
             $montoTotalEjecutado = $this->cantidadEjecutada * $this->montoUnitarioEjecutado;
+            $rutaArchivoFactura = $this->archivoFactura
+                ? $this->archivoFactura->store('facturas/ejecuciones', 'public')
+                : null;
             
             $detalleEjecucion = DetalleEjecucionPresupuestaria::create([
                 'observacion' => $this->observacionEjecucion,
                 'referenciaActaEntrega' => $this->factura,
+                'ruta_archivo_factura' => $rutaArchivoFactura,
                 'cant_ejecutada' => $this->cantidadEjecutada,
                 'monto_unitario_ejecutado' => $this->montoUnitarioEjecutado,
                 'monto_total_ejecutado' => $montoTotalEjecutado,
@@ -416,6 +436,8 @@ class EntregaRecursos extends Component
             'cantidadEjecutada',
             'montoUnitarioEjecutado',
             'factura',
+            'archivoFactura',
+            'rutaArchivoFacturaActual',
             'observacionEjecucion',
             'fechaEjecucion'
         ]);
@@ -439,6 +461,8 @@ class EntregaRecursos extends Component
 
     public function finalizarRequisicion()
     {
+        $actaEntrega = null;
+
         try {
             DB::beginTransaction();
 
@@ -446,6 +470,7 @@ class EntregaRecursos extends Component
 
             // Verificar que el estado actual no sea "Finalizado"
             if ($requisicion->estado->estado === 'Finalizado') {
+                DB::rollBack();
                 session()->flash('error', 'Esta requisición ya está finalizada.');
                 return;
             }
@@ -489,10 +514,27 @@ class EntregaRecursos extends Component
                 ]);
 
                 // Crear Acta de Entrega
-                $this->crearActaEntrega($requisicion, $ejecucionPresupuestaria);
+                $actaEntrega = $this->crearActaEntrega($requisicion, $ejecucionPresupuestaria);
             }
 
             DB::commit();
+
+            if ($actaEntrega) {
+                \Log::info('Acta de entrega creada pero envío por correo deshabilitado.', [
+                    'requisicion_id' => $requisicion->id,
+                    'acta_id' => $actaEntrega->id,
+                ]);
+            }
+
+            // Enviar también el PDF de la requisición con el estado actualizado
+            try {
+                app(RequisicionCorreoService::class)->enviarEstadoActualizado($requisicion, 'Finalizado');
+            } catch (\Throwable $e) {
+                \Log::error('Error al enviar correo de requisición finalizada:', [
+                    'requisicion_id' => $requisicion->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
 
             // Recargar los datos
             $this->mount($this->requisicionId);
@@ -571,23 +613,26 @@ class EntregaRecursos extends Component
                         'idDetalleEjecucionPresupuestaria' => $detalleEjecucion->id,
                         'created_by' => Auth::id(),
                     ]);
+
+                    $totalDetallesCreados++;
                 }
             }
 
-            \Log::info('Detalles de acta creados', [
+            Log::info('Detalles de acta creados', [
                 'acta_id' => $actaEntrega->id,
-                'total_detalles' => $detallesEjecucion->count()
+                'total_detalles' => $totalDetallesCreados,
             ]);
 
             return $actaEntrega;
 
         } catch (\Exception $e) {
-            Log::info('Detalles de acta creados', [
-            'acta_id' => $actaEntrega->id,
-            'total_detalles' => $totalDetallesCreados,
-    ]);
+            Log::error('Error al crear acta de entrega final.', [
+                'requisicion_id' => $requisicion->id ?? null,
+                'ejecucion_presupuestaria_id' => $ejecucionPresupuestaria->id ?? null,
+                'error' => $e->getMessage(),
+            ]);
 
-    return $actaEntrega;
+            throw $e;
         }
     }
 

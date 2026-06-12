@@ -5,6 +5,12 @@ namespace App\Observers;
 use App\Models\Requisicion\Requisicion;
 use App\Models\EjecucionPresupuestaria\EjecucionPresupuestaria;
 use App\Models\EjecucionPresupuestaria\EjecucionPresupuestariaLog;
+use App\Models\Actas\ActaEntrega;
+use App\Models\Actas\DetalleActaEntrega;
+use App\Models\Actas\TipoActaEntrega;
+use App\Models\Requisicion\DetalleRequisicion;
+use App\Models\EjecucionPresupuestaria\DetalleEjecucionPresupuestaria;
+use App\Services\RequisicionCorreoService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
 
@@ -168,6 +174,68 @@ class RequisicionObserver
                 'requisicion_id' => $requisicion->id,
                 'ejecucion_id' => $ejecucion->id
             ]);
+
+            // Crear Acta de Entrega si no existe y enviar correo con PDF
+            try {
+                $actaExistente = ActaEntrega::where('idRequisicion', $requisicion->id)->first();
+
+                if (!$actaExistente) {
+                    $tipoActaFinal = TipoActaEntrega::where('tipo', 'Final')->first();
+                    if ($tipoActaFinal) {
+                        $ultimaActa = ActaEntrega::latest('id')->first();
+                        $numeroCorrelativo = $ultimaActa ? ($ultimaActa->id + 1) : 1;
+                        $correlativo = 'ACTA-' . str_pad($numeroCorrelativo, 6, '0', STR_PAD_LEFT) . '-' . date('Y');
+
+                        $actaEntrega = ActaEntrega::create([
+                            'correlativo' => $correlativo,
+                            'fecha_extendida' => now(),
+                            'idTipoActaEntrega' => $tipoActaFinal->id,
+                            'idRequisicion' => $requisicion->id,
+                            'idEjecucionPresupuestaria' => $ejecucion->id,
+                            'created_by' => Auth::id(),
+                        ]);
+
+                        // Crear detalles del acta basados en las ejecuciones
+                        $detallesRequisicion = DetalleRequisicion::where('idRequisicion', $requisicion->id)->get();
+                        foreach ($detallesRequisicion as $detalleRequisicion) {
+                            $detallesEjecucion = DetalleEjecucionPresupuestaria::where('idDetalleRequisicion', $detalleRequisicion->id)
+                                ->where('idEjecucion', $ejecucion->id)
+                                ->get();
+
+                            foreach ($detallesEjecucion as $detalleEjecucion) {
+                                DetalleActaEntrega::create([
+                                    'log_cant_ejecutada' => $detalleEjecucion->cant_ejecutada,
+                                    'log_monto_unitario_ejecutado' => $detalleEjecucion->monto_unitario_ejecutado,
+                                    'log_fechaEjecucion' => $detalleEjecucion->fechaEjecucion,
+                                    'idActaEntrega' => $actaEntrega->id,
+                                    'idRequisicion' => $requisicion->id,
+                                    'idDetalleRequisicion' => $detalleRequisicion->id,
+                                    'idEjecucionPresupuestaria' => $ejecucion->id,
+                                    'idDetalleEjecucionPresupuestaria' => $detalleEjecucion->id,
+                                    'created_by' => Auth::id(),
+                                ]);
+                            }
+                        }
+
+                        // No enviar acta por correo (configuración actual)
+                        Log::info('Acta de entrega creada pero no enviada por correo (configuración).', [
+                            'requisicion_id' => $requisicion->id,
+                            'acta_id' => $actaEntrega->id,
+                        ]);
+                    }
+                } else {
+                    // Acta ya existe; no reenviamos por correo según configuración
+                    Log::info('Acta de entrega ya existe; no se reenviará por correo (configuración).', [
+                        'requisicion_id' => $requisicion->id,
+                        'acta_id' => $actaExistente->id,
+                    ]);
+                }
+            } catch (\Throwable $e) {
+                Log::error('Error creando/enviando acta en observer', [
+                    'requisicion_id' => $requisicion->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
 
         } catch (\Exception $e) {
             Log::error('Error al finalizar ejecución presupuestaria', [
