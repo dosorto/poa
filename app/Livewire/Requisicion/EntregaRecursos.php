@@ -165,19 +165,27 @@ class EntregaRecursos extends Component
             $ultimaEjecucion = DetalleEjecucionPresupuestaria::where('idDetalleRequisicion', $detalleRecursoId)
                 ->orderBy('created_at', 'desc')
                 ->first();
+
+            $cantidadRequerida = (float) ($recurso['cantidad'] ?? 0);
+            $cantidadYaEjecutada = (float) ($recurso['entregado'] ?? 0);
+            $cantidadPendiente = max($cantidadRequerida - $cantidadYaEjecutada, 0);
+            $montoUnitarioRequerido = $cantidadRequerida > 0
+                ? round(($recurso['monto_requerido'] ?? 0) / $cantidadRequerida, 2)
+                : 0;
             
             if ($ultimaEjecucion) {
-                $this->cantidadEjecutada = $ultimaEjecucion->cant_ejecutada;
-                $this->montoUnitarioEjecutado = $ultimaEjecucion->monto_unitario_ejecutado;
-                $this->factura = $ultimaEjecucion->referenciaActaEntrega ?? '';
+                // Cada guardado registra una nueva ejecución, por eso se propone lo pendiente.
+                $this->cantidadEjecutada = $cantidadPendiente;
+                $this->montoUnitarioEjecutado = $ultimaEjecucion->monto_unitario_ejecutado ?? $montoUnitarioRequerido;
+                $this->factura = '';
                 $this->archivoFactura = null;
                 $this->rutaArchivoFacturaActual = $ultimaEjecucion->ruta_archivo_factura ?? null;
-                $this->observacionEjecucion = $ultimaEjecucion->observacion ?? '';
-                $this->fechaEjecucion = $ultimaEjecucion->fechaEjecucion ? $ultimaEjecucion->fechaEjecucion->format('Y-m-d') : now()->format('Y-m-d');
+                $this->observacionEjecucion = '';
+                $this->fechaEjecucion = now()->format('Y-m-d');
             } else {
                 // Si no hay ejecuciones previas, usar valores por defecto
-                $this->cantidadEjecutada = 0;
-                $this->montoUnitarioEjecutado = $recurso['cantidad'] > 0 ? round($recurso['monto_requerido'] / $recurso['cantidad'], 2) : 0;
+                $this->cantidadEjecutada = $cantidadPendiente;
+                $this->montoUnitarioEjecutado = $montoUnitarioRequerido;
                 $this->factura = '';
                 $this->archivoFactura = null;
                 $this->rutaArchivoFacturaActual = null;
@@ -222,6 +230,7 @@ class EntregaRecursos extends Component
                 $ejecucionPresupuestaria = EjecucionPresupuestaria::create([
                     'observacion' => 'Ejecución iniciada al registrar entrega de recursos',
                     'fechaInicioEjecucion' => now(),
+                    'idRequisicion' => $requisicion->id,
                     'idEstadoEjecucion' => 1, // Parcialmente ejecutado
                     'created_by' => Auth::id(),
                 ]);
@@ -275,9 +284,6 @@ class EntregaRecursos extends Component
             // Actualizar el detalle de requisición con la última información
             $detalleRequisicion->update([
                 'entregado' => $totalNuevo,
-                'factura' => $this->factura,
-                'observacion' => $this->observacionEjecucion,
-                'fecha_ejecucion' => $this->fechaEjecucion,
             ]);
 
             // Actualizar el costo de ejecución en el presupuesto (último monto unitario)
@@ -391,7 +397,10 @@ class EntregaRecursos extends Component
         
         $todosEjecutados = true;
         foreach ($detalles as $detalle) {
-            if ($detalle->entregado < $detalle->cantidad) {
+            $cantidadEjecutada = DetalleEjecucionPresupuestaria::where('idDetalleRequisicion', $detalle->id)
+                ->sum('cant_ejecutada');
+
+            if ($cantidadEjecutada < $detalle->cantidad) {
                 $todosEjecutados = false;
                 break;
             }

@@ -331,6 +331,16 @@
                 ])
             @endif
 
+            @if ($errorMessage)
+                @include('rk.default.notifications.notification-alert', [
+                    'type' => 'error',
+                    'dismissible' => true,
+                    'icon' => true,
+                    'duration' => 8,
+                    'slot' => $errorMessage,
+                ])
+            @endif
+
             <div class="flex items-center justify-between mb-4">
                 <h1 class="text-2xl font-bold text-zinc-800 dark:text-zinc-100">Entrega de Recursos</h1>
                 <div class="flex gap-2">

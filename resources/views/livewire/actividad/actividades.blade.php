@@ -194,7 +194,7 @@
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <div class="text-sm text-zinc-900 dark:text-zinc-100 font-mono">
-                                    {{ $actividad->correlativo_formateado ?? $actividad->correlativo ?? 'N/A' }}
+                                    {{ $actividad->correlativo ?? 'N/A' }}
                                 </div>
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap">
@@ -331,7 +331,7 @@
                             <div class="text-sm text-zinc-600 dark:text-zinc-400 space-y-2 mb-3">
                                 <div>
                                     <span class="font-medium">Correlativo:</span>
-                                    <span class="font-mono">{{ $actividad->correlativo_formateado ?? $actividad->correlativo ?? 'N/A' }}</span>
+                                    <span class="font-mono">{{ $actividad->correlativo ?? 'N/A' }}</span>
                                 </div>
                                 <div>
                                     <span class="font-medium">Tipo:</span> {{ $actividad->tipo->tipo ?? 'N/A' }}
