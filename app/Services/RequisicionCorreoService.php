@@ -15,21 +15,22 @@ class RequisicionCorreoService
     public function enviarCreada(Requisicion $requisicion): void
     {
         try {
-            $requisicion->loadMissing('creador');
-            $email = $requisicion->creador->email ?? null;
+            $emails = $this->destinatariosRequisicion($requisicion);
 
-            if (!$email) {
-                Log::warning('No se envio correo de requisicion creada porque el creador no tiene email.', [
+            if (empty($emails)) {
+                Log::warning('No se envio correo de requisicion creada porque no hay destinatarios con email.', [
                     'requisicion_id' => $requisicion->id,
                 ]);
                 return;
             }
 
-            Mail::to($email)->send(new RequisicionCreada($requisicion));
+            foreach ($emails as $email) {
+                Mail::to($email)->send(new RequisicionCreada($requisicion));
+            }
 
             Log::info('Correo de requisicion creada enviado.', [
                 'requisicion_id' => $requisicion->id,
-                'email' => $email,
+                'emails' => $emails,
             ]);
         } catch (\Throwable $e) {
             Log::error('Error al enviar correo de requisicion creada.', [
@@ -42,23 +43,24 @@ class RequisicionCorreoService
     public function enviarEstadoActualizado(Requisicion $requisicion, string $nuevoEstado): void
     {
         try {
-            $requisicion->loadMissing('creador');
-            $email = $requisicion->creador->email ?? null;
+            $emails = $this->destinatariosRequisicion($requisicion);
 
-            if (!$email) {
-                Log::warning('No se envio correo de estado actualizado porque el creador no tiene email.', [
+            if (empty($emails)) {
+                Log::warning('No se envio correo de estado actualizado porque no hay destinatarios con email.', [
                     'requisicion_id' => $requisicion->id,
                     'nuevo_estado' => $nuevoEstado,
                 ]);
                 return;
             }
 
-            Mail::to($email)->send(new RequisicionEstadoActualizado($requisicion, $nuevoEstado));
+            foreach ($emails as $email) {
+                Mail::to($email)->send(new RequisicionEstadoActualizado($requisicion, $nuevoEstado));
+            }
 
             Log::info('Correo de estado actualizado enviado.', [
                 'requisicion_id' => $requisicion->id,
                 'nuevo_estado' => $nuevoEstado,
-                'email' => $email,
+                'emails' => $emails,
             ]);
         } catch (\Throwable $e) {
             Log::error('Error al enviar correo de estado actualizado.', [
@@ -72,23 +74,24 @@ class RequisicionCorreoService
     public function enviarActaFinal(Requisicion $requisicion, ActaEntrega $actaEntrega): void
     {
         try {
-            $requisicion->loadMissing('creador');
-            $email = $requisicion->creador->email ?? null;
+            $emails = $this->destinatariosRequisicion($requisicion);
 
-            if (!$email) {
-                Log::warning('No se envio correo de acta final porque el creador no tiene email.', [
+            if (empty($emails)) {
+                Log::warning('No se envio correo de acta final porque no hay destinatarios con email.', [
                     'requisicion_id' => $requisicion->id,
                     'acta_id' => $actaEntrega->id,
                 ]);
                 return;
             }
 
-            Mail::to($email)->send(new RequisicionActaFinal($requisicion, $actaEntrega));
+            foreach ($emails as $email) {
+                Mail::to($email)->send(new RequisicionActaFinal($requisicion, $actaEntrega));
+            }
 
             Log::info('Correo de acta final enviado.', [
                 'requisicion_id' => $requisicion->id,
                 'acta_id' => $actaEntrega->id,
-                'email' => $email,
+                'emails' => $emails,
             ]);
         } catch (\Throwable $e) {
             Log::error('Error al enviar correo de acta final.', [
@@ -97,5 +100,23 @@ class RequisicionCorreoService
                 'error' => $e->getMessage(),
             ]);
         }
+    }
+
+    private function destinatariosRequisicion(Requisicion $requisicion): array
+    {
+        $requisicion->loadMissing([
+            'creador',
+            'departamento.unidadEjecutora.administrador',
+        ]);
+
+        return collect([
+            $requisicion->creador?->email,
+            $requisicion->departamento?->unidadEjecutora?->administrador?->email,
+        ])
+            ->filter()
+            ->map(fn ($email) => strtolower(trim($email)))
+            ->unique()
+            ->values()
+            ->all();
     }
 }
