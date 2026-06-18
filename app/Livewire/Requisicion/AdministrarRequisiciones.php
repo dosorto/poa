@@ -404,7 +404,7 @@ class AdministrarRequisiciones extends Component
             \Log::info('Descargando acta PDF desde Livewire', ['requisicion_id' => $requisicionId]);
 
             $requisicion = Requisicion::with([
-                'departamento',
+                'departamento.unidadEjecutora.directorDecano.empleado',
                 'estado',
                 'creador.empleado',
                 'detalleRequisiciones.presupuesto.unidadMedida'

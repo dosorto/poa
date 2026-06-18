@@ -16,7 +16,9 @@ class ActaEntregaController extends Controller
     private function prepararDatosActa($requisicionId): array
     {
         $requisicion = Requisicion::with([
-            'departamento', 'estado', 'creador.empleado',
+            'departamento.unidadEjecutora.directorDecano.empleado',
+            'estado',
+            'creador.empleado',
             'detalleRequisiciones.presupuesto.unidadMedida'
         ])->findOrFail($requisicionId);
 
@@ -55,7 +57,10 @@ class ActaEntregaController extends Controller
 
     public function descargarIntermediaPdf($requisicionId)
     {
-        $requisicion = \App\Models\Requisicion\Requisicion::findOrFail($requisicionId);
+        $requisicion = \App\Models\Requisicion\Requisicion::with([
+            'departamento.unidadEjecutora.directorDecano.empleado',
+            'creador.empleado',
+        ])->findOrFail($requisicionId);
 
         // Buscar o crear, pero SIEMPRE actualizar los detalles
         $actaEntrega = \App\Models\Actas\ActaEntrega::where('idRequisicion', $requisicionId)
@@ -125,7 +130,10 @@ class ActaEntregaController extends Controller
     
     public function descargarIntermediaPdfDownload($requisicionId)
     {
-        $requisicion = \App\Models\Requisicion\Requisicion::findOrFail($requisicionId);
+        $requisicion = \App\Models\Requisicion\Requisicion::with([
+            'departamento.unidadEjecutora.directorDecano.empleado',
+            'creador.empleado',
+        ])->findOrFail($requisicionId);
 
         $actaEntrega = \App\Models\Actas\ActaEntrega::with([
             'detalles.detalleRequisicion.presupuesto'

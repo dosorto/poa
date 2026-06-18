@@ -132,6 +132,13 @@
     </style>
 </head>
 <body>
+    @php
+        $directorDecano = $requisicion->departamento?->unidadEjecutora?->directorDecano;
+        $directorEmpleado = $directorDecano?->empleado;
+        $nombreDirectorDecano = $directorEmpleado
+            ? trim(($directorEmpleado->nombres ?? $directorEmpleado->nombre ?? '') . ' ' . ($directorEmpleado->apellidos ?? $directorEmpleado->apellido ?? ''))
+            : ($directorDecano->name ?? 'CELEO EMILIO ARIAS');
+    @endphp
     <div class="logo-row" style="margin-top:0; padding-top:0;">
         <img class="logo-img" src="{{ public_path('Logo/logounah.png') }}" alt="Logo UNAH">
     </div>
@@ -224,7 +231,7 @@
     <div class="signatures">
         <div class="signature-block">
             <div class="signature-line">
-                <strong>CELEO EMILIO ARIAS</strong><br>
+                <strong>{{ strtoupper($nombreDirectorDecano) }}</strong><br>
                 Director<br>
                 UNAH - CURLP
             </div>

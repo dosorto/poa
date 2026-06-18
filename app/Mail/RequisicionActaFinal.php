@@ -22,7 +22,7 @@ class RequisicionActaFinal extends Mailable
         public ActaEntrega $actaEntrega
     ) {
         $this->requisicion->loadMissing([
-            'departamento',
+            'departamento.unidadEjecutora.directorDecano.empleado',
             'estado',
             'creador.empleado',
             'detalleRequisiciones.presupuesto.unidadMedida',
