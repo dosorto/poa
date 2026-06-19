@@ -3,6 +3,7 @@
 namespace App\Livewire\Tarea;
 
 use Livewire\Component;
+use Livewire\WithFileUploads;
 use Livewire\WithPagination;
 use Livewire\Attributes\Renderless;
 use App\Models\Tareas\TareaHistorico;
@@ -16,6 +17,7 @@ use Livewire\Attributes\Layout;
 #[Layout('layouts.app')]
     class TareasHistorico extends Component
     {
+        use WithFileUploads;
         use WithPagination;
 
         protected string $layout = 'layouts.app';
@@ -32,10 +34,13 @@ use Livewire\Attributes\Layout;
         public $sortDirection = 'desc';
         public $showModal = false;
         public $showDeleteModal = false;
+        public $showImportModal = false;
         public $recursoToDelete;
         public $errorMessage = '';
         public $showErrorModal = false;
         public $isEditing = false;
+        public $csvFile = null;
+        public array $importErrors = [];
 
         protected $rules = [
             'nombre' => 'required|min:3',
@@ -101,6 +106,12 @@ use Livewire\Attributes\Layout;
             $this->openModal();
         }
 
+        public function openImportModal()
+        {
+            $this->resetImportFields();
+            $this->showImportModal = true;
+        }
+
         public function openModal()
         {
             $this->showModal = true;
@@ -110,6 +121,19 @@ use Livewire\Attributes\Layout;
         {
             $this->showModal = false;
             $this->resetInputFields();
+        }
+
+        public function closeImportModal()
+        {
+            $this->showImportModal = false;
+            $this->resetImportFields();
+        }
+
+        public function resetImportFields()
+        {
+            $this->csvFile = null;
+            $this->importErrors = [];
+            $this->resetValidation(['csvFile']);
         }
 
         public function closeDeleteModal()
@@ -156,6 +180,134 @@ use Livewire\Attributes\Layout;
                 $this->errorMessage = 'Error al guardar: ' . $e->getMessage();
                 $this->showErrorModal = true;
             }
+        }
+
+        public function importCsv()
+        {
+            $this->validate([
+                'csvFile' => 'required|file|mimes:csv,txt|max:5120',
+            ], [
+                'csvFile.required' => 'Debes seleccionar un archivo CSV.',
+                'csvFile.file' => 'El archivo seleccionado no es válido.',
+                'csvFile.mimes' => 'El archivo debe ser CSV.',
+                'csvFile.max' => 'El archivo no debe superar 5 MB.',
+            ]);
+
+            $path = $this->csvFile->getRealPath();
+            $handle = fopen($path, 'r');
+
+            if ($handle === false) {
+                $this->addError('csvFile', 'No se pudo leer el archivo CSV.');
+                return;
+            }
+
+            $headers = fgetcsv($handle);
+
+            if ($headers === false) {
+                fclose($handle);
+                $this->addError('csvFile', 'El archivo CSV está vacío.');
+                return;
+            }
+
+            $headers = array_map(fn ($header) => trim((string) $header, " \t\n\r\0\x0B\xEF\xBB\xBF"), $headers);
+            $requiredHeaders = ['nombre', 'idobjeto', 'idunidad', 'idProcesoCompra', 'idCubs'];
+            $missingHeaders = array_diff($requiredHeaders, $headers);
+
+            if (! empty($missingHeaders)) {
+                fclose($handle);
+                $this->addError('csvFile', 'Faltan columnas requeridas: ' . implode(', ', $missingHeaders) . '.');
+                return;
+            }
+
+            $headerIndexes = array_flip($headers);
+            $created = 0;
+            $updated = 0;
+            $skipped = 0;
+            $rowNumber = 1;
+            $this->importErrors = [];
+
+            while (($row = fgetcsv($handle)) !== false) {
+                $rowNumber++;
+
+                if ($this->isEmptyCsvRow($row)) {
+                    continue;
+                }
+
+                $nombre = trim((string) ($row[$headerIndexes['nombre']] ?? ''));
+                $idobjeto = trim((string) ($row[$headerIndexes['idobjeto']] ?? ''));
+                $idunidad = trim((string) ($row[$headerIndexes['idunidad']] ?? ''));
+                $idProcesoCompra = trim((string) ($row[$headerIndexes['idProcesoCompra']] ?? ''));
+                $idCubs = trim((string) ($row[$headerIndexes['idCubs']] ?? ''));
+
+                $error = $this->validateImportRow($nombre, $idobjeto, $idunidad, $idProcesoCompra, $idCubs);
+
+                if ($error) {
+                    $skipped++;
+                    $this->importErrors[] = "Fila {$rowNumber}: {$error}";
+                    continue;
+                }
+
+                $recurso = TareaHistorico::updateOrCreate([
+                    'nombre' => $nombre,
+                    'idobjeto' => (int) $idobjeto,
+                    'idunidad' => (int) $idunidad,
+                    'idProcesoCompra' => (int) $idProcesoCompra,
+                    'idCubs' => (int) $idCubs,
+                ], []);
+
+                $recurso->wasRecentlyCreated ? $created++ : $updated++;
+            }
+
+            fclose($handle);
+
+            $message = "Importación completada. Creados: {$created}. Actualizados: {$updated}. Omitidos: {$skipped}.";
+
+            if (! empty($this->importErrors)) {
+                session()->flash('error', $message . ' Revisa los errores en el modal.');
+                return;
+            }
+
+            session()->flash('message', $message);
+            $this->closeImportModal();
+            $this->resetPage();
+        }
+
+        private function validateImportRow(string $nombre, string $idobjeto, string $idunidad, string $idProcesoCompra, string $idCubs): ?string
+        {
+            if ($nombre === '' || $idobjeto === '' || $idunidad === '' || $idProcesoCompra === '' || $idCubs === '') {
+                return 'todos los campos son obligatorios.';
+            }
+
+            if (strlen($nombre) < 3) {
+                return 'el nombre debe tener al menos 3 caracteres.';
+            }
+
+            if (! ctype_digit($idobjeto) || ! ctype_digit($idunidad) || ! ctype_digit($idProcesoCompra) || ! ctype_digit($idCubs)) {
+                return 'los IDs deben ser números enteros.';
+            }
+
+            if (! ObjetoGasto::whereKey((int) $idobjeto)->exists()) {
+                return "el objeto de gasto {$idobjeto} no existe.";
+            }
+
+            if (! UnidadMedida::whereKey((int) $idunidad)->exists()) {
+                return "la unidad de medida {$idunidad} no existe.";
+            }
+
+            if (! ProcesoCompra::whereKey((int) $idProcesoCompra)->exists()) {
+                return "el proceso de compra {$idProcesoCompra} no existe.";
+            }
+
+            if (! Cub::whereKey((int) $idCubs)->exists()) {
+                return "el CUBS {$idCubs} no existe.";
+            }
+
+            return null;
+        }
+
+        private function isEmptyCsvRow(array $row): bool
+        {
+            return collect($row)->every(fn ($value) => trim((string) $value) === '');
         }
 
         public function edit($id)
