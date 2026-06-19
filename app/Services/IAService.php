@@ -12,52 +12,69 @@ class IAService
 
     public function __construct()
     {
-        $this->provider = config('ia.provider', 'openai'); // 'openai' o 'gemini'
+        $this->provider = config('ia.provider', 'openai');
         $this->apiKey = $this->getApiKey();
     }
 
     protected function getApiKey()
     {
-        return $this->provider === 'gemini' 
-            ? config('ia.gemini_api_key') 
-            : config('openai.api_key');
+        return match ($this->provider) {
+            'gemini' => config('ia.gemini_api_key'),
+            'ollama' => config('ia.ollama_api_key'),
+            default => config('openai.api_key'),
+        };
     }
 
     public function generarActividad($nombreActividad, $contextoInstitucion = 'Universidad Nacional Autónoma de Honduras')
     {
         $prompt = $this->construirPrompt($nombreActividad, $contextoInstitucion);
+        $startedAt = microtime(true);
 
         try {
-            if ($this->provider === 'gemini') {
-                return $this->generarConGemini($prompt);
-            } else {
-                return $this->generarConOpenAI($prompt);
-            }
+            $data = match ($this->provider) {
+                'gemini' => $this->generarConGemini($prompt),
+                'ollama' => $this->generarConOllama($prompt),
+                'openai' => $this->generarConOpenAI($prompt),
+                default => throw new \InvalidArgumentException("Proveedor de IA no soportado: {$this->provider}"),
+            };
+
+            Log::info('Generación con IA completada', [
+                'provider' => $this->getProviderName(),
+                'duration_ms' => (int) ((microtime(true) - $startedAt) * 1000),
+            ]);
+
+            return $data;
         } catch (\Exception $e) {
-            Log::error("Error en IAService ({$this->provider}): " . $e->getMessage());
+            Log::error("Error en IAService ({$this->provider}): " . $e->getMessage(), [
+                'duration_ms' => (int) ((microtime(true) - $startedAt) * 1000),
+            ]);
             throw $e;
         }
     }
 
     protected function construirPrompt($nombreActividad, $contextoInstitucion)
     {
-        return "Eres un experto en planificación estratégica institucional para {$contextoInstitucion}.
+        return <<<PROMPT
+Genera una actividad POA para "{$contextoInstitucion}" a partir de este nombre: "{$nombreActividad}".
 
-                Basándote en el siguiente nombre de actividad: '{$nombreActividad}'
-
-                Genera un JSON con los siguientes campos para una actividad del Plan Operativo Anual (POA):
-                - descripcion: Una descripción detallada y profesional de la actividad (2-3 oraciones), explicando qué se hará y cómo contribuye a los objetivos institucionales
-                - resultadoActividad: El resultado concreto y medible que se espera obtener de la actividad (1 oración clara)
-                - poblacion_objetivo: La población específica que se beneficiará (ej: estudiantes universitarios, docentes, personal administrativo, comunidad educativa, personal de servicio, etc.)
-                - medio_verificacion: Cómo se verificará el cumplimiento de la actividad (ej: informes técnicos, actas de reunión, registros fotográficos, listas de asistencia, etc.)
-                - indicadores: Un array de **2-3 indicadores altamente específicos (cuantitativos, de gestión o de producto)** que reflejen directamente el cumplimiento de entregables o procesos (similar a 'Porcentaje de personal docente con carga académica verificada'). **Evita indicadores de satisfacción que requieran encuestas**. Cada indicador debe tener:
-                  * nombre: Nombre conciso y muy descriptivo del indicador, siguiendo el formato de oración que detalla el entregable (máximo 100 caracteres).
-                  * descripcion: Descripción clara de **qué mide el indicador y su método de cálculo**. **Incluye la fórmula solo si es un porcentaje o si el cálculo es complejo** (Ej: (Informes entregados / Informes planificados) * 100).
-                  * cantidadPlanificada: **LA META PLANIFICADA. Valor numérico o porcentual exacto que se debe alcanzar para considerar cumplido el indicador** (ej: 100 si la meta es alcanzar el 100%, 5 si la meta es entregar 5 documentos)
-                  * isCantidad: **true** si el indicador mide una **cantidad absoluta** (conteo de unidades), **false** en caso contrario.
-                  * isPorcentaje: **true** si el indicador mide una **tasa o proporción** (porcentaje), **false** en caso contrario.
-
-                Responde ÚNICAMENTE con el JSON válido, sin markdown ni explicaciones adicionales.";
+Devuelve solo JSON válido con esta estructura exacta:
+{
+  "descripcion": "1-2 oraciones profesionales",
+  "resultadoActividad": "1 resultado concreto y medible",
+  "poblacion_objetivo": "grupo beneficiado",
+  "medio_verificacion": "evidencias de cumplimiento",
+  "indicadores": [
+    {
+      "nombre": "máximo 100 caracteres",
+      "descripcion": "qué mide y fórmula solo si aplica",
+      "cantidadPlanificada": 100,
+      "isCantidad": true,
+      "isPorcentaje": false
+    }
+  ]
+}
+Incluye 2-3 indicadores altamente específicos, cuantitativos, de gestión o producto. Evita indicadores de satisfacción o encuestas. Cada indicador debe conservar exactamente estos campos: nombre, descripcion, cantidadPlanificada, isCantidad, isPorcentaje.
+PROMPT;
     }
 
     protected function generarConOpenAI($prompt)
@@ -67,15 +84,17 @@ class IAService
         }
 
         $client = \OpenAI::client($this->apiKey);
+        $config = config('ia.models.openai');
 
         $response = $client->chat()->create([
-            'model' => 'gpt-4o-mini',
+            'model' => $config['model'],
             'messages' => [
                 ['role' => 'system', 'content' => 'Eres un asistente experto en planificación estratégica institucional. Respondes únicamente con JSON válido sin formato markdown.'],
                 ['role' => 'user', 'content' => $prompt]
             ],
-            'temperature' => 0.7,
-            'max_tokens' => 600
+            'temperature' => (float) $config['temperature'],
+            'max_tokens' => (int) $config['max_tokens'],
+            'response_format' => ['type' => 'json_object'],
         ]);
 
         $content = $response->choices[0]->message->content;
@@ -84,10 +103,8 @@ class IAService
 
     protected function generarConGemini($prompt)
     {
-        // El nombre del modelo debe ser sin "models/" ya que la URL ya lo incluye
-        $modelName = config('ia.models.gemini.model', 'gemini-2.5-flash');
-        
-        // La URL correcta para Gemini API v1 con la API key en el query string
+        $config = config('ia.models.gemini');
+        $modelName = $config['model'];
         $url = "https://generativelanguage.googleapis.com/v1/models/{$modelName}:generateContent?key={$this->apiKey}";
 
         $response = Http::timeout(30)
@@ -103,8 +120,9 @@ class IAService
                     ]
                 ],
                 'generationConfig' => [
-                    'temperature' => 0.7,
-                    'maxOutputTokens' => 1800,
+                    'temperature' => (float) $config['temperature'],
+                    'maxOutputTokens' => (int) $config['max_tokens'],
+                    'responseMimeType' => 'application/json',
                 ],
             ]);
 
@@ -119,10 +137,7 @@ class IAService
             throw new \Exception("Error de Gemini API: {$error}");
         }
 
-        // Log de la respuesta completa para debugging
         $responseData = $response->json();
-        Log::info('Respuesta completa de Gemini', ['response' => $responseData]);
-
         $content = $response->json('candidates.0.content.parts.0.text');
         
         if (!$content) {
@@ -131,6 +146,58 @@ class IAService
                 'candidates' => $response->json('candidates')
             ]);
             throw new \Exception('No se recibió respuesta válida de Gemini. Por favor, revisa los logs para más detalles.');
+        }
+
+        return $this->procesarRespuesta($content);
+    }
+
+    protected function generarConOllama($prompt)
+    {
+        $config = config('ia.models.ollama');
+        $host = rtrim(config('ia.ollama_host'), '/');
+        $url = "{$host}/api/chat";
+
+        $request = Http::timeout((int) $config['timeout'])
+            ->withHeaders(['Content-Type' => 'application/json']);
+
+        if (!empty($this->apiKey)) {
+            $request = $request->withToken($this->apiKey);
+        }
+
+        Log::info('Conectando a Ollama API', [
+            'url' => $url,
+            'model' => $config['model'],
+        ]);
+
+        $response = $request->post($url, [
+            'model' => $config['model'],
+            'stream' => false,
+            'format' => 'json',
+            'messages' => [
+                ['role' => 'system', 'content' => 'Responde únicamente JSON válido. No uses markdown.'],
+                ['role' => 'user', 'content' => $prompt],
+            ],
+            'options' => [
+                'temperature' => (float) $config['temperature'],
+                'num_predict' => (int) $config['max_tokens'],
+            ],
+        ]);
+
+        if (!$response->successful()) {
+            Log::error('Error de Ollama API', [
+                'status' => $response->status(),
+                'body' => $response->body(),
+            ]);
+            throw new \Exception("Error de Ollama API: {$response->body()}");
+        }
+
+        $content = $response->json('message.content');
+
+        if (!$content) {
+            Log::error('No se encontró contenido en la respuesta de Ollama', [
+                'response' => $response->json(),
+            ]);
+            throw new \Exception('No se recibió respuesta válida de Ollama.');
         }
 
         return $this->procesarRespuesta($content);
@@ -146,6 +213,10 @@ class IAService
         
         $data = json_decode($content, true);
 
+        if (!$data && preg_match('/\{.*\}/s', $content, $matches)) {
+            $data = json_decode($matches[0], true);
+        }
+
         if (!$data) {
             Log::error('Error decodificando JSON', ['content' => $content]);
             throw new \Exception('No se pudo procesar la respuesta de la IA. Intente nuevamente.');
@@ -159,6 +230,23 @@ class IAService
             }
         }
 
+        if (is_array($data['poblacion_objetivo'])) {
+            $data['poblacion_objetivo'] = implode(', ', $data['poblacion_objetivo']);
+        }
+
+        $data['indicadores'] = collect($data['indicadores'] ?? [])
+            ->map(function ($indicador) {
+                return [
+                    'nombre' => (string) ($indicador['nombre'] ?? ''),
+                    'descripcion' => (string) ($indicador['descripcion'] ?? ''),
+                    'cantidadPlanificada' => $indicador['cantidadPlanificada'] ?? 0,
+                    'isCantidad' => (bool) ($indicador['isCantidad'] ?? false),
+                    'isPorcentaje' => (bool) ($indicador['isPorcentaje'] ?? false),
+                ];
+            })
+            ->values()
+            ->all();
+
         return $data;
     }
 
@@ -169,6 +257,10 @@ class IAService
 
     public function getProviderName()
     {
-        return $this->provider === 'gemini' ? 'Google Gemini' : 'OpenAI';
+        return match ($this->provider) {
+            'gemini' => 'Google Gemini',
+            'ollama' => 'Ollama (Local)',
+            default => 'OpenAI',
+        };
     }
 }
