@@ -409,10 +409,10 @@ class Actividades extends Component
 
             // Asignar los valores generados
            // $this->nombre = $this->nombreParaIA;
-            $this->descripcion = $data['descripcion'] ?? '';
-            $this->resultadoActividad = $data['resultadoActividad'] ?? '';
-            $this->poblacion_objetivo = $data['poblacion_objetivo'] ?? '';
-            $this->medio_verificacion = $data['medio_verificacion'] ?? '';
+            $this->descripcion = $this->normalizarTexto($data['descripcion'] ?? '');
+            $this->resultadoActividad = $this->normalizarTexto($data['resultadoActividad'] ?? '');
+            $this->poblacion_objetivo = $this->normalizarTexto($data['poblacion_objetivo'] ?? '');
+            $this->medio_verificacion = $this->normalizarTexto($data['medio_verificacion'] ?? '');
             $this->indicadoresGenerados = $data['indicadores'] ?? [];
 
             // Cerrar el panel de IA
@@ -588,12 +588,12 @@ class Actividades extends Component
             }
 
             $datos = [
-                'nombre' => $this->nombre,
-                'descripcion' => $this->descripcion,
+                'nombre' => $this->normalizarTexto($this->nombre),
+                'descripcion' => $this->normalizarTexto($this->descripcion),
                 'correlativo' => $this->correlativo,
-                'resultadoActividad' => $this->resultadoActividad,
-                'poblacion_objetivo' => $this->poblacion_objetivo,
-                'medio_verificacion' => $this->medio_verificacion,
+                'resultadoActividad' => $this->normalizarTexto($this->resultadoActividad),
+                'poblacion_objetivo' => $this->normalizarTexto($this->poblacion_objetivo),
+                'medio_verificacion' => $this->normalizarTexto($this->medio_verificacion),
                 'estado' => $this->estado,
                 'idPoa' => $this->idPoa,
                 'idPoaDepto' => $this->idPoaDepto,
@@ -681,6 +681,20 @@ class Actividades extends Component
             DB::rollBack();
             session()->flash('error', 'Error al guardar la actividad: ' . $e->getMessage());
         }
+    }
+
+    private function normalizarTexto($value): string
+    {
+        if (is_array($value)) {
+            return collect($value)
+                ->flatten()
+                ->filter(fn ($item) => is_scalar($item))
+                ->map(fn ($item) => trim((string) $item))
+                ->filter()
+                ->implode(', ');
+        }
+
+        return trim((string) ($value ?? ''));
     }
 
     public function confirmDelete($id)
