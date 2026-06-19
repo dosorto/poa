@@ -1504,7 +1504,7 @@ class GestionarActividad extends Component
         
         $this->validate([
             'nuevoPresupuesto.idRecurso' => 'required|exists:tareas_historicos,id',
-            'nuevoPresupuesto.detalle_tecnico' => 'required|string',
+            'nuevoPresupuesto.detalle_tecnico' => 'nullable|string',
             'nuevoPresupuesto.idfuente' => 'required|exists:fuente,id',
             'nuevoPresupuesto.idunidad' => 'required|exists:unidadmedidas,id',
             'nuevoPresupuesto.costounitario' => 'required|numeric|min:0',
@@ -1512,7 +1512,6 @@ class GestionarActividad extends Component
             'nuevoPresupuesto.idMes' => 'required|exists:mes,id'
         ], [
             'nuevoPresupuesto.idRecurso.required' => 'Debe seleccionar un recurso',
-            'nuevoPresupuesto.detalle_tecnico.required' => 'El detalle técnico es obligatorio',
             'nuevoPresupuesto.idfuente.required' => 'Debe seleccionar una fuente de financiamiento',
             'nuevoPresupuesto.idunidad.required' => 'Debe seleccionar una unidad de medida',
             'nuevoPresupuesto.costounitario.required' => 'El costo unitario es obligatorio',

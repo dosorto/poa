@@ -820,7 +820,7 @@
                             wire:model="nuevoPresupuesto.detalle_tecnico"
                             wire:key="detalle-tecnico-select-{{ $nuevoPresupuesto['idRecurso'] ?: 'empty' }}"
                             label="Detalle Tecnico"
-                            :required="true"
+                            :required="false"
                             placeholder="Buscar detalle tecnico..."
                             :defaultText="$nuevoPresupuesto['idRecurso'] ? 'Seleccione un detalle tecnico' : 'Primero seleccione un recurso'"
                             :options="$detallesTecnicosPorRecurso"

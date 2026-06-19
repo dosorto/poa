@@ -196,6 +196,8 @@
           
             {{-- Limpiar selección --}}
             <div
+                @mousedown.prevent="clearSelection()"
+                @touchstart.prevent="clearSelection()"
                 @click="clearSelection()"
                 class="cursor-pointer select-none py-2 pl-3 pr-9 hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-400 dark:text-zinc-500 italic text-sm"
             >
@@ -212,6 +214,8 @@
             {{-- Lista de opciones --}}
             <template x-for="option in displayOptions" :key="option.id">
                 <div
+                    @mousedown.prevent="selectOption(option.id, option.text)"
+                    @touchstart.prevent="selectOption(option.id, option.text)"
                     @click="selectOption(option.id, option.text)"
                     class="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-indigo-50 dark:hover:bg-indigo-900/20"
                     :class="selected == option.id
