@@ -8,11 +8,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | Define qué proveedor de IA utilizar para generar actividades.
-<<<<<<< HEAD
     | Opciones disponibles: 'openai', 'gemini', 'qwen', 'ollama'
-=======
-    | Opciones disponibles: 'openai', 'gemini', 'ollama'
->>>>>>> origin/test
     |
     */
 
@@ -32,7 +28,6 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-<<<<<<< HEAD
     | Configuración de Qwen Local
     |--------------------------------------------------------------------------
     |
@@ -56,17 +51,6 @@ return [
 
     'ollama_api_key' => env('OLLAMA_API_KEY', ''),
     'ollama_host' => env('OLLAMA_HOST', 'http://localhost:11434'),
-=======
-    | Configuración de Ollama
-    |--------------------------------------------------------------------------
-    |
-    | Host y API key opcional para una instancia local o remota de Ollama.
-    |
-    */
-
-    'ollama_host' => env('OLLAMA_HOST', 'http://127.0.0.1:11434'),
-    'ollama_api_key' => env('OLLAMA_API_KEY'),
->>>>>>> origin/test
 
     /*
     |--------------------------------------------------------------------------
@@ -98,11 +82,6 @@ return [
             'model' => env('QWEN_MODEL', 'qwen2.5:32b'),
             'temperature' => 0.7,
             'max_tokens' => 1200,
-        ],
-        'ollama' => [
-            'model' => env('OLLAMA_MODEL', 'qwen2.5:7b-instruct-q8_0'),
-            'temperature' => 0.2,
-            'max_tokens' => 600,
         ],
     ],
 

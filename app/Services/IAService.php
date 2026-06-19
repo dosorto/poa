@@ -12,24 +12,15 @@ class IAService
 
     public function __construct()
     {
-<<<<<<< HEAD
-        $this->provider = config('ia.provider', 'openai'); // 'openai', 'gemini' o 'qwen'
-=======
         $this->provider = config('ia.provider', 'openai');
->>>>>>> origin/test
         $this->apiKey = $this->getApiKey();
     }
 
     protected function getApiKey()
     {
-<<<<<<< HEAD
-        return match($this->provider) {
-            'gemini' => config('ia.gemini_api_key'),
-            'qwen' => config('ia.qwen_api_key'),
-=======
         return match ($this->provider) {
             'gemini' => config('ia.gemini_api_key'),
->>>>>>> origin/test
+            'qwen' => config('ia.qwen_api_key'),
             'ollama' => config('ia.ollama_api_key'),
             default => config('openai.api_key'),
         };
@@ -41,17 +32,10 @@ class IAService
         $startedAt = microtime(true);
 
         try {
-<<<<<<< HEAD
-            return match($this->provider) {
-                'gemini' => $this->generarConGemini($prompt),
-                'ollama' => $this->generarConOllama($prompt),
-                'qwen' => $this->generarConQwen($prompt),
-                default => $this->generarConOpenAI($prompt),
-            };
-=======
             $data = match ($this->provider) {
                 'gemini' => $this->generarConGemini($prompt),
                 'ollama' => $this->generarConOllama($prompt),
+                'qwen' => $this->generarConQwen($prompt),
                 'openai' => $this->generarConOpenAI($prompt),
                 default => throw new \InvalidArgumentException("Proveedor de IA no soportado: {$this->provider}"),
             };
@@ -62,7 +46,6 @@ class IAService
             ]);
 
             return $data;
->>>>>>> origin/test
         } catch (\Exception $e) {
             Log::error("Error en IAService ({$this->provider}): " . $e->getMessage(), [
                 'duration_ms' => (int) ((microtime(true) - $startedAt) * 1000),
@@ -73,7 +56,6 @@ class IAService
 
     
     protected function construirPrompt($nombreActividad, $contextoInstitucion)
-<<<<<<< HEAD
 {
     return "Eres un experto en planificación estratégica institucional de la Universidad Nacional Autónoma de Honduras (UNAH), con profundo conocimiento del Plan Estratégico Institucional (PEI) 2024-2027 y del modelo de Gestión por Resultados adoptado por la institución.
 
@@ -137,31 +119,6 @@ class IAService
             }
 
 
-=======
-    {
-        return <<<PROMPT
-Genera una actividad POA para "{$contextoInstitucion}" a partir de este nombre: "{$nombreActividad}".
-
-Devuelve solo JSON válido con esta estructura exacta:
-{
-  "descripcion": "1-2 oraciones profesionales",
-  "resultadoActividad": "1 resultado concreto y medible",
-  "poblacion_objetivo": "grupo beneficiado",
-  "medio_verificacion": "evidencias de cumplimiento",
-  "indicadores": [
-    {
-      "nombre": "máximo 100 caracteres",
-      "descripcion": "qué mide y fórmula solo si aplica",
-      "cantidadPlanificada": 100,
-      "isCantidad": true,
-      "isPorcentaje": false
-    }
-  ]
-}
-Incluye 2-3 indicadores altamente específicos, cuantitativos, de gestión o producto. Evita indicadores de satisfacción o encuestas. Cada indicador debe conservar exactamente estos campos: nombre, descripcion, cantidadPlanificada, isCantidad, isPorcentaje.
-PROMPT;
-    }
->>>>>>> origin/test
 
     protected function generarConOpenAI($prompt)
     {
@@ -402,77 +359,11 @@ PROMPT;
         return $this->procesarRespuesta($content);
     }
 
-    protected function generarConOllama($prompt)
-    {
-        $host = config('ia.ollama_host', 'http://localhost:11434');
-        $modelName = config('ia.models.ollama.model', 'qwen3:32b');
-        
-        // Normalizando la URL base (sin trailing slash)
-        $host = rtrim($host, '/');
-        $url = "{$host}/v1/chat/completions";
-
-        Log::info('Conectando a Ollama API', [
-            'url' => $url,
-            'model' => $modelName
-        ]);
-
-        $response = Http::timeout(180)
-            ->withHeaders([
-                'Content-Type' => 'application/json',
-            ])
-            ->post($url, [
-                'model' => $modelName,
-                'messages' => [
-                    [
-                        'role' => 'system',
-                        'content' => 'Eres un asistente experto en planificación estratégica institucional. Respondes únicamente con JSON válido sin formato markdown.'
-                    ],
-                    [
-                        'role' => 'user',
-                        'content' => $prompt
-                    ]
-                ],
-                'temperature' => 0.7,
-                'max_tokens' => 1200,
-            ]);
-
-        if (!$response->successful()) {
-            $errorData = $response->json();
-            $error = $errorData['error']['message'] ?? $response->body();
-            Log::error('Error de Ollama API', [
-                'status' => $response->status(),
-                'error' => $errorData,
-                'url' => $url
-            ]);
-            throw new \Exception("Error de Ollama API: {$error}");
-        }
-
-        $responseData = $response->json();
-        Log::info('Respuesta de Ollama recibida', ['model' => $modelName]);
-
-        $content = $response->json('choices.0.message.content');
-        
-        if (!$content) {
-            Log::error('No se encontró contenido en la respuesta de Ollama', [
-                'response' => $responseData,
-                'choices' => $response->json('choices')
-            ]);
-            throw new \Exception('No se recibió respuesta válida de Ollama. Por favor, revisa los logs para más detalles.');
-        }
-
-        return $this->procesarRespuesta($content);
-    }
-
     public function getProviderName()
     {
-<<<<<<< HEAD
-        return match($this->provider) {
-            'gemini' => 'Google Gemini',
-            'qwen' => 'Qwen (Local)',
-=======
         return match ($this->provider) {
             'gemini' => 'Google Gemini',
->>>>>>> origin/test
+            'qwen' => 'Qwen (Local)',
             'ollama' => 'Ollama (Local)',
             default => 'OpenAI',
         };
