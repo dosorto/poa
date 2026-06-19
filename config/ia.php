@@ -8,11 +8,7 @@ return [
     |--------------------------------------------------------------------------
     |
     | Define qué proveedor de IA utilizar para generar actividades.
-<<<<<<< HEAD
     | Opciones disponibles: 'openai', 'gemini', 'qwen', 'ollama'
-=======
-    | Opciones disponibles: 'openai', 'gemini', 'ollama'
->>>>>>> origin/test
     |
     */
 
@@ -32,7 +28,6 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-<<<<<<< HEAD
     | Configuración de Qwen Local
     |--------------------------------------------------------------------------
     |
@@ -56,17 +51,6 @@ return [
 
     'ollama_api_key' => env('OLLAMA_API_KEY', ''),
     'ollama_host' => env('OLLAMA_HOST', 'http://localhost:11434'),
-=======
-    | Configuración de Ollama
-    |--------------------------------------------------------------------------
-    |
-    | Host y API key opcional para una instancia local o remota de Ollama.
-    |
-    */
-
-    'ollama_host' => env('OLLAMA_HOST', 'http://127.0.0.1:11434'),
-    'ollama_api_key' => env('OLLAMA_API_KEY'),
->>>>>>> origin/test
 
     /*
     |--------------------------------------------------------------------------
@@ -88,12 +72,6 @@ return [
             'temperature' => env('GEMINI_TEMPERATURE', 0.3),
             'max_tokens' => env('GEMINI_MAX_TOKENS', 700),
         ],
-        'ollama' => [
-            'model' => env('OLLAMA_MODEL', 'qwen2.5:7b-instruct-q8_0'),
-            'temperature' => env('OLLAMA_TEMPERATURE', 0.2),
-            'max_tokens' => env('OLLAMA_MAX_TOKENS', 700),
-            'timeout' => env('OLLAMA_TIMEOUT', 25),
-        ],
         'qwen' => [
             'model' => env('QWEN_MODEL', 'qwen2.5:32b'),
             'temperature' => 0.7,
@@ -101,8 +79,9 @@ return [
         ],
         'ollama' => [
             'model' => env('OLLAMA_MODEL', 'qwen2.5:7b-instruct-q8_0'),
-            'temperature' => 0.2,
-            'max_tokens' => 600,
+            'temperature' => env('OLLAMA_TEMPERATURE', 0.2),
+            'max_tokens' => env('OLLAMA_MAX_TOKENS', 700),
+            'timeout' => env('OLLAMA_TIMEOUT', 25),
         ],
     ],
 
