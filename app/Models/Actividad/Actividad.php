@@ -119,6 +119,10 @@ class Actividad extends BaseModel
             return $this->correlativo ?? 'N/A';
         }
 
+        if ($this->correlativo && preg_match('/^\d{4}-[A-Z]+-.+-R-\d+-\d+-\d+$/', $this->correlativo)) {
+            return $this->correlativo;
+        }
+
         $correlativo = '';
         
         // 1. Año del POA

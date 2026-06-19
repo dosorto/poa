@@ -16,6 +16,7 @@ use App\Models\Tareas\TareaHistorico;
 use App\Models\GrupoGastos\Fuente;
 use App\Models\GrupoGastos\ObjetoGasto;
 use App\Models\Requisicion\UnidadMedida;
+use App\Services\ActividadCorreoService;
 use App\Models\TechoUes\TechoDepto;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -51,6 +52,7 @@ class GestionarActividad extends Component
     public $nuevaPlanificacion = [
         'id' => null,
         'idIndicador' => '',
+        'idTrimestre' => '',
         'idMes' => '',
         'cantidad' => '',
         'fechaInicio' => '',
@@ -732,6 +734,7 @@ class GestionarActividad extends Component
         $this->nuevaPlanificacion = [
             'id' => $planificacion->id,
             'idIndicador' => $planificacion->idIndicador,
+            'idTrimestre' => $planificacion->mes?->idTrimestre ?? '',
             'idMes' => $planificacion->idMes,
             'cantidad' => $planificacion->cantidad,
             'fechaInicio' => $planificacion->fechaInicio,
@@ -777,6 +780,7 @@ class GestionarActividad extends Component
         $this->nuevaPlanificacion = [
             'id' => null,
             'idIndicador' => $this->nuevaPlanificacion['idIndicador'] ?? '',
+            'idTrimestre' => '',
             'idMes' => '',
             'cantidad' => '',
             'fechaInicio' => '',
@@ -1818,6 +1822,8 @@ class GestionarActividad extends Component
             ]);
             
             DB::commit();
+
+            $this->enviarCorreoActividadEnviadaRevision();
             
             return redirect()->route('actividades', [
                 'idPoa' => $this->actividad->idPoa,
@@ -1833,5 +1839,25 @@ class GestionarActividad extends Component
     public function render()
     {
         return view('livewire.actividad.gestionar-actividad');
+    }
+
+    private function enviarCorreoActividadEnviadaRevision(): void
+    {
+        app(ActividadCorreoService::class)->enviarGuardada(
+            $this->actividad->fresh([
+                'categoria',
+                'departamento',
+                'empleados.user',
+                'indicadores.planificacions.mes.trimestre',
+                'poa',
+                'resultado',
+                'tareas.presupuestos',
+                'tipo',
+                'unidadEjecutora.asistenteEstrategico',
+            ]),
+            Auth::user(),
+            'enviada a revision',
+            'La actividad fue enviada a revision'
+        );
     }
 }
