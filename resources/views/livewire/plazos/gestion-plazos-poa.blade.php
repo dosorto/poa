@@ -43,6 +43,18 @@
                 ])
             @endif
 
+            @if (session()->has('success'))
+                <div wire:key="success-alert-{{ $ultimoPlazoGuardadoKey ?: uniqid() }}">
+                    @include('rk.default.notifications.notification-alert', [
+                        'type' => 'success',
+                        'dismissible' => true,
+                        'icon' => true,
+                        'duration' => 5,
+                        'slot' => session('success')
+                    ])
+                </div>
+            @endif
+
             @if (session()->has('error'))
                 @include('rk.default.notifications.notification-alert', [
                     'type' => 'error',
@@ -169,12 +181,19 @@
                                             </button>
                                         @endif
                                     </td>
-                                    <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                    <td class="px-6 py-4 text-right text-sm font-medium">
                                         @if(!$esVencido)
-                                            <x-spinner-button loadingTarget="guardarPlazoEstandar('{{ $tipo }}')" loadingText="Guardando" wire:click="guardarPlazoEstandar('{{ $tipo }}')" 
-                                                    class="inline-flex items-center px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded transition-colors duration-150">
-                                                Guardar
-                                            </x-spinner-button>
+                                            <div class="inline-flex flex-col items-end gap-1">
+                                                <x-spinner-button loadingTarget="guardarPlazoEstandar('{{ $tipo }}')" loadingText="Guardando" wire:click="guardarPlazoEstandar('{{ $tipo }}')" 
+                                                        class="inline-flex items-center px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded transition-colors duration-150">
+                                                    Guardar
+                                                </x-spinner-button>
+                                                @if($ultimoPlazoGuardadoTipo === $tipo)
+                                                    <p wire:key="plazo-guardado-{{ $tipo }}-{{ $ultimoPlazoGuardadoKey }}" class="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                                                        Guardado correctamente
+                                                    </p>
+                                                @endif
+                                            </div>
                                         @else
                                             <span class="text-xs text-zinc-400 dark:text-zinc-500">No editable</span>
                                         @endif
@@ -271,6 +290,11 @@
                                                 class="w-full inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors duration-150">
                                             Guardar
                                         </button>
+                                        @if($ultimoPlazoGuardadoTipo === $tipo)
+                                            <p wire:key="plazo-guardado-mobile-{{ $tipo }}-{{ $ultimoPlazoGuardadoKey }}" class="mt-2 text-center text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                                                Guardado correctamente
+                                            </p>
+                                        @endif
                                     </div>
                                 @else
                                     <div class="pt-3 mt-3 border-t border-zinc-200 dark:border-zinc-700">
@@ -342,7 +366,7 @@
                                                         'asignacion_nacional' => 'Asignación Nacional',
                                                         'asignacion_departamental' => 'Asignación Departamental',
                                                         'planificacion' => 'Planificación',
-                                                        'requerimientos' => 'Requerimientos',
+                                                        'requerimientos' => 'Requisiciones',
                                                         'seguimiento' => 'Seguimiento'
                                                     ];
                                                 @endphp
@@ -446,7 +470,7 @@
                                                         'asignacion_nacional' => 'Asignación Nacional',
                                                         'asignacion_departamental' => 'Asignación Departamental',
                                                         'planificacion' => 'Planificación',
-                                                        'requerimientos' => 'Requerimientos',
+                                                        'requerimientos' => 'Requisiciones',
                                                         'seguimiento' => 'Seguimiento'
                                                     ];
                                                 @endphp

@@ -75,7 +75,6 @@
                     ['key' => 'IDUNSPSC', 'label' => 'UNSPSC', 'sortable' => true],
                     ['key' => 'descripcion_esp', 'label' => 'Descripción (ES)', 'sortable' => true],
                     ['key' => 'descripcion_regional', 'label' => 'Descripción regional', 'sortable' => true],
-                    ['key' => 'ue', 'label' => 'Unidad Ejecutora', 'sortable' => false],
                     ['key' => 'actions', 'label' => 'Acciones', 'sortable' => false],
                 ]"
                 empty-message="{{ __('No se encontraron CUBS') }}"
@@ -95,9 +94,6 @@
                             </td>
                             <td class="px-6 py-4 text-zinc-900 dark:text-zinc-300">
                                 {{ $cub->descripcion_regional }}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-zinc-900 dark:text-zinc-300">
-                                {{ $cub->unidadEjecutora?->name ?? '-' }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <div class="flex space-x-2">
@@ -123,7 +119,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-6 py-4 text-center text-zinc-500 dark:text-zinc-400">
+                            <td colspan="5" class="px-6 py-4 text-center text-zinc-500 dark:text-zinc-400">
                                 {{ __('No se encontraron CUBS') }}
                             </td>
                         </tr>

@@ -99,6 +99,7 @@ class GestionTechoUeNacional extends Component
 
                 return (object)[
                     'id' => $techo->idFuente,
+                    'identificador' => $techo->fuente->identificador ?? null,
                     'nombre' => $techo->fuente->nombre ?? 'Sin nombre',
                     'descripcion' => $techo->fuente->descripcion ?? 'Sin descripción',
                     'disponible' => $techos->sum('monto'),
@@ -123,7 +124,8 @@ class GestionTechoUeNacional extends Component
         $this->idPoa = $idPoa ?? request()->get('idPoa') ?? request()->route('idPoa');
         
         if (!$this->idPoa) {
-            abort(404, 'POA no encontrado');
+            session()->flash('error', 'Seleccione un POA para gestionar sus techos presupuestarios.');
+            return redirect()->route('asignacionnacionalpresupuestaria');
         }
         
         $this->loadPoa();

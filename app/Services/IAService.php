@@ -26,9 +26,9 @@ class IAService
         };
     }
 
-    public function generarActividad($nombreActividad, $contextoInstitucion = 'Universidad Nacional Autónoma de Honduras')
+    public function generarActividad($nombreActividad, $contextoInstitucion = 'Universidad Nacional Autónoma de Honduras', array $contextoAdicional = [])
     {
-        $prompt = $this->construirPrompt($nombreActividad, $contextoInstitucion);
+        $prompt = $this->construirPrompt($nombreActividad, $contextoInstitucion, $contextoAdicional);
         $startedAt = microtime(true);
 
         try {
@@ -54,8 +54,17 @@ class IAService
         }
     }
 
-    protected function construirPrompt($nombreActividad, $contextoInstitucion)
+    protected function construirPrompt($nombreActividad, $contextoInstitucion, array $contextoAdicional = [])
     {
+        $lineasContexto = collect($contextoAdicional)
+            ->filter(fn ($valor) => filled($valor))
+            ->map(fn ($valor, $clave) => '- ' . str_replace('_', ' ', ucfirst($clave)) . ': ' . $valor)
+            ->implode("\n");
+
+        $contextoEspecifico = $lineasContexto
+            ? "\n            ## CONTEXTO ESPECÍFICO DE LA ACTIVIDAD\n\n            {$lineasContexto}\n"
+            : '';
+
         return "Eres un experto en planificación estratégica institucional de la Universidad Nacional Autónoma de Honduras (UNAH), con profundo conocimiento del Plan Estratégico Institucional (PEI) 2024-2027 y del modelo de Gestión por Resultados adoptado por la institución.
 
             ## CONTEXTO INSTITUCIONAL UNAH
@@ -94,6 +103,7 @@ class IAService
 
             Basándote en el nombre de actividad: **'{$nombreActividad}'**
             Contexto institucional: **{$contextoInstitucion}**
+            {$contextoEspecifico}
 
             Genera un JSON con los siguientes campos para incluir en el Plan Operativo Anual (POA):
 
@@ -163,7 +173,6 @@ class IAService
                 'generationConfig' => [
                     'temperature' => (float) $config['temperature'],
                     'maxOutputTokens' => (int) $config['max_tokens'],
-                    'responseMimeType' => 'application/json',
                 ],
             ]);
 

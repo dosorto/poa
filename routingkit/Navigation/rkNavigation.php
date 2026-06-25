@@ -386,6 +386,9 @@ return [
                         ->setDescription('Gestión de techos presupuestarios por Unidades Ejecutoras')
                         ->setLabel('Techos presupuestarios UE')
                         ->setHeroIcon('arrow-trending-up')
+                        ->setUrl((request()->route('idPoa') || request()->query('idPoa'))
+                            ? '/techonacional?idPoa=' . (request()->route('idPoa') ?? request()->query('idPoa'))
+                            : '/techonacional')
                         ->setItems([
                             RkNavigation::make('plazos-poa')
                                 ->setDescription('Gestión de plazos estándar y personalizados para el POA')
@@ -399,6 +402,21 @@ return [
                                 ->setDescription('Análisis detallado de techo UE')
                                 ->setLabel('Análisis techo UE')
                                 ->setHeroIcon('chart-bar')
+                                ->setUrl((function () {
+                                    $idPoa = request()->route('idPoa') ?? request()->query('idPoa');
+                                    $idUE = request()->route('idUE');
+
+                                    if ($idPoa && ! $idUE) {
+                                        $idUE = \App\Models\TechoUes\TechoUe::where('idPoa', $idPoa)
+                                            ->whereNotNull('idUE')
+                                            ->orderBy('idUE')
+                                            ->value('idUE');
+                                    }
+
+                                    return ($idPoa && $idUE)
+                                        ? '/techonacional/' . $idPoa . '/analysis/' . $idUE
+                                        : '#';
+                                })())
                                 ->setItems([])
                                 ->setEndBlock('analysis-techo-ue'),
                 ])
@@ -417,10 +435,53 @@ return [
                         ->setItems([
                             RkNavigation::make('techodeptos.detalle-estructura')
                                 ->setLabel('Detalle de estructura')
-                                ->setDescription('Detalle de asignaciones a departamentos por estructura'),
+                                ->setDescription('Detalle de asignaciones a departamentos por estructura')
+                                ->setUrl((function () {
+                                    $idPoa = request()->route('idPoa') ?? request()->query('idPoa');
+                                    $idUE = request()->route('idUE') ?? request()->query('idUE');
+                                    $estructura = request()->query('estructura');
+                                    $idDepartamento = request()->route('idDepartamento') ?? request()->query('idDepartamento');
+
+                                    if (! $estructura && $idDepartamento) {
+                                        $estructura = \App\Models\Departamento\Departamento::whereKey($idDepartamento)->value('estructura') ?? 'Sin Estructura';
+                                    }
+
+                                    return ($idPoa && $idUE && $estructura)
+                                        ? '/techodeptos.detalle-estructura?' . http_build_query([
+                                            'idPoa' => $idPoa,
+                                            'idUE' => $idUE,
+                                            'idDepartamento' => $idDepartamento,
+                                            'estructura' => $estructura,
+                                        ])
+                                        : '#';
+                                })()),
                             RkNavigation::make('analysis-techo-depto')
                                 ->setLabel('Análisis presupuestario')
                                 ->setDescription('Análisis presupuestario del departamento')
+                                ->setUrl((function () {
+                                    $idPoa = request()->route('idPoa') ?? request()->query('idPoa');
+                                    $idUE = request()->route('idUE') ?? request()->query('idUE');
+                                    $idDepartamento = request()->route('idDepartamento') ?? request()->query('idDepartamento');
+                                    $estructura = request()->query('estructura');
+
+                                    if (! $idDepartamento && $idPoa && $idUE && $estructura) {
+                                        $idDepartamento = \App\Models\TechoUes\TechoDepto::where('idPoa', $idPoa)
+                                            ->where('idUE', $idUE)
+                                            ->whereHas('departamento', function ($query) use ($estructura) {
+                                                if ($estructura === 'Sin Estructura') {
+                                                    $query->whereNull('estructura');
+                                                } else {
+                                                    $query->where('estructura', $estructura);
+                                                }
+                                            })
+                                            ->orderBy('idDepartamento')
+                                            ->value('idDepartamento');
+                                    }
+
+                                    return ($idPoa && $idUE && $idDepartamento)
+                                        ? '/techodeptos/' . $idPoa . '/' . $idUE . '/analysis/' . $idDepartamento
+                                        : '#';
+                                })())
                         ])
                         ->setEndBlock('techodeptos'),
                 ])

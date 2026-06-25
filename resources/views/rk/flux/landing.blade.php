@@ -14,8 +14,6 @@
                 discover the difference.</p>
 
             <div class="flex justify-center space-x-4">
-                <a href="{{ route('register') }}"
-                    class="px-6 py-2 bg-gray-900 text-white rounded-lg hover:bg-gray-800 transition">Get Started</a>
                 <a href="{{ route('login') }}"
                     class="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-100 transition">Login</a>
             </div>

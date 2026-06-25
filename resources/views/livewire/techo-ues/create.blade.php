@@ -10,7 +10,9 @@
                 @if($idUnidadEjecutora && !$isEditing)
                     <!-- UE preseleccionada (solo lectura) -->
                     <div class="mb-6">
-                        <x-label value="{{ __('Unidad Ejecutora Seleccionada') }}" class="mb-2" />
+                        <x-label class="mb-2">
+                            {{ __('Unidad Ejecutora Seleccionada') }} <span class="text-red-500">*</span>
+                        </x-label>
                         <div class="p-3 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-md">
                             <div class="flex items-center">
                                 <svg class="h-5 w-5 text-indigo-500 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -25,7 +27,9 @@
                 @else
                     <!-- Select de UE (para modo edición o creación libre) -->
                     <div class="mb-6">
-                        <x-label for="idUnidadEjecutora" value="{{ __('Unidad Ejecutora') }}" class="mb-2" />
+                        <x-label for="idUnidadEjecutora" class="mb-2">
+                            {{ __('Unidad Ejecutora') }} <span class="text-red-500">*</span>
+                        </x-label>
                         <x-select 
                             id="idUnidadEjecutora" 
                             wire:model.live="idUnidadEjecutora"
@@ -39,7 +43,9 @@
 
                 <!-- Asignación de montos por fuente -->
                 <div class="mb-6">
-                    <x-label value="{{ __('Asignación de Presupuesto por Fuente') }}" class="mb-4" />
+                    <x-label class="mb-4">
+                        {{ __('Asignación de Presupuesto por Fuente') }} <span class="text-red-500">*</span>
+                    </x-label>
                     <p class="text-sm text-zinc-600 dark:text-zinc-400 mb-4">
                         Asigne montos desde las diferentes fuentes de financiamiento disponibles. Solo se crearán asignaciones para montos mayores a cero.
                     </p>
@@ -75,7 +81,7 @@
                                             </div>
                                             <div>
                                                 <h4 class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-                                                   {{ $fuente->nombre ?? 'Sin fuente' }}
+                                                   {{ $fuente->identificador ? $fuente->identificador . ' - ' : '' }}{{ $fuente->nombre ?? 'Sin fuente' }}
                                                 </h4>
                                                 <p class="text-xs text-zinc-500 dark:text-zinc-400">
                                                     Total: {{ number_format($disponibilidad['total'], 2) }}
@@ -99,7 +105,9 @@
                                     </div>
                                     
                                     <div class="flex items-center space-x-3">
-                                        <x-label for="monto_{{ $fuente->id }}" value="Monto a asignar" class="text-sm whitespace-nowrap" />
+                                        <x-label for="monto_{{ $fuente->id }}" class="text-sm whitespace-nowrap">
+                                            Monto a asignar
+                                        </x-label>
                                         <x-input 
                                             id="monto_{{ $fuente->id }}" 
                                             type="number"

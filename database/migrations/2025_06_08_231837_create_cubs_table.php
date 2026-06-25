@@ -19,10 +19,6 @@ return new class extends Migration
                 $table->string('descripcion_esp');
                 $table->string('descripcion_regional');
 
-                $table->foreignId('idUE')
-                      ->constrained('unidad_ejecutora')
-                      ->onDelete('cascade');
-
                 $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
                 $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();
                 $table->foreignId('deleted_by')->nullable()->constrained('users')->nullOnDelete();

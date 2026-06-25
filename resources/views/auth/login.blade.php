@@ -69,7 +69,7 @@
                             <div class="mt-1">
                                 <x-input id="email"
                                     class="block mt-1 w-full border-zinc-300 dark:border-zinc-700 dark:bg-zinc-700 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm"
-                                    type="email" name="email" :value="old('email')" required autofocus
+                                    type="text" name="email" :value="old('email')" required autofocus
                                     autocomplete="username" placeholder="juan.perez o 19898" />
                             </div>
                         </div>
@@ -131,16 +131,6 @@
                         });
                     </script>
 
-                    <!-- Enlace de registro -->
-                    <div class="mt-6 text-center">
-                        <p class="text-sm text-zinc-600 dark:text-zinc-400">
-                            {{ __('¿No tienes una cuenta?') }}
-                            <a href="{{ route('register') }}"
-                                class="font-medium text-indigo-600 hover:text-indigo-500 dark:text-indigo-400 dark:hover:text-indigo-300">
-                                {{ __('Regístrate') }}
-                            </a>
-                        </p>
-                    </div>
                 </div>
             </div>
 
