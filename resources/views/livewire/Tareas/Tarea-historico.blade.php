@@ -74,6 +74,7 @@
                     ['key' => 'unidad', 'label' => 'Unidad de Medida'],
                     ['key' => 'proceso', 'label' => 'Proceso de Compra'],
                     ['key' => 'cubs', 'label' => 'CUBS'],
+                    ['key' => 'detalle_tecnico', 'label' => 'Detalle técnico'],
                     ['key' => 'actions', 'label' => 'Acciones'],
                 ]"
                 empty-message="{{ __('No se encontraron recursos')}}"
@@ -101,15 +102,19 @@
                                 {{ $recurso->cub?->descripcion_esp ?? '-' }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <a href="{{ route('recurso-detalle-tecnico', ['recursoId' => $recurso->id]) }}"
+                                    class="inline-flex items-center gap-1.5 rounded-md border border-green-200 bg-green-50 px-3 py-1.5 text-xs font-semibold text-green-700 transition hover:bg-green-100 hover:text-green-900 dark:border-green-800 dark:bg-green-900/20 dark:text-green-300 dark:hover:bg-green-900/40"
+                                    title="Gestionar detalles técnicos">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24"
+                                        stroke-width="1.5" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M8.25 6.75h7.5M8.25 12h7.5m-7.5 5.25h4.5M6.75 3h10.5A2.25 2.25 0 0 1 19.5 5.25v13.5A2.25 2.25 0 0 1 17.25 21H6.75A2.25 2.25 0 0 1 4.5 18.75V5.25A2.25 2.25 0 0 1 6.75 3Z" />
+                                    </svg>
+                                    Gestionar
+                                </a>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <div class="flex space-x-2">
-                                    <a href="{{ route('recurso-detalle-tecnico', ['recursoId' => $recurso->id]) }}"
-                                        class="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300 cursor-pointer"
-                                        title="Ver Detalles Técnicos">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                            <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                                            <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" />
-                                        </svg>
-                                    </a>
                                     <button wire:click="edit({{ $recurso->id }})"
                                         class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 cursor-pointer"
                                         title="Editar">
@@ -130,7 +135,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="px-6 py-4 text-center text-zinc-500 dark:text-zinc-400">
+                            <td colspan="8" class="px-6 py-4 text-center text-zinc-500 dark:text-zinc-400">
                                 {{ __('No se encontraron recursos')}}
                             </td>
                         </tr>
@@ -147,13 +152,6 @@
                                     </span>
                                 </div>
                                 <div class="flex space-x-2">
-                                    <a href="{{ route('recurso-detalle-tecnico', ['recursoId' => $recurso->id]) }}"
-                                        class="text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300">
-                                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                                            <path d="M10 12a2 2 0 100-4 2 2 0 000 4z" />
-                                            <path fill-rule="evenodd" d="M.458 10C1.732 5.943 5.522 3 10 3s8.268 2.943 9.542 7c-1.274 4.057-5.064 7-9.542 7S1.732 14.057.458 10zM14 10a4 4 0 11-8 0 4 4 0 018 0z" clip-rule="evenodd" />
-                                        </svg>
-                                    </a>
                                     <button wire:click="edit({{ $recurso->id }})"
                                         class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300">
                                         <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
@@ -181,6 +179,17 @@
                             </div>
                             <div class="text-zinc-600 dark:text-zinc-400 text-sm">
                                 <span class="font-semibold">CUBS:</span> {{ $recurso->cub?->descripcion_esp ?? '-' }}
+                            </div>
+                            <div class="mt-3">
+                                <a href="{{ route('recurso-detalle-tecnico', ['recursoId' => $recurso->id]) }}"
+                                    class="inline-flex items-center gap-2 text-sm font-semibold text-green-600 hover:text-green-900 dark:text-green-400 dark:hover:text-green-300">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24"
+                                        stroke-width="1.5" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M8.25 6.75h7.5M8.25 12h7.5m-7.5 5.25h4.5M6.75 3h10.5A2.25 2.25 0 0 1 19.5 5.25v13.5A2.25 2.25 0 0 1 17.25 21H6.75A2.25 2.25 0 0 1 4.5 18.75V5.25A2.25 2.25 0 0 1 6.75 3Z" />
+                                    </svg>
+                                    Gestionar detalle técnico
+                                </a>
                             </div>
                         </div>
                     @empty
