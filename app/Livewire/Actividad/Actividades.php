@@ -15,7 +15,7 @@ use App\Models\Empleados\Empleado;
 use App\Models\Poa\Poa;
 use App\Models\Poa\PoaDepto;
 use App\Models\UnidadEjecutora\UnidadEjecutora;
-use App\Models\Instituciones\Institucions;
+use App\Models\Instituciones\Institucion;
 use App\Services\LogService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -254,12 +254,14 @@ class Actividades extends Component
         }
         $this->idPoaDepto = $poaDepto ? $poaDepto->id : null;
         $this->idInstitucion = $empleado->unidadEjecutora->idInstitucion ?? null;
+        $institucion = $this->idInstitucion ? Institucion::find($this->idInstitucion) : null;
 
         $this->userContext = [
             'empleado' => $empleado,
             'departamento' => $departamento,
             'poa' => $poaActivo,
-            'unidadEjecutora' => $empleado->unidadEjecutora
+            'unidadEjecutora' => $empleado->unidadEjecutora,
+            'institucion' => $institucion,
         ];
     }
 
@@ -325,17 +327,15 @@ class Actividades extends Component
     public function generarConIA()
     {
         $this->validate([
-              'nombre' => 'required|min:10|max:255',
-             // 'nombreParaIA' => 'required|min:10|max:255'
+            'nombre' => 'required|min:10|max:255',
+            'idTipo' => 'required|exists:tipo_actividads,id',
+            'idCategoria' => 'required|exists:categorias,id',
         ], [
             'nombre.required' => 'Ingrese el nombre de la actividad',
             'nombre.min' => 'El nombre debe tener al menos 10 caracteres para generar con IA',
-            'nombre.max' => 'El nombre no puede exceder 255 caracteres'
-
-            //'nombreParaIA.required' => 'Ingrese el nombre de la actividad',
-          //  'nombreParaIA.min' => 'El nombre debe tener al menos 10 caracteres para generar con IA',
-           // 'nombreParaIA.max' => 'El nombre no puede exceder 255 caracteres'
-       
+            'nombre.max' => 'El nombre no puede exceder 255 caracteres',
+            'idTipo.required' => 'Seleccione el tipo de actividad antes de generar con IA',
+            'idCategoria.required' => 'Seleccione la categoría antes de generar con IA',
         ]);
 
         // Verificar throttling
@@ -370,6 +370,17 @@ class Actividades extends Component
                 ? $this->userContext['institucion']->nombre 
                 : 'institución educativa';
 
+            $tipoActividad = $this->tiposActividad->firstWhere('id', (int) $this->idTipo);
+            $categoria = $this->categorias->firstWhere('id', (int) $this->idCategoria);
+
+            $contextoPrompt = [
+                'tipo_actividad' => $tipoActividad?->tipo,
+                'categoria' => $categoria?->categoria,
+                'poa' => $this->userContext['poa']->anio ?? null,
+                'unidad_ejecutora' => $this->userContext['unidadEjecutora']->name ?? null,
+                'departamento' => $this->userContext['departamento']->name ?? null,
+            ];
+
             // Intentar con reintentos en caso de rate limit
             $maxIntentos = 3;
             $intentoActual = 0;
@@ -378,7 +389,7 @@ class Actividades extends Component
             while ($intentoActual < $maxIntentos) {
                 try {
                   //  $data = $iaService->generarActividad($this->nombreParaIA, $contextoInstitucion);
-                     $data = $iaService->generarActividad($this->nombre, $contextoInstitucion);
+                     $data = $iaService->generarActividad($this->nombre, $contextoInstitucion, $contextoPrompt);
                     \Log::info("Respuesta de {$providerName} recibida exitosamente");
                     break; // Si fue exitoso, salir del bucle
                     
