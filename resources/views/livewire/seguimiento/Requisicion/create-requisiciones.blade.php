@@ -223,7 +223,7 @@
                                             <div class="flex flex-col gap-0.5">
                                                 <div><span class="font-medium">Disponible:</span>
                                                     {{ $valores['cantidad_disponible'] }}</div>
-                                                <div><span class="font-medium">Planificado:</span>
+                                                <div><span class="font-medium">Requerido:</span>
                                                     {{ $valores['cantidad_planificada'] }}</div>
                                             </div>
                                         </td>
