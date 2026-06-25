@@ -206,6 +206,7 @@ $estado = $detalleRequisicion['estado'] ?? '';
                             @can('seguimiento.requisiciones.gestionar-estados')
                                 @if ($estado === 'Presentado')
                                     <x-spinner-button wire:click="marcarComoRecibido" loadingTarget="marcarComoRecibido"
+                                        loadingText="Marcando..."
                                         class="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-2 rounded transition flex items-center gap-2 dark:bg-green-700 dark:hover:bg-green-800">
                                         <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
                                             stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
@@ -215,6 +216,7 @@ $estado = $detalleRequisicion['estado'] ?? '';
                                     </x-spinner-button>
                                 @endif
                                 <x-spinner-button wire:click="marcarComoRechazado" loadingTarget="marcarComoRechazado"
+                                    loadingText="Rechazando..."
                                     class="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-2 rounded transition flex items-center gap-2 dark:bg-red-700 dark:hover:bg-red-800">
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
                                         stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
@@ -227,6 +229,7 @@ $estado = $detalleRequisicion['estado'] ?? '';
                     @elseif ($estado === 'Recibido')
                         @can('seguimiento.requisiciones.gestionar-estados')
                             <x-spinner-button wire:click="marcarComoAprobado" loadingTarget="marcarComoAprobado"
+                                loadingText="Aprobando..."
                                 class="bg-green-600 hover:bg-green-700 text-white font-semibold px-6 py-2 rounded transition flex items-center gap-2 dark:bg-green-700 dark:hover:bg-green-800">
                                 <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
                                     stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
@@ -237,15 +240,22 @@ $estado = $detalleRequisicion['estado'] ?? '';
                         @endcan
                     @elseif ($estado === 'Aprobado')
                         @can('seguimiento.requisiciones.gestionar-estados')
-                            <x-spinner-button wire:click="marcarComoProcesoCompra" loadingTarget="marcarComoProcesoCompra"
-                                class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold px-6 py-2 rounded transition flex items-center gap-2 dark:bg-yellow-700 dark:hover:bg-yellow-800">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
-                                    stroke-width="1.5" stroke="currentColor" class="size-6">
-                                    <path stroke-linecap="round" stroke-linejoin="round"
-                                        d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" />
-                                </svg>
-                                Proceso de Compra
-                            </x-spinner-button>
+                            <div class="flex flex-col items-end gap-2">
+                                <x-spinner-button wire:click="marcarComoProcesoCompra"
+                                    loadingTarget="marcarComoProcesoCompra" loadingText="Procesando..."
+                                    class="bg-yellow-500 hover:bg-yellow-600 text-white font-semibold px-6 py-2 rounded transition flex items-center gap-2 dark:bg-yellow-700 dark:hover:bg-yellow-800">
+                                    <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
+                                        stroke-width="1.5" stroke="currentColor" class="size-6">
+                                        <path stroke-linecap="round" stroke-linejoin="round"
+                                            d="M2.25 3h1.386c.51 0 .955.343 1.087.835l.383 1.437M7.5 14.25a3 3 0 0 0-3 3h15.75m-12.75-3h11.218c1.121-2.3 2.1-4.684 2.924-7.138a60.114 60.114 0 0 0-16.536-1.84M7.5 14.25 5.106 5.272M6 20.25a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Zm12.75 0a.75.75 0 1 1-1.5 0 .75.75 0 0 1 1.5 0Z" />
+                                    </svg>
+                                    Proceso de Compra
+                                </x-spinner-button>
+                                <div wire:loading wire:target="marcarComoProcesoCompra"
+                                    class="text-xs font-medium text-yellow-700 dark:text-yellow-300">
+                                    Cambiando estado y creando ejecución presupuestaria...
+                                </div>
+                            </div>
                         @endcan
                     @endif
                     <x-spinner-button wire:click="cerrarDetalleModal" loadingTarget="cerrarDetalleModal"
