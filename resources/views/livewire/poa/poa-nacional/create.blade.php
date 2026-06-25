@@ -145,20 +145,9 @@
                                 Techos Presupuestarios
                             </h4>
                             <div class="flex items-center mt-1">
-                                <p class="text-sm text-zinc-500 dark:text-zinc-400">Máximo 3 techos presupuestarios</p>
+                                <p class="text-sm text-zinc-500 dark:text-zinc-400">Techos fijos por fuente de financiamiento</p>
                             </div>
                         </div>
-                        <x-spinner-secondary-button 
-                            type="button" 
-                            wire:click="addTecho" 
-                            loadingTarget="addTecho"
-                            loadingText="Agregando..."
-                            :disabled="count($techos) >= 3">
-                            <svg class="w-4 h-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
-                            </svg>
-                            Agregar Techo
-                        </x-spinner-secondary-button>
                     </div>
                     @if (session()->has('error'))
                         <div class="mb-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
@@ -186,26 +175,17 @@
                     @endif
                 </div>
 
-                <!-- Techos Presupuestarios Dinámicos -->
+                <!-- Techos Presupuestarios Fijos -->
                 <div class="md:col-span-2">
                     @foreach($techos as $index => $techo)
                         <div class="border border-zinc-200 dark:border-zinc-700 rounded-lg p-4 mb-4 bg-zinc-50 dark:bg-zinc-800/50">
                             <div class="flex items-center justify-between mb-3">
                                 <h5 class="font-medium text-zinc-900 dark:text-zinc-100">
                                     Techo Presupuestario {{ $index + 1 }}
+                                    <span class="ml-2 text-sm font-normal text-zinc-500 dark:text-zinc-400">
+                                        {{ $techo['fuenteIdentificador'] ?? '' }} - {{ $techo['fuenteNombre'] ?? 'Fuente no configurada' }}
+                                    </span>
                                 </h5>
-                                @if(count($techos) > 1)
-                                    <x-spinner-danger-button 
-                                        type="button" 
-                                        wire:click="removeTecho({{ $index }})"
-                                        loadingTarget="removeTecho({{ $index }})"
-                                        loadingText="Eliminando..."
-                                        class="!p-1 !bg-transparent !border-0 !text-red-600 hover:!text-red-800 dark:!text-red-400 dark:hover:!text-red-300">
-                                        <svg class="w-5 h-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                        </svg>
-                                    </x-spinner-danger-button>
-                                @endif
                             </div>
                             @if($isEditing && isset($techo['id']))
                                 @php
@@ -225,18 +205,8 @@
                                     </div>
                                 @endif
                             @endif
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <!-- Fuente de Financiamiento -->
-                                <div>
-                                    <x-label for="techos.{{ $index }}.idFuente" value="{{ __('Fuente') }}" class="mb-2" />
-                                    <x-select 
-                                        id="techos.{{ $index }}.idFuente" 
-                                        wire:model.live="techos.{{ $index }}.idFuente"
-                                        :options="$this->getFuentesDisponibles($index)"
-                                        class="mt-1 block w-full"
-                                    />
-                                    <x-input-error for="techos.{{ $index }}.idFuente" class="mt-2" />
-                                </div>
+                            <div class="grid grid-cols-1 gap-4">
+                                <input type="hidden" wire:model="techos.{{ $index }}.idFuente">
                                 <!-- Monto -->
                                 <div>
                                     <x-label for="techos.{{ $index }}.monto" value="{{ __('Monto') }}" class="mb-2" />
