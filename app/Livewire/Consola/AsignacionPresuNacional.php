@@ -73,15 +73,31 @@ class AsignacionPresuNacional extends Component
 
     private function initializeTechos()
     {
-        // Inicializar con al menos un techo vacío
-        if (empty($this->techos)) {
-            $this->techos = [
-                [
-                    'monto' => '',
-                    'idFuente' => ''
-                ]
-            ];
-        }
+        $this->techos = $this->buildTechosBase();
+    }
+
+    private function buildTechosBase(array $montosPorFuente = [], array $idsPorFuente = []): array
+    {
+        return $this->getFuentesTechosBase()
+            ->map(fn ($fuente) => [
+                'id' => $idsPorFuente[$fuente->id] ?? null,
+                'monto' => $montosPorFuente[$fuente->id] ?? '',
+                'idFuente' => $fuente->id,
+                'fuenteIdentificador' => $fuente->identificador,
+                'fuenteNombre' => $fuente->nombre,
+            ])
+            ->values()
+            ->toArray();
+    }
+
+    private function getFuentesTechosBase()
+    {
+        $orden = ['11', '12', '12B'];
+
+        return Fuente::whereIn('identificador', $orden)
+            ->get()
+            ->sortBy(fn ($fuente) => array_search($fuente->identificador, $orden, true))
+            ->values();
     }
 
     public function updatingSearch()
@@ -213,17 +229,10 @@ class AsignacionPresuNacional extends Component
                                  ->whereNull('idUE') // Solo techos globales
                                  ->get();
         
-        if ($techosGlobales->count() > 0) {
-            $this->techos = $techosGlobales->map(function($techo) {
-                return [
-                    'id' => $techo->id,
-                    'monto' => $techo->monto,
-                    'idFuente' => $techo->idFuente
-                ];
-            })->toArray();
-        } else {
-            $this->initializeTechos();
-        }
+        $this->techos = $this->buildTechosBase(
+            $techosGlobales->pluck('monto', 'idFuente')->toArray(),
+            $techosGlobales->pluck('id', 'idFuente')->toArray()
+        );
         
         $this->isEditing = true;
         $this->showModal = true;
@@ -395,13 +404,13 @@ class AsignacionPresuNacional extends Component
     private function crearTechosGlobales($poa)
     {
         foreach ($this->techos as $techo) {
-            if (!empty($techo['monto']) && $techo['monto'] > 0 && !empty($techo['idFuente'])) {
+            if (!empty($techo['idFuente'])) {
                 TechoUe::create([
                     'idPoa' => $poa->id,
                     'idUE' => null, // Techo global, sin UE específica
                     'idGrupo' => null,
                     'idFuente' => $techo['idFuente'],
-                    'monto' => $techo['monto'],
+                    'monto' => $techo['monto'] ?: 0,
                 ]);
             }
         }
@@ -441,45 +450,12 @@ class AsignacionPresuNacional extends Component
 
     public function addTecho()
     {
-        // Limitar a un máximo de 3 techos presupuestarios
-        if (count($this->techos) < 3) {
-            $this->techos[] = [
-                'monto' => '',
-                'idFuente' => ''
-            ];
-        } else {
-            session()->flash('error', 'No se pueden agregar más de 3 techos presupuestarios.');
-        }
+        session()->flash('warning', 'Los techos presupuestarios son fijos: 11, 12 y 12B.');
     }
 
     public function removeTecho($index)
     {
-        if (count($this->techos) > 1) {
-            $techoAEliminar = $this->techos[$index] ?? null;
-            
-            // Si estamos editando y el techo tiene ID (es decir, ya existe en la BD)
-            if ($this->isEditing && isset($techoAEliminar['id'])) {
-                // Verificar si tiene TechoDepto asociados
-                $tieneTechoDeptos = TechoDepto::where('idTechoUE', $techoAEliminar['id'])->exists();
-                
-                if ($tieneTechoDeptos) {
-                    // Obtener el nombre de la fuente para el mensaje
-                    $techoUe = TechoUe::with('fuente')->find($techoAEliminar['id']);
-                    $nombreFuente = $techoUe->fuente->nombre ?? 'Sin nombre';
-                    
-                    // Mostrar advertencia y no eliminar
-                    session()->flash('warning', 
-                        'No se puede eliminar el techo de la fuente "' . $nombreFuente . 
-                        '" porque tiene asignaciones departamentales. Primero elimine las asignaciones departamentales.'
-                    );
-                    return; // No eliminar el techo
-                }
-            }
-            
-            // Si no tiene asignaciones o es un techo nuevo, proceder con la eliminación
-            unset($this->techos[$index]);
-            $this->techos = array_values($this->techos); // Reindexar
-        }
+        session()->flash('warning', 'Los techos presupuestarios son fijos y no se pueden eliminar.');
     }
     
     /**

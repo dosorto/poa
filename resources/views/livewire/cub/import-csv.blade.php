@@ -6,12 +6,6 @@
     <x-slot name="content">
         <div class="space-y-4">
             <div>
-                <x-label for="importIdUE" :value="__('Unidad Ejecutora')" />
-                <x-select id="importIdUE" wire:model="importIdUE" :options="$unidadesEjecutoras->map(fn($ue) => ['value' => $ue->id, 'text' => $ue->name])->toArray()" placeholder="Seleccione una unidad ejecutora" class="mt-1 w-full" />
-                <x-input-error for="importIdUE" class="mt-2" />
-            </div>
-
-            <div>
                 <x-label for="csvFile" :value="__('Archivo CSV')" />
                 <input
                     id="csvFile"

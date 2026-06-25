@@ -111,7 +111,7 @@ class PlazoPoa extends BaseModel
             self::TIPO_ASIGNACION_NACIONAL => 'Asignación Nacional',
             self::TIPO_ASIGNACION_DEPARTAMENTAL => 'Asignación Departamental',
             self::TIPO_PLANIFICACION => 'Planificación',
-            self::TIPO_REQUERIMIENTOS => 'Requerimientos',
+            self::TIPO_REQUERIMIENTOS => 'Requisiciones',
             self::TIPO_SEGUIMIENTO => 'Seguimiento',
         ];
 

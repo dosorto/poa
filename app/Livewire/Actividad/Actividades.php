@@ -15,7 +15,7 @@ use App\Models\Empleados\Empleado;
 use App\Models\Poa\Poa;
 use App\Models\Poa\PoaDepto;
 use App\Models\UnidadEjecutora\UnidadEjecutora;
-use App\Models\Instituciones\Institucions;
+use App\Models\Instituciones\Institucion;
 use App\Services\LogService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -254,12 +254,14 @@ class Actividades extends Component
         }
         $this->idPoaDepto = $poaDepto ? $poaDepto->id : null;
         $this->idInstitucion = $empleado->unidadEjecutora->idInstitucion ?? null;
+        $institucion = $this->idInstitucion ? Institucion::find($this->idInstitucion) : null;
 
         $this->userContext = [
             'empleado' => $empleado,
             'departamento' => $departamento,
             'poa' => $poaActivo,
-            'unidadEjecutora' => $empleado->unidadEjecutora
+            'unidadEjecutora' => $empleado->unidadEjecutora,
+            'institucion' => $institucion,
         ];
     }
 
@@ -306,7 +308,8 @@ class Actividades extends Component
 
         $this->reset(['actividadId', 'nombre', 'descripcion', 'correlativo', 'resultadoActividad', 
                       'poblacion_objetivo', 'medio_verificacion', 'idTipo', 'idResultado', 
-                      'idCategoria', 'idDimension']);
+                      'idCategoria', 'idDimension', 'usarIA', 'generandoConIA', 'nombreParaIA', 
+                      'indicadoresGenerados']);
         
         $this->estado = 'FORMULACION';
         $this->currentStep = 1;
@@ -325,17 +328,15 @@ class Actividades extends Component
     public function generarConIA()
     {
         $this->validate([
-              'nombre' => 'required|min:10|max:255',
-             // 'nombreParaIA' => 'required|min:10|max:255'
+            'nombre' => 'required|min:10|max:255',
+            'idTipo' => 'required|exists:tipo_actividads,id',
+            'idCategoria' => 'required|exists:categorias,id',
         ], [
             'nombre.required' => 'Ingrese el nombre de la actividad',
             'nombre.min' => 'El nombre debe tener al menos 10 caracteres para generar con IA',
-            'nombre.max' => 'El nombre no puede exceder 255 caracteres'
-
-            //'nombreParaIA.required' => 'Ingrese el nombre de la actividad',
-          //  'nombreParaIA.min' => 'El nombre debe tener al menos 10 caracteres para generar con IA',
-           // 'nombreParaIA.max' => 'El nombre no puede exceder 255 caracteres'
-       
+            'nombre.max' => 'El nombre no puede exceder 255 caracteres',
+            'idTipo.required' => 'Seleccione el tipo de actividad antes de generar con IA',
+            'idCategoria.required' => 'Seleccione la categoría antes de generar con IA',
         ]);
 
         // Verificar throttling
@@ -370,6 +371,17 @@ class Actividades extends Component
                 ? $this->userContext['institucion']->nombre 
                 : 'institución educativa';
 
+            $tipoActividad = $this->tiposActividad->firstWhere('id', (int) $this->idTipo);
+            $categoria = $this->categorias->firstWhere('id', (int) $this->idCategoria);
+
+            $contextoPrompt = [
+                'tipo_actividad' => $tipoActividad?->tipo,
+                'categoria' => $categoria?->categoria,
+                'poa' => $this->userContext['poa']->anio ?? null,
+                'unidad_ejecutora' => $this->userContext['unidadEjecutora']->name ?? null,
+                'departamento' => $this->userContext['departamento']->name ?? null,
+            ];
+
             // Intentar con reintentos en caso de rate limit
             $maxIntentos = 3;
             $intentoActual = 0;
@@ -378,7 +390,7 @@ class Actividades extends Component
             while ($intentoActual < $maxIntentos) {
                 try {
                   //  $data = $iaService->generarActividad($this->nombreParaIA, $contextoInstitucion);
-                     $data = $iaService->generarActividad($this->nombre, $contextoInstitucion);
+                     $data = $iaService->generarActividad($this->nombre, $contextoInstitucion, $contextoPrompt);
                     \Log::info("Respuesta de {$providerName} recibida exitosamente");
                     break; // Si fue exitoso, salir del bucle
                     
@@ -418,6 +430,7 @@ class Actividades extends Component
             $this->poblacion_objetivo = $this->normalizarTexto($data['poblacion_objetivo'] ?? '');
             $this->medio_verificacion = $this->normalizarTexto($data['medio_verificacion'] ?? '');
             $this->indicadoresGenerados = $data['indicadores'] ?? [];
+            $this->sugerirVinculacionPei($tipoActividad, $categoria);
 
             // Cerrar el panel de IA
            // $this->usarIA = false;
@@ -511,6 +524,203 @@ class Actividades extends Component
                 'idResultado' => 'required|exists:resultados,id',
             ]);
         }
+    }
+
+    private function sugerirVinculacionPei($tipoActividad = null, $categoria = null)
+    {
+        $partesActividad = [
+            'nombre' => $this->nombre,
+            'descripcion' => $this->descripcion,
+            'resultado' => $this->resultadoActividad,
+            'poblacion' => $this->poblacion_objetivo,
+            'medio' => $this->medio_verificacion,
+            'tipo' => $tipoActividad?->tipo,
+            'categoria' => $categoria?->categoria,
+            'departamento' => $this->userContext['departamento']->name ?? null,
+            'unidad' => $this->userContext['unidadEjecutora']->name ?? null,
+        ];
+
+        $textoActividad = implode(' ', array_filter($partesActividad));
+        $temasActividad = $this->detectarTemasPei($textoActividad);
+
+        $resultados = Resultado::with(['area.objetivo.dimension'])
+            ->orderBy('nombre')
+            ->get();
+
+        $mejorResultado = null;
+        $mejorDimension = null;
+        $mejorScore = 0;
+
+        foreach ($resultados as $resultado) {
+            $dimension = $resultado->area?->objetivo?->dimension;
+
+            if (!$dimension) {
+                continue;
+            }
+
+            $partesPei = [
+                'dimension' => $dimension->nombre . ' ' . $dimension->descripcion,
+                'objetivo' => ($resultado->area?->objetivo?->nombre ?? '') . ' ' . ($resultado->area?->objetivo?->descripcion ?? ''),
+                'area' => $resultado->area?->nombre,
+                'resultado' => $resultado->nombre . ' ' . $resultado->descripcion,
+            ];
+
+            $score = $this->calcularCoincidenciaPei($partesActividad, $partesPei, $temasActividad);
+
+            if ($score > $mejorScore) {
+                $mejorScore = $score;
+                $mejorResultado = $resultado;
+                $mejorDimension = $dimension;
+            }
+        }
+
+        if (!$mejorResultado || !$mejorDimension || $mejorScore <= 0) {
+            return;
+        }
+
+        $this->idDimension = $mejorDimension->id;
+        $this->updatedIdDimension($mejorDimension->id);
+        $this->idResultado = $mejorResultado->id;
+
+        \Log::info('Vinculacion PEI sugerida por coincidencia', [
+            'dimension_id' => $this->idDimension,
+            'resultado_id' => $this->idResultado,
+            'score' => $mejorScore,
+        ]);
+    }
+
+    private function calcularCoincidenciaPei(array $partesActividad, array $partesPei, array $temasActividad)
+    {
+        $textoActividad = implode(' ', array_filter($partesActividad));
+        $textoPei = implode(' ', array_filter($partesPei));
+        $tokensActividad = $this->extraerTokensBusqueda($textoActividad);
+        $tokensNombre = $this->extraerTokensBusqueda($partesActividad['nombre'] ?? '');
+        $tokensResultado = $this->extraerTokensBusqueda($partesActividad['resultado'] ?? '');
+        $textoPeiNormalizado = $this->normalizarParaBusqueda($textoPei);
+        $dimensionNormalizada = $this->normalizarParaBusqueda($partesPei['dimension'] ?? '');
+        $resultadoNormalizado = $this->normalizarParaBusqueda($partesPei['resultado'] ?? '');
+        $temasPei = $this->detectarTemasPei($textoPei);
+        $score = 0;
+
+        foreach ($tokensActividad as $token) {
+            if (str_contains($textoPeiNormalizado, $token)) {
+                $score += strlen($token) >= 8 ? 2 : 1;
+            }
+        }
+
+        foreach ($tokensNombre as $token) {
+            if (str_contains($resultadoNormalizado, $token)) {
+                $score += 6;
+            } elseif (str_contains($dimensionNormalizada, $token)) {
+                $score += 4;
+            }
+        }
+
+        foreach ($tokensResultado as $token) {
+            if (str_contains($resultadoNormalizado, $token)) {
+                $score += 4;
+            }
+        }
+
+        foreach ($temasActividad as $tema => $peso) {
+            if (isset($temasPei[$tema])) {
+                $score += $peso * $temasPei[$tema] * 8;
+            }
+        }
+
+        $score += $this->puntuarDimensionPorTema($dimensionNormalizada, $temasActividad);
+
+        return $score;
+    }
+
+    private function puntuarDimensionPorTema($dimensionNormalizada, array $temasActividad)
+    {
+        $mapaDimensiones = [
+            'docencia' => ['docencia profesorado universitario'],
+            'investigacion' => ['investigacion cientifica'],
+            'vinculacion' => ['vinculacion universidad sociedad'],
+            'estudiantes' => ['estudiantes'],
+            'tic' => ['gestion tic'],
+            'administrativa' => ['gestion administrativa', 'gestion talento humano'],
+            'internacionalizacion' => ['internacionalizacion educacion superior'],
+            'calidad' => ['aseguramiento calidad'],
+            'cultura' => ['lo esencial', 'cultura innovacion institucional educativa'],
+        ];
+
+        $score = 0;
+
+        foreach ($temasActividad as $tema => $peso) {
+            foreach ($mapaDimensiones[$tema] ?? [] as $dimensionEsperada) {
+                $tokensDimension = preg_split('/\s+/', $this->normalizarParaBusqueda($dimensionEsperada), -1, PREG_SPLIT_NO_EMPTY);
+                $coincideDimension = collect($tokensDimension)
+                    ->every(fn ($token) => str_contains($dimensionNormalizada, $token));
+
+                if ($coincideDimension) {
+                    $score += $peso * 30;
+                }
+            }
+        }
+
+        return $score;
+    }
+
+    private function detectarTemasPei($texto)
+    {
+        $texto = $this->normalizarParaBusqueda($texto);
+        $diccionario = [
+            'docencia' => ['docente', 'profesor', 'profesores', 'capacitacion', 'formacion', 'ensenanza', 'aprendizaje', 'metodologia', 'pedagog', 'curricul', 'clase', 'aula', 'academica', 'carga academica'],
+            'investigacion' => ['investigacion', 'cientifica', 'articulo', 'revista', 'ponencia', 'congreso', 'proyecto de investigacion', 'diciht'],
+            'vinculacion' => ['vinculacion', 'sociedad', 'comunidad', 'extension', 'dvus', 'proyecto social', 'desarrollo local', 'municipal', 'emprendedor'],
+            'estudiantes' => ['estudiante', 'estudiantes', 'tutoria', 'orientacion', 'beca', 'graduacion', 'egresado', 'practica profesional', 'pps'],
+            'tic' => ['tic', 'tecnologia', 'software', 'sistema', 'plataforma', 'computo', 'equipo tecnologico', 'hardware', 'internet', 'virtual'],
+            'administrativa' => ['administrativo', 'gestion', 'recurso humano', 'talento humano', 'contratacion', 'normativa', 'proceso', 'infraestructura', 'mantenimiento', 'compra', 'adquisicion'],
+            'internacionalizacion' => ['internacionalizacion', 'internacional', 'movilidad', 'cooperacion', 'vri', 'beca internacional', 'convenio'],
+            'calidad' => ['calidad', 'acreditacion', 'autoevaluacion', 'mejora continua', 'evaluacion', 'aseguramiento'],
+            'cultura' => ['cultura', 'cultural', 'arte', 'identidad', 'deporte', 'festival'],
+        ];
+
+        $temas = [];
+
+        foreach ($diccionario as $tema => $palabras) {
+            foreach ($palabras as $palabra) {
+                if (str_contains($texto, $this->normalizarParaBusqueda($palabra))) {
+                    $temas[$tema] = ($temas[$tema] ?? 0) + 1;
+                }
+            }
+        }
+
+        return $temas;
+    }
+
+    private function extraerTokensBusqueda($texto)
+    {
+        $texto = $this->normalizarParaBusqueda($texto);
+        $tokens = preg_split('/\s+/', $texto, -1, PREG_SPLIT_NO_EMPTY);
+        $stopwords = [
+            'para', 'como', 'con', 'por', 'los', 'las', 'del', 'una', 'uno', 'que',
+            'esta', 'este', 'desde', 'hacia', 'sobre', 'entre', 'actividad', 'poa',
+            'unah', 'unidad', 'ejecutora', 'plan', 'operativo', 'anual', 'proceso',
+            'procesos', 'realizar', 'desarrollar', 'gestion', 'fortalecer', 'fortalecimiento',
+            'mejorar', 'mejora', 'personal', 'comunidad', 'universitaria', 'centro',
+        ];
+
+        return collect($tokens)
+            ->filter(fn ($token) => strlen($token) >= 4 && !in_array($token, $stopwords, true))
+            ->unique()
+            ->values()
+            ->all();
+    }
+
+    private function normalizarParaBusqueda($texto)
+    {
+        $texto = strtolower((string) $texto);
+        $texto = strtr($texto, [
+            'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u',
+            'ä' => 'a', 'ë' => 'e', 'ï' => 'i', 'ö' => 'o', 'ü' => 'u',
+            'ñ' => 'n',
+        ]);
+
+        return trim(preg_replace('/[^a-z0-9]+/', ' ', $texto));
     }
 
     /**

@@ -22,12 +22,6 @@
                 <x-textarea id="descripcion_regional" class="mt-1 block w-full" wire:model="descripcion_regional" placeholder="Ingrese la descripción regional" rows="4" />
                 <x-input-error for="descripcion_regional" class="mt-2" />
             </div>
-
-            <div>
-                <x-label for="idUE" :value="__('Unidad Ejecutora (opcional)')" />
-                <x-select id="idUE" wire:model="idUE" :options="$unidadesEjecutoras->map(fn($ue) => ['value' => $ue->id, 'text' => $ue->name])->toArray()" placeholder="Seleccione una unidad ejecutora" class="mt-1 w-full" />
-                <x-input-error for="idUE" class="mt-2" />
-            </div>
         </div>
     </x-slot>
 

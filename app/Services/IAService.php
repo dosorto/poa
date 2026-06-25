@@ -12,7 +12,7 @@ class IAService
 
     public function __construct()
     {
-        $this->provider = config('ia.provider', 'openai');
+        $this->provider = strtolower(trim(config('ia.provider', 'openai')));
         $this->apiKey = $this->getApiKey();
     }
 
@@ -26,9 +26,11 @@ class IAService
         };
     }
 
-    public function generarActividad($nombreActividad, $contextoInstitucion = 'Universidad Nacional Autónoma de Honduras')
+    public function generarActividad($nombreActividad, $contextoInstitucion = 'Universidad Nacional Autónoma de Honduras', array $contextoAdicional = [])
     {
-        $prompt = $this->construirPrompt($nombreActividad, $contextoInstitucion);
+        $prompt = $this->provider === 'ollama'
+            ? $this->construirPromptOllama($nombreActividad, $contextoInstitucion, $contextoAdicional)
+            : $this->construirPrompt($nombreActividad, $contextoInstitucion, $contextoAdicional);
         $startedAt = microtime(true);
 
         try {
@@ -54,8 +56,17 @@ class IAService
         }
     }
 
-    protected function construirPrompt($nombreActividad, $contextoInstitucion)
+    protected function construirPrompt($nombreActividad, $contextoInstitucion, array $contextoAdicional = [])
     {
+        $lineasContexto = collect($contextoAdicional)
+            ->filter(fn ($valor) => filled($valor))
+            ->map(fn ($valor, $clave) => '- ' . str_replace('_', ' ', ucfirst($clave)) . ': ' . $valor)
+            ->implode("\n");
+
+        $contextoEspecifico = $lineasContexto
+            ? "\n            ## CONTEXTO ESPECÍFICO DE LA ACTIVIDAD\n\n            {$lineasContexto}\n"
+            : '';
+
         return "Eres un experto en planificación estratégica institucional de la Universidad Nacional Autónoma de Honduras (UNAH), con profundo conocimiento del Plan Estratégico Institucional (PEI) 2024-2027 y del modelo de Gestión por Resultados adoptado por la institución.
 
             ## CONTEXTO INSTITUCIONAL UNAH
@@ -94,6 +105,7 @@ class IAService
 
             Basándote en el nombre de actividad: **'{$nombreActividad}'**
             Contexto institucional: **{$contextoInstitucion}**
+            {$contextoEspecifico}
 
             Genera un JSON con los siguientes campos para incluir en el Plan Operativo Anual (POA):
 
@@ -115,6 +127,46 @@ class IAService
             - El resultado debe ser coherente con las metas reales del PEI 2024-2027.
 
             Responde ÚNICAMENTE con el JSON válido, sin markdown ni explicaciones adicionales.";
+    }
+
+    protected function construirPromptOllama($nombreActividad, $contextoInstitucion, array $contextoAdicional = [])
+    {
+        $lineasContexto = collect($contextoAdicional)
+            ->filter(fn ($valor) => filled($valor))
+            ->map(fn ($valor, $clave) => '- ' . str_replace('_', ' ', ucfirst($clave)) . ': ' . $valor)
+            ->implode("\n");
+
+        $contexto = $lineasContexto ? "\nContexto adicional:\n{$lineasContexto}\n" : '';
+
+        return "Eres un asistente experto en planificacion operativa anual de la UNAH.
+Responde solo con un objeto JSON valido. No uses markdown, no expliques, no agregues texto fuera del JSON.
+
+Actividad: {$nombreActividad}
+Institucion: {$contextoInstitucion}
+{$contexto}
+Genera datos para un formulario POA con esta estructura exacta:
+{
+  \"descripcion\": \"texto de 2 oraciones\",
+  \"resultadoActividad\": \"resultado concreto y medible en 1 oracion\",
+  \"poblacion_objetivo\": \"poblacion beneficiaria\",
+  \"medio_verificacion\": \"medio oficial de verificacion\",
+  \"indicadores\": [
+    {
+      \"nombre\": \"nombre del indicador\",
+      \"descripcion\": \"que mide y como se calcula\",
+      \"cantidadPlanificada\": 1,
+      \"isCantidad\": true,
+      \"isPorcentaje\": false
+    }
+  ]
+}
+
+Reglas:
+- Usa lenguaje institucional de la UNAH.
+- Devuelve 2 indicadores como maximo.
+- Al menos un indicador debe ser de cantidad absoluta.
+- No uses indicadores de satisfaccion ni encuestas.
+- Manten todos los textos breves para que el JSON no se corte.";
     }
 
     protected function generarConOpenAI($prompt)
@@ -162,8 +214,7 @@ class IAService
                 ],
                 'generationConfig' => [
                     'temperature' => (float) $config['temperature'],
-                    'maxOutputTokens' => (int) $config['max_tokens'],
-                    'responseMimeType' => 'application/json',
+                    'maxOutputTokens' => max((int) $config['max_tokens'], 2000),
                 ],
             ]);
 
@@ -246,19 +297,29 @@ class IAService
             'model' => $config['model'],
         ]);
 
-        $response = $request->post($url, [
-            'model' => $config['model'],
-            'stream' => false,
-            'format' => 'json',
-            'messages' => [
-                ['role' => 'system', 'content' => 'Eres un asistente experto en planificación estratégica institucional. Respondes únicamente con JSON válido sin formato markdown.'],
-                ['role' => 'user', 'content' => $prompt],
-            ],
-            'options' => [
-                'temperature' => (float) $config['temperature'],
-                'num_predict' => (int) $config['max_tokens'],
-            ],
-        ]);
+        try {
+            $response = $request->post($url, [
+                'model' => $config['model'],
+                'stream' => false,
+                'format' => 'json',
+                'messages' => [
+                    ['role' => 'system', 'content' => 'Eres un asistente experto en planificación estratégica institucional. Respondes únicamente con JSON válido sin formato markdown.'],
+                    ['role' => 'user', 'content' => $prompt],
+                ],
+                'options' => [
+                    'temperature' => (float) $config['temperature'],
+                    'num_predict' => max((int) $config['max_tokens'], 1800),
+                ],
+            ]);
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            Log::error('No se pudo conectar con Ollama', [
+                'url' => $url,
+                'model' => $config['model'],
+                'error' => $e->getMessage(),
+            ]);
+
+            throw new \Exception("No se pudo conectar con Ollama en {$host}. Verifica que Ollama este encendido, que el puerto 11434 este accesible y que OLLAMA_HOST sea correcto.");
+        }
 
         if (!$response->successful()) {
             Log::error('Error de Ollama API', [

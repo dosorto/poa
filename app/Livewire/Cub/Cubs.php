@@ -3,7 +3,6 @@
 namespace App\Livewire\Cub;
 
 use App\Models\Cubs\Cub;
-use App\Models\UnidadEjecutora\UnidadEjecutora;
 use Livewire\Component;
 use Livewire\Attributes\Layout;
 use Livewire\WithFileUploads;
@@ -19,7 +18,6 @@ class Cubs extends Component
     public string $IDUNSPSC = '';
     public string $descripcion_esp = '';
     public string $descripcion_regional = '';
-    public int|string|null $idUE = null;
     public bool $isModalOpen = false;
     public bool $isImportModalOpen = false;
     public bool $showDeleteModal = false;
@@ -27,7 +25,6 @@ class Cubs extends Component
     public string $errorMessage = '';
     public ?Cub $cubToDelete = null;
     public $csvFile = null;
-    public int|string|null $importIdUE = null;
     public array $importErrors = [];
 
     public string $search = '';
@@ -45,7 +42,6 @@ class Cubs extends Component
         'IDUNSPSC' => 'required|max:50',
         'descripcion_esp' => 'required|max:1000',
         'descripcion_regional' => 'nullable|max:1000',
-        'idUE' => 'nullable|exists:unidad_ejecutora,id',
     ];
 
     protected $messages = [
@@ -54,7 +50,6 @@ class Cubs extends Component
         'descripcion_esp.required' => 'La descripción en español es obligatoria.',
         'descripcion_esp.max' => 'La descripción en español no puede exceder 1000 caracteres.',
         'descripcion_regional.max' => 'La descripción regional no puede exceder 1000 caracteres.',
-        'idUE.exists' => 'La unidad ejecutora seleccionada no existe.',
     ];
 
     public function updatingSearch(): void
@@ -78,7 +73,6 @@ class Cubs extends Component
         $this->IDUNSPSC = '';
         $this->descripcion_esp = '';
         $this->descripcion_regional = '';
-        $this->idUE = null;
         $this->resetValidation();
     }
 
@@ -102,7 +96,6 @@ class Cubs extends Component
             'IDUNSPSC' => $this->IDUNSPSC,
             'descripcion_esp' => $this->descripcion_esp,
             'descripcion_regional' => $this->descripcion_regional,
-            'idUE' => $this->idUE ?: null,
         ]);
 
         session()->flash('message', $this->cubId
@@ -121,7 +114,6 @@ class Cubs extends Component
         $this->IDUNSPSC = $cub->IDUNSPSC;
         $this->descripcion_esp = $cub->descripcion_esp;
         $this->descripcion_regional = $cub->descripcion_regional ?? '';
-        $this->idUE = $cub->idUE;
         $this->isModalOpen = true;
     }
 
@@ -161,23 +153,19 @@ class Cubs extends Component
     public function resetImportFields(): void
     {
         $this->csvFile = null;
-        $this->importIdUE = null;
         $this->importErrors = [];
-        $this->resetValidation(['csvFile', 'importIdUE']);
+        $this->resetValidation(['csvFile']);
     }
 
     public function importCsv(): void
     {
         $this->validate([
             'csvFile' => 'required|file|mimes:csv,txt|max:5120',
-            'importIdUE' => 'required|exists:unidad_ejecutora,id',
         ], [
             'csvFile.required' => 'Debes seleccionar un archivo CSV.',
             'csvFile.file' => 'El archivo seleccionado no es válido.',
             'csvFile.mimes' => 'El archivo debe ser CSV.',
             'csvFile.max' => 'El archivo no debe superar 5 MB.',
-            'importIdUE.required' => 'Debes seleccionar una unidad ejecutora.',
-            'importIdUE.exists' => 'La unidad ejecutora seleccionada no existe.',
         ]);
 
         $path = $this->csvFile->getRealPath();
@@ -238,7 +226,6 @@ class Cubs extends Component
 
             $cub = Cub::updateOrCreate([
                 'IDUNSPSC' => $IDUNSPSC,
-                'idUE' => $this->importIdUE,
             ], [
                 'descripcion_esp' => $descripcionEsp,
                 'descripcion_regional' => $descripcionRegional !== '' ? $descripcionRegional : $descripcionEsp,
@@ -281,7 +268,6 @@ class Cubs extends Component
     public function render()
     {
         $cubs = Cub::query()
-            ->with(['unidadEjecutora'])
             ->when($this->search, function ($query) {
                 $s = '%' . $this->search . '%';
 
@@ -292,11 +278,8 @@ class Cubs extends Component
             ->orderBy($this->sortField, $this->sortDirection)
             ->paginate((int) $this->perPage);
 
-        $unidadesEjecutoras = UnidadEjecutora::orderBy('name')->get();
-
         return view('livewire.cub.cubs', [
             'cubs' => $cubs,
-            'unidadesEjecutoras' => $unidadesEjecutoras,
         ]);
     }
 }
