@@ -804,7 +804,9 @@
                         </div>
 
                         <div>
-                            <x-label for="fuentePresupuesto" value="Fuente de Financiamiento" />
+                            <label for="fuentePresupuesto" class="block font-medium text-sm text-zinc-700 dark:text-zinc-300">
+                                Fuente de Financiamiento <span class="text-red-500">*</span>
+                            </label>
                             <select id="fuentePresupuesto" class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 text-sm" wire:model.live="nuevoPresupuesto.idfuente">
                                 <option value="">Seleccione una fuente</option>
                                 @foreach($fuentesFinanciamiento as $fuente)
@@ -831,13 +833,17 @@
 
                     <div class="grid grid-cols-3 gap-4">
                         <div>
-                            <x-label for="costoUnitario" value="Costo Unitario (L)" />
+                            <label for="costoUnitario" class="block font-medium text-sm text-zinc-700 dark:text-zinc-300">
+                                Costo Unitario (L) <span class="text-red-500">*</span>
+                            </label>
                             <x-input id="costoUnitario" type="number" step="0.01" min="0" class="mt-1 block w-full text-sm" wire:model.live="nuevoPresupuesto.costounitario" />
                             @error('nuevoPresupuesto.costounitario') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                         </div>
 
                         <div>
-                            <x-label for="cantidadPresupuesto" value="Cantidad" />
+                            <label for="cantidadPresupuesto" class="block font-medium text-sm text-zinc-700 dark:text-zinc-300">
+                                Cantidad <span class="text-red-500">*</span>
+                            </label>
                             <x-input id="cantidadPresupuesto" type="number" step="0.01" min="0.01" class="mt-1 block w-full text-sm" wire:model.live="nuevoPresupuesto.cantidad" />
                             @error('nuevoPresupuesto.cantidad') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                         </div>
