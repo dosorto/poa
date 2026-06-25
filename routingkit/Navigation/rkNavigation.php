@@ -386,6 +386,9 @@ return [
                         ->setDescription('Gestión de techos presupuestarios por Unidades Ejecutoras')
                         ->setLabel('Techos presupuestarios UE')
                         ->setHeroIcon('arrow-trending-up')
+                        ->setUrl((request()->route('idPoa') || request()->query('idPoa'))
+                            ? '/techonacional?idPoa=' . (request()->route('idPoa') ?? request()->query('idPoa'))
+                            : '/techonacional')
                         ->setItems([
                             RkNavigation::make('plazos-poa')
                                 ->setDescription('Gestión de plazos estándar y personalizados para el POA')
@@ -399,6 +402,21 @@ return [
                                 ->setDescription('Análisis detallado de techo UE')
                                 ->setLabel('Análisis techo UE')
                                 ->setHeroIcon('chart-bar')
+                                ->setUrl((function () {
+                                    $idPoa = request()->route('idPoa') ?? request()->query('idPoa');
+                                    $idUE = request()->route('idUE');
+
+                                    if ($idPoa && ! $idUE) {
+                                        $idUE = \App\Models\TechoUes\TechoUe::where('idPoa', $idPoa)
+                                            ->whereNotNull('idUE')
+                                            ->orderBy('idUE')
+                                            ->value('idUE');
+                                    }
+
+                                    return ($idPoa && $idUE)
+                                        ? '/techonacional/' . $idPoa . '/analysis/' . $idUE
+                                        : '#';
+                                })())
                                 ->setItems([])
                                 ->setEndBlock('analysis-techo-ue'),
                 ])
