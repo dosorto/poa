@@ -829,21 +829,7 @@
                         />
                     </div>
 
-                    <div class="grid grid-cols-4 gap-4">
-                        <div>
-                            <x-searchable-select
-                                wire:model="nuevoPresupuesto.idunidad"
-                                wire:key="presupuesto-unidad-select-{{ $presupuestoEditandoId ?: 'nuevo' }}-{{ $nuevoPresupuesto['idunidad'] ?: 'empty' }}"
-                                label="Unidad de Medida"
-                                :required="true"
-                                placeholder="Buscar unidad de medida..."
-                                defaultText="Seleccione una unidad de medida"
-                                searchAction="searchUnidadesMedida"
-                                :options="collect($unidadesMedida)->map(fn($unidad) => ['id' => $unidad['id'], 'text' => $unidad['nombre']])->toArray()"
-                                :error="$errors->first('nuevoPresupuesto.idunidad')"
-                            />
-                        </div>
-
+                    <div class="grid grid-cols-3 gap-4">
                         <div>
                             <x-label for="costoUnitario" value="Costo Unitario (L)" />
                             <x-input id="costoUnitario" type="number" step="0.01" min="0" class="mt-1 block w-full text-sm" wire:model.live="nuevoPresupuesto.costounitario" />

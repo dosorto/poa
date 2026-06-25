@@ -1453,7 +1453,24 @@ class GestionarActividad extends Component
 
         $this->syncRecursoPresupuestoOption($this->nuevoPresupuesto['idRecurso']);
         $this->nuevoPresupuesto['detalle_tecnico'] = '';
+        $this->syncUnidadMedidaFromRecurso($this->nuevoPresupuesto['idRecurso']);
         $this->loadDetallesTecnicosPorRecurso($this->nuevoPresupuesto['idRecurso']);
+    }
+
+    private function syncUnidadMedidaFromRecurso($recursoId): void
+    {
+        if (empty($recursoId)) {
+            $this->nuevoPresupuesto['idunidad'] = '';
+            return;
+        }
+
+        $recurso = TareaHistorico::query()
+            ->select('id', 'idunidad')
+            ->find((int) $recursoId);
+
+        $this->nuevoPresupuesto['idunidad'] = $recurso?->idunidad
+            ? (string) $recurso->idunidad
+            : '';
     }
 
     public function updatedNuevoPresupuestoIdfuente($value)
@@ -1505,6 +1522,7 @@ class GestionarActividad extends Component
     {
         // Verificar permisos basados en la tarea seleccionada
         $this->verificarPuedeEditarTarea($this->tareaSeleccionada);
+        $this->syncUnidadMedidaFromRecurso($this->nuevoPresupuesto['idRecurso'] ?? '');
         
         $this->validate([
             'nuevoPresupuesto.idRecurso' => 'required|exists:tareas_historicos,id',
