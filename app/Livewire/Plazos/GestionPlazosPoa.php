@@ -32,12 +32,16 @@ class GestionPlazosPoa extends Component
     public $fecha_fin_form = '';
     public $descripcion = '';
     public $activo_form = true;
+    public $ultimoPlazoGuardadoTipo = null;
+    public $ultimoPlazoGuardadoMensaje = '';
+    public $ultimoPlazoGuardadoHora = '';
+    public $ultimoPlazoGuardadoKey = '';
     
     public $tiposPlazosEstandar = [
         'asignacion_nacional' => 'Asignación Nacional',
         'asignacion_departamental' => 'Asignación Departamental',
         'planificacion' => 'Planificación',
-        'requerimientos' => 'Requerimientos',
+        'requerimientos' => 'Requisiciones',
         'seguimiento' => 'Seguimiento',
     ];
     
@@ -131,6 +135,11 @@ class GestionPlazosPoa extends Component
     
     public function guardarPlazoEstandar($tipo)
     {
+        $this->ultimoPlazoGuardadoTipo = null;
+        $this->ultimoPlazoGuardadoMensaje = '';
+        $this->ultimoPlazoGuardadoHora = '';
+        $this->ultimoPlazoGuardadoKey = '';
+
         $plazo = $this->plazosEstandar[$tipo];
         
         // Validar que ambas fechas estén completas
@@ -219,7 +228,12 @@ class GestionPlazosPoa extends Component
             
             DB::commit();
             
-            session()->flash('success', 'Plazo guardado exitosamente');
+            $this->ultimoPlazoGuardadoTipo = $tipo;
+            $this->ultimoPlazoGuardadoMensaje = 'La acción se realizó con éxito. El plazo fue guardado correctamente.';
+            $this->ultimoPlazoGuardadoHora = now()->format('H:i:s');
+            $this->ultimoPlazoGuardadoKey = uniqid('plazo-guardado-', true);
+
+            session()->flash('success', $this->ultimoPlazoGuardadoMensaje);
             $this->loadPlazos(); // Recargar para mostrar estado actualizado
             
         } catch (\Exception $e) {
