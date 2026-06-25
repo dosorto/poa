@@ -343,10 +343,14 @@ class Actividades extends Component
         $throttleKey = 'ia_actividad_' . auth()->id();
         $lastRequest = \Cache::get($throttleKey);
         
-        if ($lastRequest && now()->diffInSeconds($lastRequest) < $throttleSeconds) {
-            $segundosRestantes = $throttleSeconds - now()->diffInSeconds($lastRequest);
-            session()->flash('error', "Por favor espera {$segundosRestantes} segundos antes de generar otra actividad con IA.");
-            return;
+        if ($lastRequest) {
+            $elapsedSeconds = $lastRequest->diffInSeconds(now(), true);
+            $segundosRestantes = max(0, (int) ceil($throttleSeconds - $elapsedSeconds));
+
+            if ($segundosRestantes > 0) {
+                session()->flash('error', "Por favor espera {$segundosRestantes} segundos antes de generar otra actividad con IA.");
+                return;
+            }
         }
 
         $this->generandoConIA = true;
@@ -420,7 +424,7 @@ class Actividades extends Component
           // $this->nombreParaIA = '';
             
             // Registrar el timestamp de esta solicitud para throttling
-            \Cache::put($throttleKey, now(), 60); // Guardar por 60 segundos
+            \Cache::put($throttleKey, now(), $throttleSeconds);
             
             \Log::info('Actividad generada exitosamente');
             session()->flash('ia_success', '¡Actividad generada con IA! Revisa y ajusta los campos antes de continuar.');

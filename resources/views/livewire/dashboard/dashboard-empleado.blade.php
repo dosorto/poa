@@ -347,9 +347,10 @@
     </div>
     
     <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" data-navigate-once></script>
     <script>
-        let charts = {};
+        window.dashboardCharts = window.dashboardCharts || {};
+        var charts = window.dashboardCharts;
         
         function initializeCharts() {
             // Destruir charts existentes
@@ -357,6 +358,7 @@
                 if (chart) chart.destroy();
             });
             charts = {};
+            window.dashboardCharts = charts;
         
         const isDarkMode = document.documentElement.classList.contains('dark');
         
@@ -596,6 +598,7 @@
             if (chart) chart.destroy();
         });
         charts = {};
+        window.dashboardCharts = charts;
         
         // Obtener datos actualizados desde las propiedades de Livewire
         const estadisticasGenerales = @this.estadisticasGenerales || {};
@@ -899,11 +902,31 @@
         }
     }
     
+    function scheduleDashboardChartsInit() {
+        if (!document.getElementById('chartPresupuestoGeneral') || typeof initializeCharts !== 'function') {
+            return;
+        }
+
+        if (typeof Chart === 'undefined') {
+            setTimeout(scheduleDashboardChartsInit, 50);
+            return;
+        }
+
+        requestAnimationFrame(() => {
+            initializeCharts();
+        });
+    }
+
     // Inicializar charts cuando el documento esté listo
     if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', initializeCharts);
+        document.addEventListener('DOMContentLoaded', scheduleDashboardChartsInit);
     } else {
-        initializeCharts();
+        scheduleDashboardChartsInit();
+    }
+
+    if (!window.dashboardChartsNavigateListenerRegistered) {
+        document.addEventListener('livewire:navigated', scheduleDashboardChartsInit);
+        window.dashboardChartsNavigateListenerRegistered = true;
     }
     </script>
 
@@ -911,7 +934,9 @@
     <script>
         // Inicializar charts cuando el componente Livewire se monta
         setTimeout(() => {
-            if (typeof updateChartsWithLivewireData === 'function') {
+            if (typeof scheduleDashboardChartsInit === 'function') {
+                scheduleDashboardChartsInit();
+            } else if (typeof updateChartsWithLivewireData === 'function') {
                 updateChartsWithLivewireData();
             }
         }, 100);
