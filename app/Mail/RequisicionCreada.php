@@ -89,7 +89,8 @@ class RequisicionCreada extends Mailable
             : null;
 
         return [
-            'estado' => $this->requisicion->estado->estado ?? '',
+            // El correo inicial de requisición creada debe adjuntar el PDF en estado "Presentado"
+            'estado' => 'Presentado',
             'departamento' => $this->requisicion->departamento->name ?? '',
             'correlativo' => $this->requisicion->correlativo,
             'solicitante' => $this->requisicion->creador->name ?? '',
