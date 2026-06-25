@@ -916,7 +916,7 @@ class GestionarActividad extends Component
                     'nombre' => $this->nuevaTarea['nombre'],
                     'descripcion' => $this->nuevaTarea['descripcion'],
                     'estado' => $this->nuevaTarea['estado'],
-                    'isPresupuesto' => $this->nuevaTarea['isPresupuesto'],
+                    'isPresupuesto' => (bool) ($this->nuevaTarea['isPresupuesto'] ?? false),
                     'updated_by' => Auth::id()
                 ]);
                 $mensaje = 'Tarea actualizada exitosamente';
@@ -936,7 +936,7 @@ class GestionarActividad extends Component
                     'descripcion' => $this->nuevaTarea['descripcion'],
                     'correlativo' => str_pad($correlativo, 3, '0', STR_PAD_LEFT),
                     'estado' => $this->nuevaTarea['estado'],
-                    'isPresupuesto' => $this->nuevaTarea['isPresupuesto'],
+                    'isPresupuesto' => (bool) ($this->nuevaTarea['isPresupuesto'] ?? false),
                     'idActividad' => $this->actividadId,
                     'idPoa' => $this->actividad->idPoa,
                     'idDeptartamento' => $this->actividad->idDeptartamento,
@@ -968,7 +968,7 @@ class GestionarActividad extends Component
             'nombre' => $tarea->nombre,
             'descripcion' => $tarea->descripcion,
             'estado' => $tarea->estado,
-            'isPresupuesto' => $tarea->isPresupuesto
+            'isPresupuesto' => (bool) $tarea->isPresupuesto
         ];
         
         $this->showTareaModal = true;

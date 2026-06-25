@@ -604,7 +604,7 @@
 
                 <div class="flex items-center">
                     <label class="flex items-center">
-                        <input type="checkbox" wire:model="nuevaTarea.isPresupuesto" class="rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500">
+                        <input type="checkbox" wire:model.live="nuevaTarea.isPresupuesto" class="rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500">
                         <span class="ml-2 text-sm text-zinc-700 dark:text-zinc-300">Requiere Presupuesto</span>
                     </label>
                 </div>

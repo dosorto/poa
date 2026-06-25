@@ -14,6 +14,10 @@ class Tarea extends BaseModel
 {
     protected $table = 'tareas';
 
+    protected $casts = [
+        'isPresupuesto' => 'boolean',
+    ];
+
     protected $fillable = [
         'nombre',
         'descripcion',
