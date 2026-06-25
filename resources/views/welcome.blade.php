@@ -60,14 +60,6 @@
                                         Iniciar Sesión
                                     </a>
 
-                                    @if (Route::has('register'))
-                                        <a
-                                            href="{{ route('register') }}"
-                                            class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-2 rounded-lg font-medium transition-colors duration-200"
-                                        >
-                                            Registrarse
-                                        </a>
-                                    @endif
                                 @endauth
                             </div>
                         </nav>
