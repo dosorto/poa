@@ -308,7 +308,8 @@ class Actividades extends Component
 
         $this->reset(['actividadId', 'nombre', 'descripcion', 'correlativo', 'resultadoActividad', 
                       'poblacion_objetivo', 'medio_verificacion', 'idTipo', 'idResultado', 
-                      'idCategoria', 'idDimension']);
+                      'idCategoria', 'idDimension', 'usarIA', 'generandoConIA', 'nombreParaIA', 
+                      'indicadoresGenerados']);
         
         $this->estado = 'FORMULACION';
         $this->currentStep = 1;
