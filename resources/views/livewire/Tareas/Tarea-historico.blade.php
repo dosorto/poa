@@ -174,13 +174,13 @@
                                 <span class="font-semibold">Objeto de Gasto:</span> {{ $recurso->objeto?->nombre ?? '-' }}
                             </div>
                             <div class="text-zinc-600 dark:text-zinc-400 text-sm mb-1">
-                                <span class="font-semibold">Unidad de Medida:</span> {{ $recurso->unidad?->nombre ?? '-' }}
+                                <span class="font-semibold">Unidad de Medida:</span> {{ $recurso->unidadMedida?->nombre ?? '-' }}
                             </div>
                             <div class="text-zinc-600 dark:text-zinc-400 text-sm mb-1">
-                                <span class="font-semibold">Proceso de Compra:</span> {{ $recurso->proceso?->nombre_proceso ?? '-' }}
+                                <span class="font-semibold">Proceso de Compra:</span> {{ $recurso->procesoCompra?->nombre_proceso ?? '-' }}
                             </div>
                             <div class="text-zinc-600 dark:text-zinc-400 text-sm">
-                                <span class="font-semibold">CUBS:</span> {{ $recurso->cubs?->descripcion_esp ?? '-' }}
+                                <span class="font-semibold">CUBS:</span> {{ $recurso->cub?->descripcion_esp ?? '-' }}
                             </div>
                         </div>
                     @empty
