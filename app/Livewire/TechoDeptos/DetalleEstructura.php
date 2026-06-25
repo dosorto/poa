@@ -13,6 +13,7 @@ class DetalleEstructura extends Component
 {
     public $idPoa;
     public $idUE;
+    public $idDepartamento;
     public $estructura;
     public $poa;
     public $unidadEjecutora;
@@ -22,15 +23,17 @@ class DetalleEstructura extends Component
     protected $queryString = [
         'idPoa' => ['except' => ''],
         'idUE' => ['except' => ''],
+        'idDepartamento' => ['except' => ''],
         'estructura' => ['except' => '']
     ];
 
-    public function mount($idPoa = null, $idUE = null, $estructura = null)
+    public function mount($idPoa = null, $idUE = null, $estructura = null, $idDepartamento = null)
     {
         // Si los parámetros vienen desde la ruta, los usamos
         // Si no, Livewire los tomará automáticamente desde queryString
         if ($idPoa) $this->idPoa = $idPoa;
         if ($idUE) $this->idUE = $idUE;
+        if ($idDepartamento) $this->idDepartamento = $idDepartamento;
         if ($estructura) $this->estructura = urldecode($estructura);
         
         // Validar que tenemos todos los parámetros necesarios
