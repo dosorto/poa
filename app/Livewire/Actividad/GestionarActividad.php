@@ -97,6 +97,7 @@ class GestionarActividad extends Component
     public $presupuestoToDelete = null;
     public $showDeletePlanificacionModal = false;
     public $planificacionToDelete = null;
+    public $showConfirmRevisionModal = false;
     
     // Asignación de empleados a tareas
     public $tareaSeleccionada = null;
@@ -1826,6 +1827,27 @@ class GestionarActividad extends Component
             'idPoa' => $this->actividad->idPoa,
             'departamento' => $this->actividad->idDeptartamento
         ])->with('message', 'Gestión de actividad completada exitosamente');
+    }
+
+    public function abrirConfirmacionRevision()
+    {
+        if (!$this->actividadEnFormulacion) {
+            return;
+        }
+
+        $this->showConfirmRevisionModal = true;
+    }
+
+    public function cerrarConfirmacionRevision()
+    {
+        $this->showConfirmRevisionModal = false;
+    }
+
+    public function confirmarEnvioRevision()
+    {
+        $this->showConfirmRevisionModal = false;
+
+        return $this->enviarARevision();
     }
 
     public function enviarARevision()
