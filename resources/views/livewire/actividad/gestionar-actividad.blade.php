@@ -384,7 +384,7 @@
                             </svg>
                         </x-spinner-button>
                     @else
-                        <x-spinner-button wire:click="enviarARevision" class="bg-green-600 hover:bg-green-700 {{ !$actividadEnFormulacion ? 'opacity-50 cursor-not-allowed pointer-events-none' : '' }}" :disabled="!$actividadEnFormulacion" loadingTarget="enviarARevision" :loadingText="__('Enviando...')">
+                        <x-spinner-button wire:click="abrirConfirmacionRevision" class="bg-green-600 hover:bg-green-700 {{ !$actividadEnFormulacion ? 'opacity-50 cursor-not-allowed pointer-events-none' : '' }}" :disabled="!$actividadEnFormulacion" loadingTarget="abrirConfirmacionRevision" :loadingText="__('Abriendo...')">
                             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
@@ -396,6 +396,45 @@
 
         </div>
     </div>
+
+    <x-dialog-modal wire:model="showConfirmRevisionModal" maxWidth="md">
+        <x-slot name="title">
+            Confirmar envío a revisión
+        </x-slot>
+
+        <x-slot name="content">
+            <div class="space-y-4">
+                <div class="flex items-start gap-3 rounded-lg border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-800 dark:bg-yellow-900/20">
+                    <svg class="h-6 w-6 flex-shrink-0 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <div>
+                        <p class="text-sm font-semibold text-yellow-800 dark:text-yellow-200">
+                            Estás por enviar esta actividad a revisión.
+                        </p>
+                        <p class="mt-1 text-sm text-yellow-700 dark:text-yellow-300">
+                            Después de enviarla, el supervisor podrá revisarla y ya no deberías modificarla durante este proceso.
+                        </p>
+                    </div>
+                </div>
+
+                <p class="text-sm text-zinc-600 dark:text-zinc-300">
+                    Revisa que indicadores, planificaciones, empleados, tareas y presupuestos estén completos antes de continuar.
+                </p>
+            </div>
+        </x-slot>
+
+        <x-slot name="footer">
+            <x-secondary-button wire:click="cerrarConfirmacionRevision">
+                Cancelar
+            </x-secondary-button>
+
+            <x-spinner-button wire:click="confirmarEnvioRevision" class="ml-2 bg-green-600 hover:bg-green-700"
+                loadingTarget="confirmarEnvioRevision" :loadingText="__('Enviando...')">
+                Sí, enviar a revisión
+            </x-spinner-button>
+        </x-slot>
+    </x-dialog-modal>
 
     <!-- Modal Indicadores -->
     <x-dialog-modal wire:model="showIndicadorModal" max-width="2xl">
@@ -604,7 +643,7 @@
 
                 <div class="flex items-center">
                     <label class="flex items-center">
-                        <input type="checkbox" wire:model="nuevaTarea.isPresupuesto" class="rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500">
+                        <input type="checkbox" wire:model.live="nuevaTarea.isPresupuesto" class="rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500">
                         <span class="ml-2 text-sm text-zinc-700 dark:text-zinc-300">Requiere Presupuesto</span>
                     </label>
                 </div>

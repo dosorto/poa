@@ -50,6 +50,46 @@ class ActividadCorreoService
         }
     }
 
+    public function enviarDictamenAlCreador(Actividad $actividad, User $usuarioDictamen, string $estado, ?string $comentario = null): void
+    {
+        try {
+            $actividad->loadMissing(['creador', 'unidadEjecutora.asistenteEstrategico']);
+
+            $creador = $actividad->creador;
+
+            if (!$creador?->email) {
+                Log::warning('No se envio correo de dictamen porque la actividad no tiene creador con email.', [
+                    'actividad_id' => $actividad->id,
+                    'created_by' => $actividad->created_by,
+                    'estado' => $estado,
+                ]);
+                return;
+            }
+
+            $accion = $estado === 'APROBADO' ? 'aprobada' : 'rechazada';
+            $detalle = $comentario
+                ? 'Observaciones del dictamen: ' . $comentario
+                : 'Dictamen emitido sin observaciones.';
+
+            Mail::to($creador->email)->send(
+                new ActividadGuardada($actividad, $usuarioDictamen, $accion, $detalle, $creador)
+            );
+
+            Log::info('Correo de dictamen enviado al creador de la actividad.', [
+                'actividad_id' => $actividad->id,
+                'creador_id' => $creador->id,
+                'email' => $creador->email,
+                'estado' => $estado,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('Error al enviar correo de dictamen al creador.', [
+                'actividad_id' => $actividad->id,
+                'estado' => $estado,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
     private function destinatariosActividad(Actividad $actividad, ?User $usuario): array
     {
         return collect([
