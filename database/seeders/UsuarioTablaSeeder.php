@@ -20,7 +20,7 @@ class UsuarioTablaSeeder extends Seeder
             ['email' => 'admin@gmail.com'],
             [
                 'name' => 'root', 
-                'password' => bcrypt('12345678')
+                'password' => bcrypt('123456789')
             ]
         );
         
