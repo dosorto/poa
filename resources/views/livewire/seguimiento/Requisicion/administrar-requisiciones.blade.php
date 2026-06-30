@@ -45,10 +45,8 @@
 
         <x-dialog-modal wire:model="showDetalleModal" maxWidth="4xl">
             <x-slot name="title">
-                <div class="flex items-center justify-between w-full">
-                    <span>
-                        {{ $detalleRequisicion['correlativo'] ?? '' }} {{ $detalleRequisicion['departamento'] ?? '' }}
-                    </span>
+                <div class="flex items-center justify-between w-full text-lg font-medium text-zinc-900 dark:text-zinc-100">
+                    <span>{{ $detalleRequisicion['correlativo'] ?? '' }} {{ $detalleRequisicion['departamento'] ?? '' }}</span>
                     @if (isset($detalleRequisicion['correlativo']))
                         <button
                             wire:click="abrirPdfModal(
@@ -67,123 +65,11 @@
                     @endif
                 </div>
             </x-slot>
+
             <x-slot name="content">
-                <div class="mb-2">
-                    <div class="text-sm text-zinc-600 dark:text-zinc-300 mb-2">
-                        Presentado: {{ $detalleRequisicion['fecha_presentado'] ?? '' }}
-                        Requerido: {{ $detalleRequisicion['fecha_requerido'] ?? '' }}
-                        | <span class="font-semibold px-3 py-1 rounded-full text-xs"
-                            @php
-$estado = $detalleRequisicion['estado'] ?? '';
-                        $color = match($estado) {
-                            'Presentado' => 'bg-zinc-200 text-zinc-800 dark:bg-zinc-700 dark:text-zinc-200',
-                            'Recibido' => 'bg-cyan-200 text-cyan-800 dark:bg-cyan-700 dark:text-cyan-100',
-                            'En Proceso de Compra' => 'bg-yellow-200 text-yellow-800 dark:bg-yellow-700 dark:text-yellow-100',
-                            'Aprobado' => 'bg-green-200 text-green-800 dark:bg-green-700 dark:text-green-100',
-                            'Rechazado' => 'bg-red-200 text-red-800 dark:bg-red-700 dark:text-red-100',
-                            default => 'bg-zinc-200 text-zinc-800 dark:bg-zinc-700 dark:text-zinc-200',
-                        }; @endphp
-                            class="{{ $color }}">Estado: {{ $estado }}
-                    </div>
-                </div>
-                <div
-                    class="overflow-x-auto bg-white dark:bg-zinc-900 rounded-lg shadow dark:shadow-lg border border-zinc-200 dark:border-zinc-700 p-4">
-                    <div class="max-h-96 overflow-y-auto"> <!-- Add scrollable container -->
-                        <table class="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700 mb-4">
-                            <thead class="bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200">
-                                <tr>
-                                    <th class="px-4 py-2 text-left text-xs font-semibold">Recurso</th>
-                                    <th class="px-4 py-2 text-left text-xs font-semibold">Detalle Tecnico</th>
-                                    <th class="px-4 py-2 text-center text-xs font-semibold">Cantidad</th>
-                                    <th class="px-4 py-2 text-center text-xs font-semibold">Precio unitario</th>
-                                    <th class="px-4 py-2 text-center text-xs font-semibold">Total</th>
-                                    <th class="px-4 py-2 text-center text-xs font-semibold">Acción</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @forelse($detalleRecursos as $detalle)
-                                    <tr class="bg-white dark:bg-zinc-900">
-                                        <td
-                                            class="px-3 py-2 text-left text-xs font-medium text-zinc-500 dark:text-zinc-300 uppercase w-[20%]">
-                                            {{ $detalle['recurso'] }}
-                                        </td>
-                                        <td
-                                            class="px-3 py-2 text-left text-xs font-medium text-zinc-500 dark:text-zinc-300 uppercase w-[25%]">
-                                            {{ $detalle['detalle_tecnico'] }}
-                                        </td>
-                                        <td
-                                            class="px-3 py-2 text-left text-xs font-medium text-zinc-500 dark:text-zinc-300 uppercase w-[25%]">
-                                            {{ $detalle['cantidad'] }}
-                                        </td>
-                                        <td
-                                            class="px-3 py-2 text-left text-xs font-medium text-zinc-500 dark:text-zinc-300 uppercase w-[25%]">
-                                            L {{ number_format($detalle['precio_unitario'], 2) }}
-                                        </td>
-                                        <td
-                                            class="px-3 py-2 text-left text-xs font-medium text-zinc-500 dark:text-zinc-300 uppercase w-[25%]">
-                                            L
-                                            {{ number_format($detalle['total'], 2) }}
-                                        </td>
-                                        <td class="px-4 py-2 align-top text-center">
-                                            @if (Str::of(strtolower($detalle['recurso'] ?? ''))->contains('gasolina') ||
-                                                    Str::of(strtolower($detalle['recurso'] ?? ''))->contains('diesel'))
-                                                @php
-                                                    $detalleId =
-                                                        $detalle['idDetalleRequisicion'] ?? ($detalle['id'] ?? null);
-                                                @endphp
-                                                @if ($detalleId)
-                                                    <button
-                                                        wire:click="abrirPdfModal(
-                                                    '/orden-combustible/{{ $detalleId }}/pdf',
-                                                    '/orden-combustible/{{ $detalleId }}/pdf/download',
-                                                    'Orden de Combustible'
-                                                )"
-                                                        title="Descargar Orden de Combustible"
-                                                        class="p-2 rounded-full hover:bg-yellow-100 text-yellow-700 transition">
-                                                        <svg xmlns="http://www.w3.org/2000/svg" fill="none"
-                                                            viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor"
-                                                            class="w-6 h-6">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
-                                                        </svg>
-                                                    </button>
-                                                @endif
-                                            @endif
-                                        </td>
-                                    </tr>
-                                @empty
-                                    <tr>
-                                        <td colspan="7" class="px-4 py-2 text-center text-zinc-500 dark:text-zinc-400">No
-                                            hay
-                                            recursos para mostrar.</td>
-                                    </tr>
-                                @endforelse
-                            </tbody>
-                        </table>
-                    </div>
-                    <div class="border-t border-zinc-200 dark:border-zinc-700 pt-3 mt-3">
-                        <div class="flex justify-between items-center">
-                            <div class="text-right font-semibold text-zinc-900 dark:text-zinc-100">
-                                Monto total: L {{ number_format($detalleRequisicion['monto_total'] ?? 0, 2) }}
-                            </div>
-                            @if (isset($detalleRequisicion['tipo_proceso']))
-                                <div class="flex items-center gap-2">
-                                    <span class="text-sm text-zinc-600 dark:text-zinc-400">Tipo de proceso sugerido:</span>
-                                    <span
-                                        class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium 
-                                    {{ ($detalleRequisicion['monto_total'] ?? 0) < 10000
-                                        ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300'
-                                        : (($detalleRequisicion['monto_total'] ?? 0) < 50000
-                                            ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300'
-                                            : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300') }}">
-                                        {{ $detalleRequisicion['tipo_proceso']['nombre'] }}
-                                    </span>
-                                </div>
-                            @endif
-                        </div>
-                    </div>
-                </div>
+                @include('livewire.seguimiento.Requisicion.partials.detalle-requisicion-view')
             </x-slot>
+
             <x-slot name="footer">
                 @php $estado = $detalleRequisicion['estado'] ?? ''; @endphp
                 <div class="flex flex-row gap-3 w-full items-center">
@@ -215,8 +101,8 @@ $estado = $detalleRequisicion['estado'] ?? '';
                                         Recibido
                                     </x-spinner-button>
                                 @endif
-                                <x-spinner-button wire:click="marcarComoRechazado" loadingTarget="marcarComoRechazado"
-                                    loadingText="Rechazando..."
+                                <x-spinner-button wire:click="solicitarConfirmacionRechazo" loadingTarget="solicitarConfirmacionRechazo"
+                                    loadingText="Abriendo..."
                                     class="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-2 rounded transition flex items-center gap-2 dark:bg-red-700 dark:hover:bg-red-800">
                                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24"
                                         stroke-width="1.5" stroke="currentColor" class="w-5 h-5">
@@ -265,6 +151,41 @@ $estado = $detalleRequisicion['estado'] ?? '';
                 </div>
             </x-slot>
         </x-dialog-modal>
+
+        <x-confirmation-modal wire:model="showConfirmRechazoModal" maxWidth="md">
+            <x-slot name="title">
+                Confirmar rechazo
+            </x-slot>
+
+            <x-slot name="content">
+                <p class="text-zinc-700 dark:text-zinc-300">
+                    Esta acción cambiará la requisición
+                    <span class="font-semibold">{{ $detalleRequisicion['correlativo'] ?? '' }}</span>
+                    al estado <span class="font-semibold text-red-600 dark:text-red-400">Rechazado</span>.
+                </p>
+                @if ($observacionModal)
+                    <div class="mt-4 rounded-lg border border-zinc-200 dark:border-zinc-600 bg-zinc-50 dark:bg-zinc-800 px-3 py-2">
+                        <p class="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase">Observación</p>
+                        <p class="mt-1 text-sm text-zinc-700 dark:text-zinc-200">{{ $observacionModal }}</p>
+                    </div>
+                @endif
+                <p class="mt-4 text-sm text-zinc-600 dark:text-zinc-400">
+                    ¿Deseas continuar?
+                </p>
+            </x-slot>
+
+            <x-slot name="footer">
+                <x-secondary-button wire:click="cancelarRechazo" wire:loading.attr="disabled">
+                    Cancelar
+                </x-secondary-button>
+
+                <x-spinner-danger-button class="ml-3" wire:click="marcarComoRechazado"
+                    loadingTarget="marcarComoRechazado" loadingText="Rechazando...">
+                    Sí, rechazar
+                </x-spinner-danger-button>
+            </x-slot>
+        </x-confirmation-modal>
+
         <div class="bg-white dark:bg-zinc-900 rounded-lg shadow p-4 mb-6">
             <div class="flex flex-row flex-nowrap gap-2 mb-4 items-center w-full">
                 <x-input wire:model.live="search" type="text" placeholder="Buscar requisición por correlativo o depto"
@@ -396,6 +317,7 @@ $estado = $detalleRequisicion['estado'] ?? '';
                                             </svg>
                                         </button>
                                     @endif
+                                </div>
                             </td>
                         </tr>
                     @empty
