@@ -265,9 +265,6 @@ class Requisicion extends Component
 
         unset($this->cantidadesInput[$recursoId], $this->erroresCantidad[$recursoId]);
         unset($this->ordenesCombustible[$recursoId]);
-
-        // Sincronizar con sesión
-        session(['recursosSeleccionados' => $this->recursosSeleccionados]);
     }
 
 
@@ -435,7 +432,6 @@ class Requisicion extends Component
             $this->recursosSeleccionados[$index] = array_merge($this->recursosSeleccionados[$index], $recurso);
         }
 
-        session(['recursosSeleccionados' => $this->recursosSeleccionados]);
         $this->cerrarModalCantidad();
     }
 
@@ -493,7 +489,6 @@ class Requisicion extends Component
         $this->presupuestosSeleccionados[$presupuestoId] = (int) $this->cantidadesInput[$presupuestoId];
         $this->actualizarSumario();
         $this->cerrarModalOrdenCombustibleActual();
-        session(['recursosSeleccionados' => $this->recursosSeleccionados]);
     }
 
     public function editarOrdenCombustible(int $presupuestoId)
@@ -533,7 +528,6 @@ class Requisicion extends Component
         $this->ordenesCombustible[$this->combustibleEnModal] = $this->ordenDesdeOrdenCombustibleData();
         $this->presupuestosSeleccionados[$this->combustibleEnModal] = (int) $this->cantidadesInput[$this->combustibleEnModal];
         $this->actualizarSumario();
-        session(['recursosSeleccionados' => $this->recursosSeleccionados]);
         $this->cerrarModalOrdenCombustibleActual();
     }
 
@@ -637,8 +631,6 @@ class Requisicion extends Component
             $this->recursosSeleccionados[$index]['cantidad_disponible'] = $disponible;
             break;
         }
-
-        session(['recursosSeleccionados' => $this->recursosSeleccionados]);
     }
 
     private function construirRecursoSeleccionado(Presupuesto $presupuesto, int $cantidad): array
@@ -1277,14 +1269,6 @@ class Requisicion extends Component
    public function mount()
     {
         $this->cargarEmpleadosOrdenCombustible();
-
-        $recursosGuardados = session('recursosSeleccionados', []);
-        if (!empty($recursosGuardados)) {
-            $this->recursosSeleccionados = $recursosGuardados;
-            foreach ($recursosGuardados as $recurso) {
-                $this->presupuestosSeleccionados[$recurso['id']] = $recurso['cantidad_seleccionada'];
-            }
-        }
 
         $this->departamentoSeleccionado = session('departamentoSeleccionado');
         

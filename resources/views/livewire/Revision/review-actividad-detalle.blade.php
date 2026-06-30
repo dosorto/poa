@@ -929,10 +929,10 @@
 
                                         <div class="mb-4">
                                             <label
-                                                class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Comentarios</label>
+                                                class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Comentarios <span class="font-normal text-zinc-500 dark:text-zinc-400">(opcional)</span></label>
                                             <textarea wire:model="comentarioDictamen"
                                                 class="w-full rounded-lg border-zinc-300 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200"
-                                                rows="4" placeholder="Justifique su decisión..."></textarea>
+                                                rows="4" placeholder="Agregue un comentario si lo considera necesario..."></textarea>
                                             @error('comentarioDictamen') <span class="text-red-500 text-sm">{{ $message }}</span>
                                             @enderror
                                         </div>

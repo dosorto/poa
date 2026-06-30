@@ -97,6 +97,7 @@ class GestionarActividad extends Component
     public $presupuestoToDelete = null;
     public $showDeletePlanificacionModal = false;
     public $planificacionToDelete = null;
+    public $showConfirmRevisionModal = false;
     
     // Asignación de empleados a tareas
     public $tareaSeleccionada = null;
@@ -916,7 +917,7 @@ class GestionarActividad extends Component
                     'nombre' => $this->nuevaTarea['nombre'],
                     'descripcion' => $this->nuevaTarea['descripcion'],
                     'estado' => $this->nuevaTarea['estado'],
-                    'isPresupuesto' => $this->nuevaTarea['isPresupuesto'],
+                    'isPresupuesto' => (bool) ($this->nuevaTarea['isPresupuesto'] ?? false),
                     'updated_by' => Auth::id()
                 ]);
                 $mensaje = 'Tarea actualizada exitosamente';
@@ -936,7 +937,7 @@ class GestionarActividad extends Component
                     'descripcion' => $this->nuevaTarea['descripcion'],
                     'correlativo' => str_pad($correlativo, 3, '0', STR_PAD_LEFT),
                     'estado' => $this->nuevaTarea['estado'],
-                    'isPresupuesto' => $this->nuevaTarea['isPresupuesto'],
+                    'isPresupuesto' => (bool) ($this->nuevaTarea['isPresupuesto'] ?? false),
                     'idActividad' => $this->actividadId,
                     'idPoa' => $this->actividad->idPoa,
                     'idDeptartamento' => $this->actividad->idDeptartamento,
@@ -968,7 +969,7 @@ class GestionarActividad extends Component
             'nombre' => $tarea->nombre,
             'descripcion' => $tarea->descripcion,
             'estado' => $tarea->estado,
-            'isPresupuesto' => $tarea->isPresupuesto
+            'isPresupuesto' => (bool) $tarea->isPresupuesto
         ];
         
         $this->showTareaModal = true;
@@ -1453,7 +1454,24 @@ class GestionarActividad extends Component
 
         $this->syncRecursoPresupuestoOption($this->nuevoPresupuesto['idRecurso']);
         $this->nuevoPresupuesto['detalle_tecnico'] = '';
+        $this->syncUnidadMedidaFromRecurso($this->nuevoPresupuesto['idRecurso']);
         $this->loadDetallesTecnicosPorRecurso($this->nuevoPresupuesto['idRecurso']);
+    }
+
+    private function syncUnidadMedidaFromRecurso($recursoId): void
+    {
+        if (empty($recursoId)) {
+            $this->nuevoPresupuesto['idunidad'] = '';
+            return;
+        }
+
+        $recurso = TareaHistorico::query()
+            ->select('id', 'idunidad')
+            ->find((int) $recursoId);
+
+        $this->nuevoPresupuesto['idunidad'] = $recurso?->idunidad
+            ? (string) $recurso->idunidad
+            : '';
     }
 
     public function updatedNuevoPresupuestoIdfuente($value)
@@ -1505,6 +1523,7 @@ class GestionarActividad extends Component
     {
         // Verificar permisos basados en la tarea seleccionada
         $this->verificarPuedeEditarTarea($this->tareaSeleccionada);
+        $this->syncUnidadMedidaFromRecurso($this->nuevoPresupuesto['idRecurso'] ?? '');
         
         $this->validate([
             'nuevoPresupuesto.idRecurso' => 'required|exists:tareas_historicos,id',
@@ -1808,6 +1827,27 @@ class GestionarActividad extends Component
             'idPoa' => $this->actividad->idPoa,
             'departamento' => $this->actividad->idDeptartamento
         ])->with('message', 'Gestión de actividad completada exitosamente');
+    }
+
+    public function abrirConfirmacionRevision()
+    {
+        if (!$this->actividadEnFormulacion) {
+            return;
+        }
+
+        $this->showConfirmRevisionModal = true;
+    }
+
+    public function cerrarConfirmacionRevision()
+    {
+        $this->showConfirmRevisionModal = false;
+    }
+
+    public function confirmarEnvioRevision()
+    {
+        $this->showConfirmRevisionModal = false;
+
+        return $this->enviarARevision();
     }
 
     public function enviarARevision()

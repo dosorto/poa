@@ -15,6 +15,9 @@ class ActividadesRevision extends Component
 {
     use WithPagination;
 
+    private const ESTADOS_REVISION = ['REVISION', 'REFORMULACION', 'APROBADO', 'RECHAZADO'];
+    private const PAGE_NAME = 'actividadesRevisionPage';
+
     public $departamentoId;
     public $resumen = [];
     public $poaYears = [];
@@ -26,7 +29,6 @@ class ActividadesRevision extends Component
     public function mount($departamentoId, $poaYear = null)
     {
         $this->departamentoId = $departamentoId;
-        $this->cargarResumen();
 
         $this->poaYears = PoaDepto::where('idDepartamento', $departamentoId)
             ->join('poas', 'poa_deptos.idPoa', '=', 'poas.id')
@@ -35,29 +37,33 @@ class ActividadesRevision extends Component
             ->sortDesc()
             ->toArray();
         
-        $this->poaYear = $poaYear ?? ($this->poaYears[0] ?? '');$this->poaYear = $poaYear ?? ($this->poaYears[0] ?? '');
+        $this->poaYear = $poaYear ?? ($this->poaYears[0] ?? '');
         $this->cargarResumen();
-        }
+    }
 
     public function updatingBuscarActividad()
     {
-        $this->resetPage();
+        $this->resetPage(self::PAGE_NAME);
     }
 
     public function updatedPoaYear()
     {
-        $this->resetPage();
+        $this->resetPage(self::PAGE_NAME);
         $this->cargarResumen();
     }
 
     public function updatedPerPage()
     {
-        $this->resetPage();
+        $this->resetPage(self::PAGE_NAME);
     }
 
     public function cargarResumen()
     {
-        $poaDepto = PoaDepto::where('idDepartamento', $this->departamentoId)->first();
+        $poaDepto = PoaDepto::where('idDepartamento', $this->departamentoId)
+            ->when($this->poaYear, function ($query) {
+                $query->whereHas('poa', fn ($poa) => $poa->where('anio', $this->poaYear));
+            })
+            ->first();
         $nombreDepartamento = $poaDepto?->departamento?->name ?? '-';
         $presupuesto = $planificado = $numActividades = $porcentaje = 0;
 
@@ -65,7 +71,7 @@ class ActividadesRevision extends Component
             $presupuesto = $poaDepto->techoDeptos->sum('monto');
 
             $actividades = Actividad::where('idPoaDepto', $poaDepto->id)
-                ->whereIn('estado', ['REVISION', 'APROBADO', 'RECHAZADO'])
+                ->whereIn('estado', self::ESTADOS_REVISION)
                 ->get();
 
             $numActividades = $actividades->count();
@@ -85,7 +91,7 @@ class ActividadesRevision extends Component
     {
         $actividades = Actividad::with(['tipo', 'categoria'])
             ->where('idDeptartamento', $this->departamentoId)
-            ->whereIn('estado', ['REVISION', 'APROBADO', 'RECHAZADO'])
+            ->whereIn('estado', self::ESTADOS_REVISION)
             ->when($this->buscarActividad, fn($q) =>
                 $q->where('nombre', 'like', '%' . $this->buscarActividad . '%')
             )
@@ -95,7 +101,7 @@ class ActividadesRevision extends Component
                 });
             })
             ->orderBy('nombre')
-            ->paginate($this->perPage);
+            ->paginate($this->perPage, pageName: self::PAGE_NAME);
 
         return view('livewire.Revision.actividades-revision', [
             'actividades' => $actividades,

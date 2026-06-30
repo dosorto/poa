@@ -384,7 +384,7 @@
                             </svg>
                         </x-spinner-button>
                     @else
-                        <x-spinner-button wire:click="enviarARevision" class="bg-green-600 hover:bg-green-700 {{ !$actividadEnFormulacion ? 'opacity-50 cursor-not-allowed pointer-events-none' : '' }}" :disabled="!$actividadEnFormulacion" loadingTarget="enviarARevision" :loadingText="__('Enviando...')">
+                        <x-spinner-button wire:click="abrirConfirmacionRevision" class="bg-green-600 hover:bg-green-700 {{ !$actividadEnFormulacion ? 'opacity-50 cursor-not-allowed pointer-events-none' : '' }}" :disabled="!$actividadEnFormulacion" loadingTarget="abrirConfirmacionRevision" :loadingText="__('Abriendo...')">
                             <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
@@ -396,6 +396,45 @@
 
         </div>
     </div>
+
+    <x-dialog-modal wire:model="showConfirmRevisionModal" maxWidth="md">
+        <x-slot name="title">
+            Confirmar envío a revisión
+        </x-slot>
+
+        <x-slot name="content">
+            <div class="space-y-4">
+                <div class="flex items-start gap-3 rounded-lg border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-800 dark:bg-yellow-900/20">
+                    <svg class="h-6 w-6 flex-shrink-0 text-yellow-600 dark:text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                    </svg>
+                    <div>
+                        <p class="text-sm font-semibold text-yellow-800 dark:text-yellow-200">
+                            Estás por enviar esta actividad a revisión.
+                        </p>
+                        <p class="mt-1 text-sm text-yellow-700 dark:text-yellow-300">
+                            Después de enviarla, el supervisor podrá revisarla y ya no deberías modificarla durante este proceso.
+                        </p>
+                    </div>
+                </div>
+
+                <p class="text-sm text-zinc-600 dark:text-zinc-300">
+                    Revisa que indicadores, planificaciones, empleados, tareas y presupuestos estén completos antes de continuar.
+                </p>
+            </div>
+        </x-slot>
+
+        <x-slot name="footer">
+            <x-secondary-button wire:click="cerrarConfirmacionRevision">
+                Cancelar
+            </x-secondary-button>
+
+            <x-spinner-button wire:click="confirmarEnvioRevision" class="ml-2 bg-green-600 hover:bg-green-700"
+                loadingTarget="confirmarEnvioRevision" :loadingText="__('Enviando...')">
+                Sí, enviar a revisión
+            </x-spinner-button>
+        </x-slot>
+    </x-dialog-modal>
 
     <!-- Modal Indicadores -->
     <x-dialog-modal wire:model="showIndicadorModal" max-width="2xl">
@@ -604,7 +643,7 @@
 
                 <div class="flex items-center">
                     <label class="flex items-center">
-                        <input type="checkbox" wire:model="nuevaTarea.isPresupuesto" class="rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500">
+                        <input type="checkbox" wire:model.live="nuevaTarea.isPresupuesto" class="rounded border-zinc-300 text-indigo-600 focus:ring-indigo-500">
                         <span class="ml-2 text-sm text-zinc-700 dark:text-zinc-300">Requiere Presupuesto</span>
                     </label>
                 </div>
@@ -804,7 +843,9 @@
                         </div>
 
                         <div>
-                            <x-label for="fuentePresupuesto" value="Fuente de Financiamiento" />
+                            <label for="fuentePresupuesto" class="block font-medium text-sm text-zinc-700 dark:text-zinc-300">
+                                Fuente de Financiamiento <span class="text-red-500">*</span>
+                            </label>
                             <select id="fuentePresupuesto" class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 text-sm" wire:model.live="nuevoPresupuesto.idfuente">
                                 <option value="">Seleccione una fuente</option>
                                 @foreach($fuentesFinanciamiento as $fuente)
@@ -829,29 +870,19 @@
                         />
                     </div>
 
-                    <div class="grid grid-cols-4 gap-4">
+                    <div class="grid grid-cols-3 gap-4">
                         <div>
-                            <x-searchable-select
-                                wire:model="nuevoPresupuesto.idunidad"
-                                wire:key="presupuesto-unidad-select-{{ $presupuestoEditandoId ?: 'nuevo' }}-{{ $nuevoPresupuesto['idunidad'] ?: 'empty' }}"
-                                label="Unidad de Medida"
-                                :required="true"
-                                placeholder="Buscar unidad de medida..."
-                                defaultText="Seleccione una unidad de medida"
-                                searchAction="searchUnidadesMedida"
-                                :options="collect($unidadesMedida)->map(fn($unidad) => ['id' => $unidad['id'], 'text' => $unidad['nombre']])->toArray()"
-                                :error="$errors->first('nuevoPresupuesto.idunidad')"
-                            />
-                        </div>
-
-                        <div>
-                            <x-label for="costoUnitario" value="Costo Unitario (L)" />
+                            <label for="costoUnitario" class="block font-medium text-sm text-zinc-700 dark:text-zinc-300">
+                                Costo Unitario (L) <span class="text-red-500">*</span>
+                            </label>
                             <x-input id="costoUnitario" type="number" step="0.01" min="0" class="mt-1 block w-full text-sm" wire:model.live="nuevoPresupuesto.costounitario" />
                             @error('nuevoPresupuesto.costounitario') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                         </div>
 
                         <div>
-                            <x-label for="cantidadPresupuesto" value="Cantidad" />
+                            <label for="cantidadPresupuesto" class="block font-medium text-sm text-zinc-700 dark:text-zinc-300">
+                                Cantidad <span class="text-red-500">*</span>
+                            </label>
                             <x-input id="cantidadPresupuesto" type="number" step="0.01" min="0.01" class="mt-1 block w-full text-sm" wire:model.live="nuevoPresupuesto.cantidad" />
                             @error('nuevoPresupuesto.cantidad') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                         </div>
