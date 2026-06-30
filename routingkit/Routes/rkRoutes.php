@@ -167,6 +167,22 @@ return [
                 ->setItems([])
                 ->setEndBlock('grupo-gastos'),
 
+            RkRoute::make('objeto-gastos')
+                ->setParentId('auth_group')
+                ->setAccessPermission('acceso-configuracion')
+                ->setPermissions([
+                    'configuracion.objetogastos.ver',
+                    'configuracion.objetogastos.editar',
+                    'configuracion.objetogastos.crear',
+                    'configuracion.objetogastos.eliminar',
+                    'acceso-configuracion'
+                ])
+                ->setUrlMethod('get')
+                ->setUrlController('App\Livewire\GrupoGastos\ObjetoGastos')
+                ->setRoles(['super_admin', 'admin'])
+                ->setItems([])
+                ->setEndBlock('objeto-gastos'),
+
             RkRoute::make('instituciones')
                 ->setParentId('auth_group')
                 ->setAccessPermission('acceso-configuracion')

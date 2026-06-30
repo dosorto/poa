@@ -237,6 +237,14 @@ return [
                         ->setItems([])
                         ->setEndBlock('grupo-gastos'),
 
+                    RkNavigation::make('objeto-gastos')
+                        ->setParentId('config-presupuestaria')
+                        ->setDescription('Gestión de objetos de gasto')
+                        ->setLabel('Objetos de gasto')
+                        ->setHeroIcon('rectangle-stack')
+                        ->setItems([])
+                        ->setEndBlock('objeto-gastos'),
+
                     RkNavigation::make('estados-ejecucion')
                         ->setParentId('config-presupuestaria')
                         ->setDescription('Gestión de estados de ejecución presupuestaria')

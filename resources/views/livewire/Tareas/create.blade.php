@@ -63,6 +63,7 @@
                     label="{{ __('CUBS') }}"
                     wire:model="idCubs"
                     searchAction="buscarCubs"
+                    :options="$cubsSeleccionados"
                     :error="$errors->first('idCubs')"
                 />
             </div>

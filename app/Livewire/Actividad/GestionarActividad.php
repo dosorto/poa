@@ -1551,8 +1551,7 @@ class GestionarActividad extends Component
             // Obtener idgrupo del objeto de gasto
             $idgrupo = null;
             if ($recurso->idobjeto) {
-                $objetoGasto = ObjetoGasto::find($recurso->idobjeto);
-                $idgrupo = $objetoGasto?->idgrupo;
+                $idgrupo = $recurso->objeto?->idgrupo;
             }
             
             // Obtener la tarea y el departamento

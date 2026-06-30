@@ -99,7 +99,7 @@
                                 {{ $recurso->procesoCompra?->nombre_proceso ?? '-' }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-zinc-900 dark:text-zinc-300">
-                                {{ $recurso->cub?->descripcion_esp ?? '-' }}
+                                {{ $recurso->cub ? $recurso->cub->IDUNSPSC . ' - ' . $recurso->cub->descripcion_esp : '-' }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <a href="{{ route('recurso-detalle-tecnico', ['recursoId' => $recurso->id]) }}"
@@ -178,7 +178,7 @@
                                 <span class="font-semibold">Proceso de Compra:</span> {{ $recurso->procesoCompra?->nombre_proceso ?? '-' }}
                             </div>
                             <div class="text-zinc-600 dark:text-zinc-400 text-sm">
-                                <span class="font-semibold">CUBS:</span> {{ $recurso->cub?->descripcion_esp ?? '-' }}
+                                <span class="font-semibold">CUBS:</span> {{ $recurso->cub ? $recurso->cub->IDUNSPSC . ' - ' . $recurso->cub->descripcion_esp : '-' }}
                             </div>
                             <div class="mt-3">
                                 <a href="{{ route('recurso-detalle-tecnico', ['recursoId' => $recurso->id]) }}"

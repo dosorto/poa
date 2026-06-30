@@ -20,6 +20,9 @@
             <div class="rounded-md bg-zinc-50 p-3 text-sm text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
                 <p class="font-medium">{{ __('Formato requerido') }}</p>
                 <p class="mt-1 font-mono text-xs">nombre,idobjeto,idunidad,idProcesoCompra,idCubs</p>
+                <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">idobjeto debe contener el identificador del objeto de gasto, no el ID interno de la base de datos.</p>
+                <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">idProcesoCompra debe ser el ID de un proceso de compra existente.</p>
+                <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">idCubs debe contener el código IDUNSPSC, no el ID interno de la base de datos.</p>
             </div>
 
             @if (! empty($importErrors))

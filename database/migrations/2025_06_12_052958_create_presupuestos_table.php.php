@@ -19,7 +19,7 @@ return new class extends Migration
                 $table->decimal('total', 10, 2);
                 
                 $table->integer('idgrupo');
-                $table->integer('idobjeto');
+                $table->string('idobjeto', 50)->index();
                 $table->foreignId('idtarea')->constrained('tareas')->cascadeOnDelete();
                 $table->foreignId('idfuente')->constrained('fuente')->cascadeOnDelete();
                 $table->foreignId('idunidad')->constrained('unidadmedidas')->cascadeOnDelete();

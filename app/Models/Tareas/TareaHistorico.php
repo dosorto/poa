@@ -23,7 +23,7 @@ class TareaHistorico extends BaseModel
     // Relaciones (opcional)
     public function objeto()
     {
-        return $this->belongsTo(ObjetoGasto::class, 'idobjeto');
+        return $this->belongsTo(ObjetoGasto::class, 'idobjeto', 'identificador');
     }
 
     public function unidadMedida()
@@ -38,7 +38,7 @@ class TareaHistorico extends BaseModel
 
     public function cub()
     {
-        return $this->belongsTo(Cub::class, 'idCubs');
+        return $this->belongsTo(Cub::class, 'idCubs', 'IDUNSPSC');
     }
 
     public function detallesTecnicos()

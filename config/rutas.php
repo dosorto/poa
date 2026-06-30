@@ -137,6 +137,22 @@ return [
                 'icono' => '',
                 'breadcrumb' => true
             ],
+            [
+                'titulo' => 'Recursos',
+                'route' => 'recursos',
+                'routes' => ['recursos'],
+                'permisos' => ['configuracion.recursos.ver'],
+                'icono' => '',
+                'breadcrumb' => true
+            ],
+            [
+                'titulo' => 'Objetos de gasto',
+                'route' => 'objeto-gastos',
+                'routes' => ['objeto-gastos'],
+                'permisos' => ['configuracion.objetogastos.ver'],
+                'icono' => '',
+                'breadcrumb' => true
+            ],
         ],
         'footer' => true
     ],

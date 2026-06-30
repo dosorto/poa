@@ -16,10 +16,10 @@ return new class extends Migration
                 $table->id();
                 $table->text('nombre');
 
-                $table->unsignedBigInteger('idobjeto')->constrained('objetogastos') ->onDelete('cascade');;
+                $table->string('idobjeto', 50)->index();
                 $table->unsignedBigInteger('idunidad')->constrained('unidadmedidas') ->onDelete('cascade');;
                 $table->unsignedBigInteger('idProcesoCompra') ->constrained('procesos_compras') ->onDelete('cascade');
-                $table->unsignedBigInteger('idCubs') ->constrained('cubs')->onDelete('cascade');
+                $table->string('idCubs', 50)->nullable()->index();
 
                 $table->foreignId('created_by')->nullable()->constrained('users')->nullOnDelete();
                 $table->foreignId('updated_by')->nullable()->constrained('users')->nullOnDelete();

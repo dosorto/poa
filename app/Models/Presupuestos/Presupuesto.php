@@ -50,7 +50,7 @@ class Presupuesto extends BaseModel
 
     public function objetoGasto()
     {
-        return $this->belongsTo(\App\Models\GrupoGastos\ObjetoGasto::class, 'idobjeto');
+        return $this->belongsTo(\App\Models\GrupoGastos\ObjetoGasto::class, 'idobjeto', 'identificador');
     }
 
     public function grupoGasto()

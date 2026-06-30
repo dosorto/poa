@@ -15,7 +15,7 @@ return new class extends Migration
             Schema::create('cubs', function (Blueprint $table) {
                 $table->id();
 
-                $table->string('IDUNSPSC');
+                $table->string('IDUNSPSC')->index();
                 $table->string('descripcion_esp');
                 $table->string('descripcion_regional');
 

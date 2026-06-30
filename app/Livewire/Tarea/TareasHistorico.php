@@ -44,10 +44,10 @@ use Livewire\Attributes\Layout;
 
         protected $rules = [
             'nombre' => 'required|min:3',
-            'idobjeto' => 'required|exists:objetogastos,id',
+            'idobjeto' => 'required|exists:objetogastos,identificador',
             'idunidad' => 'required|exists:unidadmedidas,id',
             'idProcesoCompra' => 'required|exists:procesos_compras,id',
-            'idCubs' => 'nullable|exists:cubs,id',
+            'idCubs' => 'nullable|exists:cubs,IDUNSPSC',
         ];
 
         protected $messages = [
@@ -249,10 +249,10 @@ use Livewire\Attributes\Layout;
 
                 $recurso = TareaHistorico::updateOrCreate([
                     'nombre' => $nombre,
-                    'idobjeto' => (int) $idobjeto,
+                    'idobjeto' => $idobjeto,
                     'idunidad' => (int) $idunidad,
                     'idProcesoCompra' => (int) $idProcesoCompra,
-                    'idCubs' => (int) $idCubs,
+                    'idCubs' => $idCubs,
                 ], []);
 
                 $recurso->wasRecentlyCreated ? $created++ : $updated++;
@@ -282,12 +282,12 @@ use Livewire\Attributes\Layout;
                 return 'el nombre debe tener al menos 3 caracteres.';
             }
 
-            if (! ctype_digit($idobjeto) || ! ctype_digit($idunidad) || ! ctype_digit($idProcesoCompra) || ! ctype_digit($idCubs)) {
-                return 'los IDs deben ser números enteros.';
+            if (! ctype_digit($idunidad) || ! ctype_digit($idProcesoCompra)) {
+                return 'los IDs de unidad y proceso deben ser números enteros.';
             }
 
-            if (! ObjetoGasto::whereKey((int) $idobjeto)->exists()) {
-                return "el objeto de gasto {$idobjeto} no existe.";
+            if (! ObjetoGasto::where('identificador', $idobjeto)->exists()) {
+                return "el objeto de gasto con identificador {$idobjeto} no existe.";
             }
 
             if (! UnidadMedida::whereKey((int) $idunidad)->exists()) {
@@ -298,8 +298,8 @@ use Livewire\Attributes\Layout;
                 return "el proceso de compra {$idProcesoCompra} no existe.";
             }
 
-            if (! Cub::whereKey((int) $idCubs)->exists()) {
-                return "el CUBS {$idCubs} no existe.";
+            if (! Cub::where('IDUNSPSC', $idCubs)->exists()) {
+                return "el CUBS con código UNSPSC {$idCubs} no existe.";
             }
 
             return null;
@@ -348,9 +348,9 @@ use Livewire\Attributes\Layout;
             return Cub::where('descripcion_esp', 'like', "%{$query}%")
                 ->orWhere('IDUNSPSC', 'like', "%{$query}%")
                 ->limit(5)
-                ->get(['id', 'IDUNSPSC', 'descripcion_esp'])
+                ->get(['IDUNSPSC', 'descripcion_esp'])
                 ->map(fn($cub) => [
-                    'id'   => $cub->id,
+                    'id'   => $cub->IDUNSPSC,
                     'text' => ($cub->IDUNSPSC ?? '') . ' - ' . ($cub->descripcion_esp ?? ''),
                 ])
                 ->values()
@@ -369,7 +369,7 @@ use Livewire\Attributes\Layout;
                 ->paginate($this->perPage);
 
             $objetosGasto = ObjetoGasto::all()->map(function($obj) {
-                return ['value' => $obj->id, 'text' => $obj->nombre];
+                return ['value' => $obj->identificador, 'text' => $obj->identificador . ' - ' . $obj->nombre];
             })->toArray();
             $unidadesMedida = UnidadMedida::all()->map(function($u) {
                 return ['value' => $u->id, 'text' => $u->nombre];
@@ -377,11 +377,21 @@ use Livewire\Attributes\Layout;
             $procesosCompra = ProcesoCompra::all()->map(function($p) {
                 return ['value' => $p->id, 'text' => $p->nombre_proceso];
             })->toArray();
+            $cubsSeleccionados = $this->idCubs
+                ? Cub::where('IDUNSPSC', $this->idCubs)
+                    ->get(['IDUNSPSC', 'descripcion_esp'])
+                    ->map(fn ($cub) => [
+                        'value' => $cub->IDUNSPSC,
+                        'text' => ($cub->IDUNSPSC ?? '') . ' - ' . ($cub->descripcion_esp ?? ''),
+                    ])
+                    ->toArray()
+                : [];
             return view('livewire.Tareas.Tarea-historico', [
                 'recursos' => $recursos,
                 'objetosGasto' => $objetosGasto,
                 'unidadesMedida' => $unidadesMedida,
                 'procesosCompra' => $procesosCompra,
+                'cubsSeleccionados' => $cubsSeleccionados,
             ]);
         }
     }
