@@ -204,14 +204,6 @@ return [
                         ->setHeroIcon('building-office-2')
                         ->setItems([])
                         ->setEndBlock('instituciones'),
-
-                    RkNavigation::make('cubs')
-                        ->setParentId('estructura-organizacional')
-                        ->setDescription('Administración de cubs')
-                        ->setLabel('Cubs')
-                        ->setHeroIcon('cube')
-                        ->setItems([])
-                        ->setEndBlock('cubs'),
                 ])
                 ->setEndBlock('estructura-organizacional'),
 
@@ -326,6 +318,14 @@ return [
                 ->setHeroIcon('clipboard-document')
                 ->setItems([])
                 ->setEndBlock('recursos'),
+
+            RkNavigation::make('cubs')
+                ->setParentId('configuracion')
+                ->setDescription('Administración de cubs')
+                ->setLabel('Cubs')
+                ->setHeroIcon('cube')
+                ->setItems([])
+                ->setEndBlock('cubs'),
         ])
         ->setEndBlock('configuracion'),
 
