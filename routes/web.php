@@ -19,7 +19,7 @@
  use App\Livewire\TechoDeptos\DetalleEstructura;
 // use App\Livewire\Institucion\Instituciones;
 // use App\Livewire\Planificar\Planificar;
-// use App\Livewire\ProcesCompra\ProcesCompras;
+use App\Livewire\ProcesCompra\ProcesCompras;
 // use App\Livewire\Requerir\Requerir;
 // use App\Livewire\Requisicion\EstadosRequisicion;
 // use App\Livewire\Requisicion\UnidadMedidas;
@@ -55,6 +55,10 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     Route::get('/recurso-detalle-tecnico/{recursoId}', \App\Livewire\Tarea\RecursoDetalleTecnico::class)
         ->name('recurso-detalle-tecnico')
         ->middleware('can:configuracion.recursos.ver');
+
+    Route::get('/configuracion/procesoscompras', ProcesCompras::class)
+        ->name('configuracion.procesoscompras')
+        ->middleware('can:configuracion.procesoscompras.ver');
 });
 
 
