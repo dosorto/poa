@@ -593,14 +593,17 @@
         <x-slot name="content">
             <div class="space-y-4">
                 <div>
-                    <x-label for="empleadoAsignar" value="Empleado" />
-                    <select id="empleadoAsignar" class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200" wire:model="nuevoEmpleado.idEmpleado">
-                        <option value="">Seleccione un empleado</option>
-                        @foreach($empleadosDisponibles as $empleado)
-                            <option value="{{ $empleado['id'] }}">{{ $empleado['nombre'] }} {{ $empleado['apellido'] }}</option>
-                        @endforeach
-                    </select>
-                    @error('nuevoEmpleado.idEmpleado') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
+                    <x-searchable-select
+                        wire:model="nuevoEmpleado.idEmpleado"
+                        wire:key="empleado-asignar-select-{{ $nuevoEmpleado['idEmpleado'] ?: 'empty' }}"
+                        label="Empleado"
+                        :required="true"
+                        placeholder="Buscar empleado..."
+                        defaultText="Seleccione un empleado"
+                        searchAction="searchEmpleadosDisponibles"
+                        :options="$empleadosDisponiblesOptions"
+                        :error="$errors->first('nuevoEmpleado.idEmpleado')"
+                    />
                 </div>
 
                 <div>

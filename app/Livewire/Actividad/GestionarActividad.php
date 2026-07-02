@@ -64,6 +64,8 @@ class GestionarActividad extends Component
     // Paso 3: Empleados Encargados
     public $empleadosAsignados = [];
     public $empleadosDisponibles = [];
+    public $empleadosDisponiblesOptions = [];
+    public $empleadoDisponibleOption = null;
     public $nuevoEmpleado = [
         'idEmpleado' => '',
         'descripcion' => ''
@@ -242,17 +244,18 @@ class GestionarActividad extends Component
             ->get()
             ->toArray();
         
-        // Empleados disponibles del departamento
+        // Empleados disponibles de toda la unidad, excluyendo los ya asignados
         $empleadosAsignadosIds = collect($this->empleadosAsignados)->pluck('id')->toArray();
         
-        $this->empleadosDisponibles = Empleado::whereHas('departamentos', function($query) {
-            $query->where('departamentos.id', $this->actividad->idDeptartamento);
-        })
-        ->whereNotIn('id', $empleadosAsignadosIds)
-        ->with('user')
-        ->orderBy('nombre')
-        ->get()
-        ->toArray();
+        $this->empleadosDisponibles = Empleado::query()
+            ->whereNotIn('id', $empleadosAsignadosIds)
+            ->with('user')
+            ->orderBy('nombre')
+            ->orderBy('apellido')
+            ->get()
+            ->toArray();
+
+        $this->refreshEmpleadosDisponiblesOptions();
     }
 
     public function loadTodasPlanificaciones()
@@ -885,6 +888,123 @@ class GestionarActividad extends Component
             'idEmpleado' => '',
             'descripcion' => ''
         ];
+        $this->empleadoDisponibleOption = null;
+        $this->refreshEmpleadosDisponiblesOptions();
+    }
+
+    private function refreshEmpleadosDisponiblesOptions(): void
+    {
+        $options = collect($this->empleadosDisponibles)->map(function ($empleado) {
+            $nombreCompleto = trim(($empleado['nombre'] ?? '') . ' ' . ($empleado['apellido'] ?? ''));
+            $numero = $empleado['num_empleado'] ?? null;
+            $correo = $empleado['user']['email'] ?? null;
+
+            $partes = array_filter([$nombreCompleto, $numero, $correo]);
+
+            return [
+                'id' => (string) ($empleado['id'] ?? ''),
+                'text' => implode(' - ', $partes),
+            ];
+        })->filter(fn ($option) => $option['id'] !== '');
+
+        if ($this->empleadoDisponibleOption) {
+            $selectedId = (string) $this->empleadoDisponibleOption['id'];
+
+            if (! $options->contains(fn ($option) => (string) $option['id'] === $selectedId)) {
+                $options->prepend([
+                    'id' => $selectedId,
+                    'text' => $this->empleadoDisponibleOption['text'],
+                ]);
+            }
+        }
+
+        $this->empleadosDisponiblesOptions = $options->values()->take(30)->toArray();
+    }
+
+    private function syncEmpleadoDisponibleOption($value): void
+    {
+        if ($value === '' || $value === null) {
+            $this->empleadoDisponibleOption = null;
+            $this->refreshEmpleadosDisponiblesOptions();
+            return;
+        }
+
+        $empleado = Empleado::query()
+            ->with('user')
+            ->find((int) $value);
+
+        if (! $empleado) {
+            $this->empleadoDisponibleOption = null;
+            $this->refreshEmpleadosDisponiblesOptions();
+            return;
+        }
+
+        $partes = array_filter([
+            trim($empleado->nombre . ' ' . $empleado->apellido),
+            $empleado->num_empleado,
+            optional($empleado->user)->email,
+        ]);
+
+        $this->empleadoDisponibleOption = [
+            'id' => (string) $empleado->id,
+            'text' => implode(' - ', $partes),
+        ];
+
+        $this->refreshEmpleadosDisponiblesOptions();
+    }
+
+    public function updatedNuevoEmpleadoIdEmpleado($value): void
+    {
+        $this->syncEmpleadoDisponibleOption($value);
+    }
+
+    public function searchEmpleadosDisponibles($search = '')
+    {
+        $empleadosAsignadosIds = collect($this->empleadosAsignados)->pluck('id')->toArray();
+
+        $results = Empleado::query()
+            ->with('user')
+            ->whereNotIn('id', $empleadosAsignadosIds)
+            ->when($search, function ($query) use ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('nombre', 'like', '%' . $search . '%')
+                        ->orWhere('apellido', 'like', '%' . $search . '%')
+                        ->orWhere('num_empleado', 'like', '%' . $search . '%')
+                        ->orWhereHas('user', function ($userQuery) use ($search) {
+                            $userQuery->where('email', 'like', '%' . $search . '%');
+                        });
+                });
+            })
+            ->orderBy('nombre')
+            ->orderBy('apellido')
+            ->limit(30)
+            ->get()
+            ->map(function ($empleado) {
+                $partes = array_filter([
+                    trim($empleado->nombre . ' ' . $empleado->apellido),
+                    $empleado->num_empleado,
+                    optional($empleado->user)->email,
+                ]);
+
+                return [
+                    'id' => (string) $empleado->id,
+                    'text' => implode(' - ', $partes),
+                ];
+            })
+            ->toArray();
+
+        if ($this->empleadoDisponibleOption) {
+            $selectedId = (string) $this->empleadoDisponibleOption['id'];
+
+            if (! collect($results)->contains(fn ($option) => (string) $option['id'] === $selectedId)) {
+                array_unshift($results, [
+                    'id' => $selectedId,
+                    'text' => $this->empleadoDisponibleOption['text'],
+                ]);
+            }
+        }
+
+        return $results;
     }
 
     // ============= PASO 4: TAREAS =============
