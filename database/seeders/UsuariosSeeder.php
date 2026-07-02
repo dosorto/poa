@@ -16,8 +16,8 @@ class UsuariosSeeder extends Seeder
 
         $now = now();
 
-        // Datos completos tomados de db_poa.Usuarios
-        // [email, name, password (hash original), idEmpleado, idRol]
+        // Datos completos tomados de db_poa.Usuarios.
+        // Todos se crean con la clave 123456789.
         $usuarios = [
             ['email' => 'cjso0323@gmail.com',              'name' => 'root',                'password' => '$2y$08$HFG.dAizpY00/Oz3t3EE.uAWoi6Ry1lgLJQAX6SOsdDbwimLb/6P.', 'idEmpleado' => 1,   'idRol' => 1],
             ['email' => 'admin@gmail.com',                  'name' => 'admin',               'password' => '$2y$08$xt4/Q/wdv2eRqyiRVhgjQ.m40nyDxIuoorWPs.vrROZGyWrnFrH8i', 'idEmpleado' => 2,   'idRol' => 2],
@@ -85,7 +85,7 @@ class UsuariosSeeder extends Seeder
             $id = DB::table('users')->insertGetId([
                 'name'        => $u['name'],
                 'email'       => $u['email'],
-                'password'    => $u['password'],
+                'password'    => Hash::make('123456789'),
                 'idEmpleado'  => $u['idEmpleado'],
                 'created_at'  => $now,
                 'updated_at'  => $now,

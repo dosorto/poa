@@ -68,7 +68,6 @@ class DatabaseSeeder extends Seeder
         $this->call(PeiSeeder::class);
         $this->call(ProcesoCompraSeeder::class);
         $this->call(RecursoSeeder::class);
-        $this->call(RecursoDetalleTecnicoSeeder::class);
 
         
         $this->call(TechoDeptoSeeder::class);
