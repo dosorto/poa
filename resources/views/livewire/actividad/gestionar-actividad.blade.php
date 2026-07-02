@@ -866,6 +866,8 @@
                             :defaultText="$nuevoPresupuesto['idRecurso'] ? 'Seleccione un detalle tecnico' : 'Primero seleccione un recurso'"
                             :options="$detallesTecnicosPorRecurso"
                             :disabled="!$nuevoPresupuesto['idRecurso']"
+                            :allowCustom="true"
+                            customText="Usar detalle"
                             :error="$errors->first('nuevoPresupuesto.detalle_tecnico')"
                         />
                     </div>

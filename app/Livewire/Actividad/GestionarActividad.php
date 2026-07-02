@@ -13,6 +13,7 @@ use App\Models\Mes\Trimestre;
 use App\Models\Presupuestos\Presupuesto;
 use App\Models\Cubs\Cub;
 use App\Models\Tareas\TareaHistorico;
+use App\Models\Tareas\RecursoDetalleTecnico;
 use App\Models\GrupoGastos\Fuente;
 use App\Models\GrupoGastos\ObjetoGasto;
 use App\Models\Requisicion\UnidadMedida;
@@ -1519,11 +1520,40 @@ class GestionarActividad extends Component
             ->toArray();
     }
 
+    private function guardarDetalleTecnicoDelRecurso($recursoId, $detalleTecnico): void
+    {
+        $detalleTecnico = trim((string) $detalleTecnico);
+
+        if (empty($recursoId) || $detalleTecnico === '') {
+            return;
+        }
+
+        $detalleExistente = RecursoDetalleTecnico::query()
+            ->where('id_tareas_historicos', $recursoId)
+            ->whereRaw('LOWER(nombre) = ?', [strtolower($detalleTecnico)])
+            ->first();
+
+        if ($detalleExistente) {
+            if (!$detalleExistente->estado) {
+                $detalleExistente->update(['estado' => true]);
+            }
+
+            return;
+        }
+
+        RecursoDetalleTecnico::create([
+            'id_tareas_historicos' => $recursoId,
+            'nombre' => $detalleTecnico,
+            'estado' => true,
+        ]);
+    }
+
     public function savePresupuesto()
     {
         // Verificar permisos basados en la tarea seleccionada
         $this->verificarPuedeEditarTarea($this->tareaSeleccionada);
         $this->syncUnidadMedidaFromRecurso($this->nuevoPresupuesto['idRecurso'] ?? '');
+        $this->nuevoPresupuesto['detalle_tecnico'] = trim((string) ($this->nuevoPresupuesto['detalle_tecnico'] ?? ''));
         
         $this->validate([
             'nuevoPresupuesto.idRecurso' => 'required|exists:tareas_historicos,id',
@@ -1547,6 +1577,7 @@ class GestionarActividad extends Component
             
             // Obtener el recurso seleccionado para obtener los datos del objeto de gasto
             $recurso = TareaHistorico::with('objeto')->findOrFail($this->nuevoPresupuesto['idRecurso']);
+            $this->guardarDetalleTecnicoDelRecurso($recurso->id, $this->nuevoPresupuesto['detalle_tecnico']);
             
             // Obtener idgrupo del objeto de gasto
             $idgrupo = null;
