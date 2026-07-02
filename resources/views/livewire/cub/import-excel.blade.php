@@ -1,20 +1,20 @@
 <x-dialog-modal maxWidth="lg" wire:model="isImportModalOpen">
     <x-slot name="title">
-        {{ __('Importar CUBS desde CSV') }}
+        {{ __('Importar CUBS desde Excel') }}
     </x-slot>
 
     <x-slot name="content">
         <div class="space-y-4">
             <div>
-                <x-label for="csvFile" :value="__('Archivo CSV')" />
+                <x-label for="excelFile" :value="__('Archivo Excel')" />
                 <input
-                    id="csvFile"
+                    id="excelFile"
                     type="file"
-                    wire:model="csvFile"
-                    accept=".csv,text/csv"
+                    wire:model="excelFile"
+                    accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
                     class="mt-1 block w-full text-sm text-zinc-700 dark:text-zinc-200 file:mr-4 file:rounded-md file:border-0 file:bg-indigo-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-indigo-700 hover:file:bg-indigo-100 dark:file:bg-zinc-800 dark:file:text-zinc-100"
                 />
-                <x-input-error for="csvFile" class="mt-2" />
+                <x-input-error for="excelFile" class="mt-2" />
             </div>
 
             <div class="rounded-md bg-zinc-50 p-3 text-sm text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
@@ -48,8 +48,8 @@
 
             <x-spinner-button
                 type="button"
-                wire:click="importCsv"
-                loadingTarget="importCsv"
+                wire:click="importExcel"
+                loadingTarget="importExcel"
                 loadingText="Importando..."
             >
                 {{ __('Importar') }}

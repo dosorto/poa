@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Tarea;
 
+use App\Imports\RecursosImport;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Livewire\WithPagination;
@@ -13,6 +14,7 @@ use App\Models\ProcesoCompras\ProcesoCompra;
 use App\Models\Cubs\Cub;
 use Illuminate\Support\Facades\Auth;
 use Livewire\Attributes\Layout;
+use Maatwebsite\Excel\Facades\Excel;
 
 #[Layout('layouts.app')]
     class TareasHistorico extends Component
@@ -39,7 +41,7 @@ use Livewire\Attributes\Layout;
         public $errorMessage = '';
         public $showErrorModal = false;
         public $isEditing = false;
-        public $csvFile = null;
+        public $excelFile = null;
         public array $importErrors = [];
 
         protected $rules = [
@@ -131,9 +133,9 @@ use Livewire\Attributes\Layout;
 
         public function resetImportFields()
         {
-            $this->csvFile = null;
+            $this->excelFile = null;
             $this->importErrors = [];
-            $this->resetValidation(['csvFile']);
+            $this->resetValidation(['excelFile']);
         }
 
         public function closeDeleteModal()
@@ -182,16 +184,30 @@ use Livewire\Attributes\Layout;
             }
         }
 
-        public function importCsv()
+        public function importExcel()
         {
+            @set_time_limit(300);
+
             $this->validate([
-                'csvFile' => 'required|file|mimes:csv,txt|max:5120',
+                'excelFile' => 'required|file|mimes:xlsx,xls|max:5120',
             ], [
-                'csvFile.required' => 'Debes seleccionar un archivo CSV.',
-                'csvFile.file' => 'El archivo seleccionado no es válido.',
-                'csvFile.mimes' => 'El archivo debe ser CSV.',
-                'csvFile.max' => 'El archivo no debe superar 5 MB.',
+                'excelFile.required' => 'Debes seleccionar un archivo Excel.',
+                'excelFile.file' => 'El archivo seleccionado no es válido.',
+                'excelFile.mimes' => 'El archivo debe ser Excel (.xlsx o .xls).',
+                'excelFile.max' => 'El archivo no debe superar 5 MB.',
             ]);
+
+            $this->importErrors = [];
+            $import = new RecursosImport();
+
+            Excel::import($import, $this->excelFile);
+
+            $this->importErrors = $import->importErrors;
+
+            $message = "Importación completada. Creados: {$import->created}. Actualizados: {$import->updated}. Omitidos: {$import->skipped}.";
+
+            /*
+            Código CSV anterior, conservado para reversa:
 
             $path = $this->csvFile->getRealPath();
             $handle = fopen($path, 'r');
@@ -261,6 +277,7 @@ use Livewire\Attributes\Layout;
             fclose($handle);
 
             $message = "Importación completada. Creados: {$created}. Actualizados: {$updated}. Omitidos: {$skipped}.";
+            */
 
             if (! empty($this->importErrors)) {
                 session()->flash('error', $message . ' Revisa los errores en el modal.');

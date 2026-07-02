@@ -2,11 +2,13 @@
 
 namespace App\Livewire\Cub;
 
+use App\Imports\CubsImport;
 use App\Models\Cubs\Cub;
 use Livewire\Component;
 use Livewire\Attributes\Layout;
 use Livewire\WithFileUploads;
 use Livewire\WithPagination;
+use Maatwebsite\Excel\Facades\Excel;
 
 #[Layout('layouts.app')]
 class Cubs extends Component
@@ -24,7 +26,7 @@ class Cubs extends Component
     public bool $showErrorModal = false;
     public string $errorMessage = '';
     public ?Cub $cubToDelete = null;
-    public $csvFile = null;
+    public $excelFile = null;
     public array $importErrors = [];
 
     public string $search = '';
@@ -152,21 +154,35 @@ class Cubs extends Component
 
     public function resetImportFields(): void
     {
-        $this->csvFile = null;
+        $this->excelFile = null;
         $this->importErrors = [];
-        $this->resetValidation(['csvFile']);
+        $this->resetValidation(['excelFile']);
     }
 
-    public function importCsv(): void
+    public function importExcel(): void
     {
+        @set_time_limit(300);
+
         $this->validate([
-            'csvFile' => 'required|file|mimes:csv,txt|max:5120',
+            'excelFile' => 'required|file|mimes:xlsx,xls|max:5120',
         ], [
-            'csvFile.required' => 'Debes seleccionar un archivo CSV.',
-            'csvFile.file' => 'El archivo seleccionado no es válido.',
-            'csvFile.mimes' => 'El archivo debe ser CSV.',
-            'csvFile.max' => 'El archivo no debe superar 5 MB.',
+            'excelFile.required' => 'Debes seleccionar un archivo Excel.',
+            'excelFile.file' => 'El archivo seleccionado no es válido.',
+            'excelFile.mimes' => 'El archivo debe ser Excel (.xlsx o .xls).',
+            'excelFile.max' => 'El archivo no debe superar 5 MB.',
         ]);
+
+        $this->importErrors = [];
+        $import = new CubsImport();
+
+        Excel::import($import, $this->excelFile);
+
+        $this->importErrors = $import->importErrors;
+
+        $message = "Importación completada. Creados: {$import->created}. Actualizados: {$import->updated}. Omitidos: {$import->skipped}.";
+
+        /*
+        Código CSV anterior, conservado para reversa:
 
         $path = $this->csvFile->getRealPath();
         $handle = fopen($path, 'r');
@@ -237,6 +253,7 @@ class Cubs extends Component
         fclose($handle);
 
         $message = "Importación completada. Creados: {$created}. Actualizados: {$updated}. Omitidos: {$skipped}.";
+        */
 
         if (! empty($this->importErrors)) {
             session()->flash('error', $message . ' Revisa los errores en el modal.');
