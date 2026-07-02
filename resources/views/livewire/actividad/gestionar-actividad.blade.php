@@ -830,21 +830,21 @@
                         @endif
                     </div>
                     
-                    <div class="grid grid-cols-2 gap-4">
-                        <div>
-                            <x-searchable-select
-                                wire:model="nuevoPresupuesto.idRecurso"
-                                wire:key="presupuesto-recurso-select-{{ $presupuestoEditandoId ?: 'nuevo' }}-{{ (string) ($nuevoPresupuesto['idRecurso'] ?? '') }}"
-                                label="Recurso"
-                                :required="true"
-                                placeholder="Buscar recurso..."
-                                defaultText="Seleccione un recurso"
-                                searchAction="searchRecursosPresupuesto"
-                                :options="$recursosPresupuestoOptions"
-                                :error="$errors->first('nuevoPresupuesto.idRecurso')"
-                            />
-                        </div>
+                    <div>
+                        <x-searchable-select
+                            wire:model="nuevoPresupuesto.idRecurso"
+                            wire:key="presupuesto-recurso-select-{{ $presupuestoEditandoId ?: 'nuevo' }}-{{ (string) ($nuevoPresupuesto['idRecurso'] ?? '') }}"
+                            label="Recurso"
+                            :required="true"
+                            placeholder="Buscar recurso..."
+                            defaultText="Seleccione un recurso"
+                            searchAction="searchRecursosPresupuesto"
+                            :options="$recursosPresupuestoOptions"
+                            :error="$errors->first('nuevoPresupuesto.idRecurso')"
+                        />
+                    </div>
 
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label for="fuentePresupuesto" class="block font-medium text-sm text-zinc-700 dark:text-zinc-300">
                                 Fuente de Financiamiento <span class="text-red-500">*</span>

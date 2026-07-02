@@ -221,7 +221,7 @@
                              : 'border-zinc-300 dark:border-zinc-700 focus:ring-indigo-500 focus:border-indigo-500' }}
                 {{ $disabled ? 'opacity-50 cursor-not-allowed' : '' }}"
         >
-            <span class="block truncate" x-text="selectedText"
+            <span class="block truncate pr-2" x-text="selectedText"
                 :class="!selected ? 'text-zinc-400' : 'text-zinc-900 dark:text-zinc-300'">
             </span>
             <span class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
@@ -286,7 +286,7 @@
                 @click="selectCustom()"
                 class="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-zinc-900 dark:text-zinc-300"
             >
-                <span class="block truncate">
+                <span class="block pr-8 leading-tight break-words max-h-10 overflow-hidden">
                     <span x-text="customText"></span>
                     "<span x-text="customSearchText"></span>"
                 </span>
@@ -303,7 +303,7 @@
                         ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-900 dark:text-indigo-100'
                         : 'text-zinc-900 dark:text-zinc-300'"
                 >
-                    <span class="block truncate" x-text="option.text"></span>
+                    <span class="block pr-8 leading-tight break-words max-h-10 overflow-hidden" x-text="option.text"></span>
                     <span x-show="selected == option.id"
                         class="absolute inset-y-0 right-0 flex items-center pr-4 text-indigo-600 dark:text-indigo-400">
                         <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
