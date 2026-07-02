@@ -121,6 +121,7 @@ class IAService
             * **isPorcentaje**: true si mide una tasa o proporción (%), false en caso contrario.
 
             **Reglas obligatorias:**
+            - Si se proporciona una descripcion ingresada en el contexto especifico, usala como base principal para generar y mejorar la descripcion, resultado, poblacion, medio de verificacion e indicadores. No la contradigas salvo que sea necesario para alinearla al PEI.
             - Los indicadores NO pueden ser de satisfacción ni requerir encuestas.
             - Al menos uno debe ser de cantidad absoluta (isCantidad: true).
             - Usar terminología oficial UNAH: 'Unidad Ejecutora', 'Plan Operativo Anual', 'funciones sustantivas', 'comunidad universitaria', 'CRU', etc.
@@ -162,6 +163,7 @@ Genera datos para un formulario POA con esta estructura exacta:
 }
 
 Reglas:
+- Si hay descripcion ingresada en el contexto adicional, usala como base principal para generar y mejorar la propuesta.
 - Usa lenguaje institucional de la UNAH.
 - Devuelve 2 indicadores como maximo.
 - Al menos un indicador debe ser de cantidad absoluta.

@@ -100,8 +100,11 @@ class Actividades extends Component
         $rules = [
             'nombre' => 'required|string|max:255',
             'descripcion' => 'required|string',
+            'resultadoActividad' => 'required|string',
+            'poblacion_objetivo' => 'required|string',
+            'medio_verificacion' => 'required|string',
             'idTipo' => 'required|exists:tipo_actividads,id',
-            'idCategoria' => 'nullable|exists:categorias,id',
+            'idCategoria' => 'required|exists:categorias,id',
         ];
 
         if ($this->currentStep == 2) {
@@ -115,7 +118,11 @@ class Actividades extends Component
     protected $messages = [
         'nombre.required' => 'El nombre de la actividad es obligatorio',
         'descripcion.required' => 'La descripción es obligatoria',
+        'resultadoActividad.required' => 'El resultado esperado es obligatorio',
+        'poblacion_objetivo.required' => 'La población objetivo es obligatoria',
+        'medio_verificacion.required' => 'El medio de verificación es obligatorio',
         'idTipo.required' => 'El tipo de actividad es obligatorio',
+        'idCategoria.required' => 'La categoría es obligatoria',
         'idDimension.required' => 'La dimensión es obligatoria',
         'idResultado.required' => 'El resultado es obligatorio',
     ];
@@ -375,6 +382,7 @@ class Actividades extends Component
             $categoria = $this->categorias->firstWhere('id', (int) $this->idCategoria);
 
             $contextoPrompt = [
+                'descripcion_ingresada' => $this->descripcion,
                 'tipo_actividad' => $tipoActividad?->tipo,
                 'categoria' => $categoria?->categoria,
                 'poa' => $this->userContext['poa']->anio ?? null,
@@ -516,7 +524,11 @@ class Actividades extends Component
             $this->validate([
                 'nombre' => 'required|string|max:255',
                 'descripcion' => 'required|string',
+                'resultadoActividad' => 'required|string',
+                'poblacion_objetivo' => 'required|string',
+                'medio_verificacion' => 'required|string',
                 'idTipo' => 'required|exists:tipo_actividads,id',
+                'idCategoria' => 'required|exists:categorias,id',
             ]);
         } elseif ($this->currentStep == 2) {
             $this->validate([

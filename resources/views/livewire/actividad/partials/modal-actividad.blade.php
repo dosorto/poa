@@ -117,20 +117,23 @@
 
                             {{-- Resultado de la Actividad --}}
                             <div>
-                                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Resultado Esperado</label>
+                                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Resultado Esperado *</label>
                                 <textarea wire:model="resultadoActividad" placeholder="Indica resultados de esta actividad" rows="2" class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
+                                @error('resultadoActividad') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                             </div>
 
                             {{-- Población Objetivo --}}
                             <div>
-                                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Población Objetivo</label>
+                                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Población Objetivo *</label>
                                 <textarea wire:model="poblacion_objetivo" placeholder="Indica la población objetivo" rows="2" class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
+                                @error('poblacion_objetivo') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                             </div>
 
                             {{-- Medio de Verificación --}}
                             <div>
-                                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Medio de Verificación</label>
+                                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Medio de Verificación *</label>
                                 <textarea wire:model="medio_verificacion" placeholder="Indica los medios de verificación" rows="2" class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
+                                @error('medio_verificacion') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                             </div>
                         </div>
                     @endif
