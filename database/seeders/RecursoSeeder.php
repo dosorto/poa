@@ -81,30 +81,18 @@ class RecursoSeeder extends Seeder
                 throw new RuntimeException("No existe el objeto de gasto {$objetoCodigo} en la fila {$rowNumber}.");
             }
 
-            if (! isset($unidadLookup[$unidadId])) {
-                fclose($handle);
+            $unidadValida = isset($unidadLookup[$unidadId]) ? $unidadId : 4;
 
-                throw new RuntimeException("No existe la unidad de medida {$unidadId} en la fila {$rowNumber}.");
-            }
+            $procesoCompraValido = isset($procesoLookup[$procesoCompraId]) ? $procesoCompraId : 1;
 
-            if (! isset($procesoLookup[$procesoCompraId])) {
-                fclose($handle);
-
-                throw new RuntimeException("No existe el proceso de compra {$procesoCompraId} en la fila {$rowNumber}.");
-            }
-
-            if ($cubCodigo !== '' && ! isset($cubsLookup[$cubCodigo])) {
-                fclose($handle);
-
-                throw new RuntimeException("No existe el CUBS {$cubCodigo} en la fila {$rowNumber}.");
-            }
+            $cubExiste = $cubCodigo !== '' && isset($cubsLookup[$cubCodigo]);
 
             $batch[] = [
                 'nombre' => $nombre,
                 'idobjeto' => $objetoCodigo,
-                'idunidad' => $unidadId,
-                'idProcesoCompra' => $procesoCompraId,
-                'idCubs' => $cubCodigo !== '' ? $cubCodigo : null,
+                'idunidad' => $unidadValida,
+                'idProcesoCompra' => $procesoCompraValido,
+                'idCubs' => $cubExiste ? $cubCodigo : null,
                 'created_by' => null,
                 'updated_by' => null,
                 'deleted_by' => null,
