@@ -880,7 +880,7 @@
                             <label for="costoUnitario" class="block font-medium text-sm text-zinc-700 dark:text-zinc-300">
                                 Costo Unitario (L) <span class="text-red-500">*</span>
                             </label>
-                            <x-input id="costoUnitario" type="number" step="0.01" min="0" class="mt-1 block w-full text-sm" wire:model.live="nuevoPresupuesto.costounitario" />
+                            <x-input id="costoUnitario" type="number" step="0.01" min="0" class="mt-1 block w-full text-sm" wire:model.live.debounce.600ms="nuevoPresupuesto.costounitario" />
                             @error('nuevoPresupuesto.costounitario') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                         </div>
 
@@ -888,7 +888,7 @@
                             <label for="cantidadPresupuesto" class="block font-medium text-sm text-zinc-700 dark:text-zinc-300">
                                 Cantidad <span class="text-red-500">*</span>
                             </label>
-                            <x-input id="cantidadPresupuesto" type="number" step="0.01" min="0.01" class="mt-1 block w-full text-sm" wire:model.live="nuevoPresupuesto.cantidad" />
+                            <x-input id="cantidadPresupuesto" type="number" step="0.01" min="0.01" class="mt-1 block w-full text-sm" wire:model.live.debounce.600ms="nuevoPresupuesto.cantidad" />
                             @error('nuevoPresupuesto.cantidad') <span class="text-red-500 text-xs">{{ $message }}</span> @enderror
                         </div>
 
@@ -907,12 +907,33 @@
                         </div>
                     </div>
 
-                    <div class="flex items-center justify-between p-3 bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-600">
+                    @php
+                        $presupuestoEditandoActual = $presupuestoEditandoId
+                            ? collect($presupuestosTarea)->firstWhere('id', $presupuestoEditandoId)
+                            : null;
+                        $presupuestoDisponibleFormulario = (float) ($presupuestoTechoInfo['presupuestoDisponible'] ?? 0);
+
+                        if ($presupuestoEditandoActual) {
+                            $presupuestoDisponibleFormulario += (float) ($presupuestoEditandoActual['total'] ?? 0);
+                        }
+
+                        $presupuestoSolicitado = (float) ($nuevoPresupuesto['total'] ?? 0);
+                        $presupuestoExcedidoFormulario = $presupuestoSolicitado > $presupuestoDisponibleFormulario;
+                    @endphp
+
+                    <div class="flex items-center justify-between p-3 bg-white dark:bg-zinc-800 rounded-lg border {{ $presupuestoExcedidoFormulario ? 'border-red-300 dark:border-red-700' : 'border-zinc-200 dark:border-zinc-600' }}">
                         <span class="text-sm font-medium text-zinc-700 dark:text-zinc-300">Total:</span>
-                        <span class="text-lg font-bold text-indigo-600 dark:text-indigo-400">
+                        <span class="text-lg font-bold {{ $presupuestoExcedidoFormulario ? 'text-red-600 dark:text-red-400' : 'text-indigo-600 dark:text-indigo-400' }}">
                             L {{ number_format($nuevoPresupuesto['total'], 2) }}
                         </span>
                     </div>
+                    @if($presupuestoExcedidoFormulario)
+                        <div class="p-3 bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-lg text-sm text-red-700 dark:text-red-300">
+                            El monto ingresado supera el presupuesto disponible.
+                            Disponible: L {{ number_format($presupuestoDisponibleFormulario, 2) }}.
+                            Solicitado: L {{ number_format($presupuestoSolicitado, 2) }}.
+                        </div>
+                    @endif
                     @php
                         // Calcular si puede editar presupuesto basándose en la tarea seleccionada
                         $tareaActual = \App\Models\Tareas\Tarea::find($tareaSeleccionada);
@@ -933,19 +954,24 @@
                             $puedeEditarPresupuesto = $actividadEnFormulacion || ($tieneRevisionPendientePresup && !$tareaAprobadaPresup);
                         }
                     @endphp
+                    @php
+                        $sinDisponiblePresupuesto = !$presupuestoEditandoId
+                            && (($presupuestoTechoInfo['presupuestoDisponible'] ?? 0) <= 0);
+                        $bloquearGuardadoPresupuesto = $sinDisponiblePresupuesto || $presupuestoExcedidoFormulario;
+                    @endphp
                     <div class="flex justify-end gap-2">
                         @if($presupuestoEditandoId)
                             <x-secondary-button wire:click="cancelarEdicionPresupuesto" class="text-sm">
                                 Cancelar
                             </x-secondary-button>
-                            <x-spinner-button wire:click="savePresupuesto" class="{{ !$puedeEditarPresupuesto ? 'opacity-50 cursor-not-allowed pointer-events-none' : '' }}" :disabled="!$puedeEditarPresupuesto" loadingTarget="savePresupuesto" :loadingText="__('Actualizando...')">
+                            <x-spinner-button wire:click="savePresupuesto" class="{{ (!$puedeEditarPresupuesto || $bloquearGuardadoPresupuesto) ? 'opacity-50 cursor-not-allowed pointer-events-none' : '' }}" :disabled="!$puedeEditarPresupuesto || $bloquearGuardadoPresupuesto" loadingTarget="savePresupuesto" :loadingText="__('Actualizando...')">
                                 <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
                                 </svg>
                                 Actualizar Recurso
                             </x-spinner-button>
                         @else
-                            <x-spinner-button wire:click="savePresupuesto" class="{{ !$puedeEditarPresupuesto ? 'opacity-50 cursor-not-allowed pointer-events-none' : '' }}" :disabled="!$puedeEditarPresupuesto" loadingTarget="savePresupuesto" :loadingText="__('Guardando...')">
+                            <x-spinner-button wire:click="savePresupuesto" class="{{ (!$puedeEditarPresupuesto || $bloquearGuardadoPresupuesto) ? 'opacity-50 cursor-not-allowed pointer-events-none' : '' }}" :disabled="!$puedeEditarPresupuesto || $bloquearGuardadoPresupuesto" loadingTarget="savePresupuesto" :loadingText="__('Guardando...')">
                                 <svg class="w-4 h-4 mr-2"  fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                                 </svg>

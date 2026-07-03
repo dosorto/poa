@@ -1333,6 +1333,9 @@ class GestionarActividad extends Component
                 // Obtener todas las tareas del departamento en este POA
                 $tareasDepartamento = Tarea::where('idDeptartamento', $idDepartamento)
                     ->where('idPoa', $idPoa)
+                    ->whereHas('actividad', function ($query) use ($idPoa) {
+                        $query->where('idPoa', $idPoa);
+                    })
                     ->pluck('id')
                     ->toArray();
                 
@@ -1718,7 +1721,9 @@ class GestionarActividad extends Component
                 ->toArray();
             
             if (empty($techoUesIds)) {
-                session()->flash('message', 'No hay techo presupuestario para la fuente de financiamiento seleccionada en este POA');
+                session()->flash('error', 'No hay techo presupuestario para la fuente de financiamiento seleccionada en este POA.');
+                DB::rollBack();
+                return;
             }
             
             // Obtener el techo del departamento para esta fuente en este POA
@@ -1728,12 +1733,17 @@ class GestionarActividad extends Component
                 ->sum('monto');
             
             if ($techosTotalDisponible <= 0) {
-                session()->flash('message', 'No hay techo presupuestario disponible para el departamento y fuente de financiamiento seleccionada en este POA');
+                session()->flash('error', 'No hay techo presupuestario disponible para el departamento y fuente de financiamiento seleccionada en este POA.');
+                DB::rollBack();
+                return;
             }
             
             // Obtener todas las tareas del departamento en este POA
             $todasLasTareas = Tarea::where('idDeptartamento', $idDepartamento)
                 ->where('idPoa', $idPoa)
+                ->whereHas('actividad', function ($query) use ($idPoa) {
+                    $query->where('idPoa', $idPoa);
+                })
                 ->pluck('id')
                 ->toArray();
             
@@ -1748,14 +1758,17 @@ class GestionarActividad extends Component
             
             // Verificar que el presupuesto disponible sea mayor a 0
             if ($presupuestoDisponible <= 0) {
-                session()->flash('message', 'No hay presupuesto disponible para esta fuente. Todo el techo ha sido asignado.');
+                session()->flash('error', 'No hay presupuesto disponible para esta fuente. Todo el techo ha sido asignado.');
+                DB::rollBack();
+                return;
             }
             
             // Verificar que haya suficiente presupuesto disponible para el monto solicitado
             $presupuestoTotal = $this->nuevoPresupuesto['total'];
             if ($presupuestoTotal > $presupuestoDisponible) {
-                session()->flash('message', 'Presupuesto insuficiente. Disponible: L ' . number_format($presupuestoDisponible, 2) . ', Solicitado: L ' . number_format($presupuestoTotal, 2));
-
+                session()->flash('error', 'Presupuesto insuficiente. Disponible: L ' . number_format($presupuestoDisponible, 2) . ', Solicitado: L ' . number_format($presupuestoTotal, 2));
+                DB::rollBack();
+                return;
             }
             
             // Crear o actualizar el presupuesto

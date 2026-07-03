@@ -78,9 +78,18 @@ class ActividadesRevision extends Component
 
             $idTareas = Tarea::whereIn('idActividad', $actividades->pluck('id'))
                 ->where('isPresupuesto', true)
+                ->whereHas('actividad', function ($query) {
+                    $query->whereIn('estado', self::ESTADOS_REVISION);
+                })
                 ->pluck('id');
 
-            $planificado = Presupuesto::whereIn('idtarea', $idTareas)->sum('total');
+            $planificado = Presupuesto::whereIn('idtarea', $idTareas)
+                ->whereHas('tarea', function ($query) {
+                    $query->whereHas('actividad', function ($actividadQuery) {
+                        $actividadQuery->whereIn('estado', self::ESTADOS_REVISION);
+                    });
+                })
+                ->sum('total');
             $porcentaje = $presupuesto > 0 ? round(($planificado * 100) / $presupuesto, 1) : 0;
         }
 

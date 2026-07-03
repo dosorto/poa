@@ -537,6 +537,9 @@ class GestionTechoDeptos extends Component
                 $query->where('idPoa', $this->idPoa)
                     ->where('idDeptartamento', $this->idDepartamento);
             })
+            ->whereHas('tarea.actividad', function ($query) {
+                $query->where('idPoa', $this->idPoa);
+            })
             ->sum('total');
 
         return floatval($montoPlanificado);

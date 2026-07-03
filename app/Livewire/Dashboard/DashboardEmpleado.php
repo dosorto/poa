@@ -172,7 +172,10 @@ class DashboardEmpleado extends Component
         // Presupuesto Planificado (suma de presupuestos en tareas del departamento)
         $queryPlanificado = Presupuesto::whereHas('tarea', function ($query) use ($idDepartamento, $idPoa) {
             $query->where('idDeptartamento', $idDepartamento)
-                  ->where('idPoa', $idPoa);
+                  ->where('idPoa', $idPoa)
+                  ->whereHas('actividad', function ($actividadQuery) use ($idPoa) {
+                      $actividadQuery->where('idPoa', $idPoa);
+                  });
         });
         
         // Aplicar filtro de trimestre si está seleccionado
@@ -185,7 +188,10 @@ class DashboardEmpleado extends Component
         // Presupuesto Ejecutado (suma de montos ejecutados en detalles de ejecución)
         $queryEjecutado = DetalleEjecucionPresupuestaria::whereHas('presupuesto.tarea', function ($query) use ($idDepartamento, $idPoa) {
             $query->where('idDeptartamento', $idDepartamento)
-                  ->where('idPoa', $idPoa);
+                  ->where('idPoa', $idPoa)
+                  ->whereHas('actividad', function ($actividadQuery) use ($idPoa) {
+                      $actividadQuery->where('idPoa', $idPoa);
+                  });
         });
         
         // Aplicar filtro de trimestre en ejecución
@@ -264,7 +270,10 @@ class DashboardEmpleado extends Component
             // Presupuesto planificado para esta fuente
             $queryPlanificado = Presupuesto::whereHas('tarea', function ($query) use ($idDepartamento, $idPoa) {
                 $query->where('idDeptartamento', $idDepartamento)
-                      ->where('idPoa', $idPoa);
+                      ->where('idPoa', $idPoa)
+                      ->whereHas('actividad', function ($actividadQuery) use ($idPoa) {
+                          $actividadQuery->where('idPoa', $idPoa);
+                      });
             });
             
             if ($idFuente) {
@@ -285,7 +294,10 @@ class DashboardEmpleado extends Component
                 }
                 $query->whereHas('tarea', function ($q) use ($idDepartamento, $idPoa) {
                     $q->where('idDeptartamento', $idDepartamento)
-                      ->where('idPoa', $idPoa);
+                      ->where('idPoa', $idPoa)
+                      ->whereHas('actividad', function ($actividadQuery) use ($idPoa) {
+                          $actividadQuery->where('idPoa', $idPoa);
+                      });
                 });
             });
             
@@ -322,7 +334,10 @@ class DashboardEmpleado extends Component
         // Obtener presupuestos agrupados por grupo de gasto
         $queryPresupuestos = Presupuesto::whereHas('tarea', function ($query) use ($idDepartamento, $idPoa) {
             $query->where('idDeptartamento', $idDepartamento)
-                  ->where('idPoa', $idPoa);
+                  ->where('idPoa', $idPoa)
+                  ->whereHas('actividad', function ($actividadQuery) use ($idPoa) {
+                      $actividadQuery->where('idPoa', $idPoa);
+                  });
         });
         
         // Aplicar filtro de trimestre
@@ -378,7 +393,10 @@ class DashboardEmpleado extends Component
             ->map(function ($actividad) {
                 // Calcular presupuesto planificado de la actividad
                 $queryPresupuesto = Presupuesto::whereHas('tarea', function ($query) use ($actividad) {
-                    $query->where('idActividad', $actividad->id);
+                    $query->where('idActividad', $actividad->id)
+                        ->whereHas('actividad', function ($actividadQuery) use ($actividad) {
+                            $actividadQuery->where('id', $actividad->id);
+                        });
                 });
                 
                 // Aplicar filtro de trimestre
@@ -411,7 +429,10 @@ class DashboardEmpleado extends Component
         // Obtener presupuestos planificados por mes
         $queryPresupuestos = Presupuesto::whereHas('tarea', function ($query) use ($idDepartamento, $idPoa) {
             $query->where('idDeptartamento', $idDepartamento)
-                  ->where('idPoa', $idPoa);
+                  ->where('idPoa', $idPoa)
+                  ->whereHas('actividad', function ($actividadQuery) use ($idPoa) {
+                      $actividadQuery->where('idPoa', $idPoa);
+                  });
         });
         
         // Aplicar filtro de trimestre

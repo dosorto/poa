@@ -114,6 +114,15 @@ class Actividad extends BaseModel
         return $this->belongsTo(User::class, 'created_by');
     }
 
+    protected static function booted(): void
+    {
+        static::deleting(function (self $actividad) {
+            $actividad->tareas()->get()->each(function ($tarea) {
+                $tarea->delete();
+            });
+        });
+    }
+
     /**
      * Accessor para generar el correlativo formateado
      * Formato: ANIO-CATEGORIA-SIGLAS_DEPTO-R-ID_DIMENSION-ID_RESULTADO-NUM_ACTIVIDAD
