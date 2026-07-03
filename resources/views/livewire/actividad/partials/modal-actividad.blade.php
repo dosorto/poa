@@ -55,16 +55,16 @@
                             @endif
 
                             {{-- Nombre --}}
-                            <div>
-                                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Nombre de la Actividad *</label>
-                                <textarea wire:model="nombre" placeholder="Ejemplo: Capacitación docente en metodologías activas de enseñanza..." rows="2" class="block w-full rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
+                            <div wire:key="actividad-nombre-field">
+                                <label for="actividad_nombre" class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Nombre de la Actividad *</label>
+                                <textarea id="actividad_nombre" wire:model.defer="nombre" placeholder="Ejemplo: Capacitación docente en metodologías activas de enseñanza..." rows="2" class="block w-full rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
                                 @error('nombre') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                             </div>
 
                             {{-- Descripción --}}
-                            <div>
-                                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Descripción *</label>
-                                <textarea wire:model="descripcion" placeholder="Describe la actividad a realizar" rows="4" class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
+                            <div wire:key="actividad-descripcion-field">
+                                <label for="actividad_descripcion" class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Descripción *</label>
+                                <textarea id="actividad_descripcion" wire:model.defer="descripcion" placeholder="Describe la actividad a realizar" rows="4" class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
                                 @error('descripcion') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                             </div>
 
@@ -116,23 +116,23 @@
                             @endif
 
                             {{-- Resultado de la Actividad --}}
-                            <div>
-                                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Resultado Esperado *</label>
-                                <textarea wire:model="resultadoActividad" placeholder="Indica resultados de esta actividad" rows="2" class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
+                            <div wire:key="actividad-resultado-field">
+                                <label for="actividad_resultado" class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Resultado Esperado *</label>
+                                <textarea id="actividad_resultado" wire:model.defer="resultadoActividad" placeholder="Indica resultados de esta actividad" rows="2" class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
                                 @error('resultadoActividad') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                             </div>
 
                             {{-- Población Objetivo --}}
-                            <div>
-                                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Población Objetivo *</label>
-                                <textarea wire:model="poblacion_objetivo" placeholder="Indica la población objetivo" rows="2" class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
+                            <div wire:key="actividad-poblacion-field">
+                                <label for="actividad_poblacion_objetivo" class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Población Objetivo *</label>
+                                <textarea id="actividad_poblacion_objetivo" wire:model.defer="poblacion_objetivo" placeholder="Indica la población objetivo" rows="2" class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
                                 @error('poblacion_objetivo') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                             </div>
 
                             {{-- Medio de Verificación --}}
-                            <div>
-                                <label class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Medio de Verificación *</label>
-                                <textarea wire:model="medio_verificacion" placeholder="Indica los medios de verificación" rows="2" class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
+                            <div wire:key="actividad-medio-field">
+                                <label for="actividad_medio_verificacion" class="block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-2">Medio de Verificación *</label>
+                                <textarea id="actividad_medio_verificacion" wire:model.defer="medio_verificacion" placeholder="Indica los medios de verificación" rows="2" class="mt-1 block w-full rounded-md border-zinc-300 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"></textarea>
                                 @error('medio_verificacion') <span class="text-red-500 text-xs mt-1">{{ $message }}</span> @enderror
                             </div>
                         </div>

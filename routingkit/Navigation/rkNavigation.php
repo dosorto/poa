@@ -130,7 +130,7 @@ return [
                 
             RkNavigation::make('consolidado')
                 ->setParentId('planificacion')
-                ->setDescription('Genera reportes consolidados')
+                ->setDescription('Visualiza el consolidado de actividades de tus departamentos')
                 ->setLabel('Consolidado')
                 ->setHeroIcon('chart-bar-square')
                 ->setItems([])
@@ -494,6 +494,14 @@ return [
                         ->setEndBlock('techodeptos'),
                 ])
                 ->setEndBlock('asignacionpresupuestaria'),
+
+            RkNavigation::make('consolidado-ue')
+                ->setParentId('consola')
+                ->setDescription('Visualiza el consolidado completo de la unidad ejecutora')
+                ->setLabel('Consolidado UE')
+                ->setHeroIcon('clipboard-document-list')
+                ->setItems([])
+                ->setEndBlock('consolidado-ue'),
             /*
             RkNavigation::make('techodeptos')
                 ->setParentId('consola')

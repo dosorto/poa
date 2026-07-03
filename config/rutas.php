@@ -181,6 +181,14 @@ return [
                 'icono' => '',
                 'breadcrumb' => true
             ],
+            [
+                'titulo' => 'Consolidado UE',
+                'route' => 'consolidado-ue',
+                'routes' => ['consolidado-ue'],
+                'permisos' => ['consola.consolidado.ver', 'consola.consolidado.generar'],
+                'icono' => '',
+                'breadcrumb' => true
+            ],
         ]
     ],
 
