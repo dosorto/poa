@@ -21,6 +21,20 @@ return [
         ])
         ->setEndBlock('dashboard_group'),
 
+    RkNavigation::makeGroup('reportes')
+        ->setLabel('Reportes')
+        ->setHeroIcon('chart-pie')
+        ->setItems([
+            RkNavigation::make('reportes-direccion')
+                ->setParentId('reportes')
+                ->setDescription('Indicadores ejecutivos para Dirección')
+                ->setLabel('Dirección')
+                ->setHeroIcon('presentation-chart-line')
+                ->setItems([])
+                ->setEndBlock('reportes-direccion'),
+        ])
+        ->setEndBlock('reportes'),
+
     RkNavigation::makeGroup('planificacion')
         ->setLabel('Planificación')
         ->setHeroIcon('calendar')

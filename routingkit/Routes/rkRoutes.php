@@ -652,6 +652,25 @@ return [
                 ])
                 ->setEndBlock('planificacion'),
 
+            RkRoute::makeGroup('reportes')
+                ->setParentId('auth_group')
+                ->setItems([
+                    RkRoute::make('reportes-direccion')
+                        ->setParentId('reportes')
+                        ->setAccessPermission('reportes.direccion.ver')
+                        ->setPermissions([
+                            'acceso-reportes',
+                            'reportes.direccion.ver',
+                            'reportes.direccion.exportar',
+                        ])
+                        ->setUrlMethod('get')
+                        ->setUrlController('App\Livewire\Reportes\ReportesDireccion')
+                        ->setRoles(['super_admin', 'direccion', 'Dirección'])
+                        ->setItems([])
+                        ->setEndBlock('reportes-direccion'),
+                ])
+                ->setEndBlock('reportes'),
+
             RkRoute::makeGroup('consola')
                 ->setParentId('auth_group')
                 ->setItems([
