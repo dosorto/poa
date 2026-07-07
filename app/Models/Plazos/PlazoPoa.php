@@ -39,6 +39,26 @@ class PlazoPoa extends BaseModel
         return $this->belongsTo(Poa::class, 'idPoa');
     }
 
+    public function getFechaInicioLocal(): Carbon
+    {
+        $timezone = config('app.timezone', 'America/Tegucigalpa');
+        $fecha = $this->fecha_inicio instanceof Carbon
+            ? $this->fecha_inicio->format('Y-m-d')
+            : (string) $this->fecha_inicio;
+
+        return Carbon::createFromFormat('Y-m-d', $fecha, $timezone)->startOfDay();
+    }
+
+    public function getFechaFinLocal(): Carbon
+    {
+        $timezone = config('app.timezone', 'America/Tegucigalpa');
+        $fecha = $this->fecha_fin instanceof Carbon
+            ? $this->fecha_fin->format('Y-m-d')
+            : (string) $this->fecha_fin;
+
+        return Carbon::createFromFormat('Y-m-d', $fecha, $timezone)->endOfDay();
+    }
+
     // Scope para buscar plazos activos
     public function scopeActivo($query)
     {
@@ -64,8 +84,8 @@ class PlazoPoa extends BaseModel
     public function estaVigente()
     {
         $hoy = Carbon::now();
-        $inicio = Carbon::parse($this->fecha_inicio)->startOfDay();
-        $fin = Carbon::parse($this->fecha_fin)->endOfDay();
+        $inicio = $this->getFechaInicioLocal();
+        $fin = $this->getFechaFinLocal();
 
         return $this->activo && 
                $hoy->greaterThanOrEqualTo($inicio) && 
@@ -75,13 +95,13 @@ class PlazoPoa extends BaseModel
     // Verificar si el plazo ya venció
     public function haVencido()
     {
-        return Carbon::now()->greaterThan(Carbon::parse($this->fecha_fin)->endOfDay());
+        return Carbon::now()->greaterThan($this->getFechaFinLocal());
     }
 
     // Verificar si el plazo aún no ha comenzado
     public function esProximo()
     {
-        return Carbon::now()->lessThan(Carbon::parse($this->fecha_inicio)->startOfDay());
+        return Carbon::now()->lessThan($this->getFechaInicioLocal());
     }
 
     // Días restantes del plazo
@@ -96,7 +116,7 @@ class PlazoPoa extends BaseModel
         }
         
         $hoy = Carbon::now()->startOfDay();
-        $fechaFin = Carbon::parse($this->fecha_fin)->endOfDay();
+        $fechaFin = $this->getFechaFinLocal();
         
         return (int) $hoy->diffInDays($fechaFin) + 1;
     }

@@ -2,6 +2,7 @@
 
 namespace App\Models\Poa;
 use App\Models\BaseModel;
+use App\Models\Plazos\PlazoPoa;
 use App\Models\UnidadEjecutora\UnidadEjecutora;
 use App\Models\Instituciones\Institucion;
 use App\Models\Poa\PoaDepto;
@@ -72,6 +73,16 @@ class Poa extends BaseModel
     public function plazos()
     {
         return $this->hasMany(\App\Models\Plazos\PlazoPoa::class, 'idPoa');
+    }
+
+    private function getPlazoFechaInicioLocal(PlazoPoa $plazo): Carbon
+    {
+        return $plazo->getFechaInicioLocal();
+    }
+
+    private function getPlazoFechaFinLocal(PlazoPoa $plazo): Carbon
+    {
+        return $plazo->getFechaFinLocal();
     }
 
         /**
@@ -168,19 +179,19 @@ class Poa extends BaseModel
         }
 
         $hoy = now();
-        $fechaInicio = Carbon::parse($plazo->fecha_inicio)->startOfDay();
-        $fechaFin = Carbon::parse($plazo->fecha_fin)->endOfDay();
+        $fechaInicio = $this->getPlazoFechaInicioLocal($plazo);
+        $fechaFin = $this->getPlazoFechaFinLocal($plazo);
         
         // Plazo aún no ha iniciado
         if ($hoy < $fechaInicio) {
-            return 'El plazo para esta acción aún no ha iniciado. Inicia el ' . \Carbon\Carbon::parse($plazo->fecha_inicio)->format('d/m/Y') . '.';
+            return 'El plazo para esta acción aún no ha iniciado. Inicia el ' . $this->getPlazoFechaInicioLocal($plazo)->format('d/m/Y') . '.';
         }
 
         // Plazo vencido
         if ($hoy > $fechaFin) {
             $diasVencido = (int) $fechaFin->diffInDays($hoy);
             $nombrePlazo = $plazo->nombre_plazo ?: $this->getNombreTipoPlazo($tipoPlazo);
-            return 'El plazo de ' . $nombrePlazo . ' venció hace ' . $diasVencido . ($diasVencido == 1 ? ' día' : ' días') . ' (el ' . \Carbon\Carbon::parse($plazo->fecha_fin)->format('d/m/Y') . ').';
+            return 'El plazo de ' . $nombrePlazo . ' venció hace ' . $diasVencido . ($diasVencido == 1 ? ' día' : ' días') . ' (el ' . $this->getPlazoFechaFinLocal($plazo)->format('d/m/Y') . ').';
         }
 
         return 'No se puede realizar esta acción en este momento.';
@@ -227,30 +238,30 @@ class Poa extends BaseModel
 
         // Filtrar y priorizar plazos vigentes
         $plazoVigente = $plazos->filter(function($p) use ($hoy) {
-            $inicio = \Carbon\Carbon::parse($p->fecha_inicio)->startOfDay();
-            $fin = \Carbon\Carbon::parse($p->fecha_fin)->endOfDay();
+            $inicio = $p->getFechaInicioLocal();
+            $fin = $p->getFechaFinLocal();
             // Un plazo está vigente si hoy está entre inicio y fin
             return $hoy->between($inicio, $fin);
         })->sortByDesc(function($p) {
             // Ordenar por fecha fin más lejana
-            return \Carbon\Carbon::parse($p->fecha_fin);
+            return $p->getFechaFinLocal();
         })->first();
 
         // Si no hay plazo vigente, buscar próximos plazos (que aún no han iniciado)
         if (!$plazoVigente) {
             $plazoVigente = $plazos->filter(function($p) use ($hoy) {
-                $inicio = \Carbon\Carbon::parse($p->fecha_inicio)->startOfDay();
+                $inicio = $p->getFechaInicioLocal();
                 return $hoy->lt($inicio);
             })->sortBy(function($p) {
                 // Ordenar por fecha inicio más cercana
-                return \Carbon\Carbon::parse($p->fecha_inicio);
+                return $p->getFechaInicioLocal();
             })->first();
         }
 
         // Si no hay plazos vigentes ni próximos, usar el último que venció
         if (!$plazoVigente) {
             $plazoVigente = $plazos->sortByDesc(function($p) {
-                return \Carbon\Carbon::parse($p->fecha_fin);
+                return $p->getFechaFinLocal();
             })->first();
         }
 
@@ -258,8 +269,8 @@ class Poa extends BaseModel
             return null;
         }
 
-        $fechaFin = \Carbon\Carbon::parse($plazoVigente->fecha_fin)->endOfDay();
-        $fechaInicio = \Carbon\Carbon::parse($plazoVigente->fecha_inicio)->startOfDay();
+        $fechaFin = $this->getPlazoFechaFinLocal($plazoVigente);
+        $fechaInicio = $this->getPlazoFechaInicioLocal($plazoVigente);
 
         // Si el plazo no ha iniciado, retornar días hasta el inicio (negativo)
         if ($hoy < $fechaInicio) {

@@ -49,33 +49,31 @@
             @if($puedeCrearActividades && $diasRestantes !== null)
                 @php
                     $plazoPlanificacionFinJs = $plazoPlanificacionFin;
-                    $fechaHoraServidorIso = now()->timezone(config('app.timezone'))->toIso8601String();
+                    $fechaHoraServidorMs = now()->timezone(config('app.timezone'))->getTimestampMs();
                 @endphp
                 <div
                     class="mb-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300 px-4 py-3 rounded-lg flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"
                     role="alert"
                     x-data="{
                         target: @js($plazoPlanificacionFinJs),
-                        serverNow: @js($fechaHoraServidorIso),
+                        serverNowMs: @js($fechaHoraServidorMs),
                         timer: null,
                         remaining: { dias: '00', horas: '00', minutos: '00', segundos: '00' },
                         isLastDay: false,
                         serverTimeLabel: '',
                         tickServerTime() {
-                            if (!this.serverNow) {
+                            if (!this.serverNowMs) {
                                 return;
                             }
-                            const nextServerTime = new Date(this.serverNow);
-                            nextServerTime.setSeconds(nextServerTime.getSeconds() + 1);
-                            this.serverNow = nextServerTime.toISOString();
+                            this.serverNowMs += 1000;
                             this.formatServerTime();
                         },
                         formatServerTime() {
-                            if (!this.serverNow) {
+                            if (!this.serverNowMs) {
                                 this.serverTimeLabel = '';
                                 return;
                             }
-                            const date = new Date(this.serverNow);
+                            const date = new Date(this.serverNowMs);
                             this.serverTimeLabel = date.toLocaleString('es-HN', {
                                 day: '2-digit',
                                 month: '2-digit',
@@ -91,7 +89,7 @@
                             if (!this.target) {
                                 return;
                             }
-                            const diff = new Date(this.target).getTime() - Date.now();
+                            const diff = this.target - this.serverNowMs;
                             if (diff <= 0) {
                                 this.remaining = { dias: '00', horas: '00', minutos: '00', segundos: '00' };
                                 this.isLastDay = false;

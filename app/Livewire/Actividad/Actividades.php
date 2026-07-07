@@ -185,7 +185,7 @@ class Actividades extends Component
 
                 if ($plazoPlanificacion) {
                     $this->plazoPlanificacionFin = $plazoPlanificacion->fecha_fin
-                        ? $plazoPlanificacion->fecha_fin->copy()->endOfDay()->toIso8601String()
+                        ? $plazoPlanificacion->getFechaFinLocal()->getTimestampMs()
                         : null;
                 }
                 
