@@ -469,13 +469,24 @@ class Consolidado extends Component
 
         return implode(PHP_EOL, [
             'DATOS GENERALES',
-            'Resultado de actividad: ' . ($actividad->resultadoActividad ?? 'N/A'),
+            'Resultado de actividad: ' . $this->getResultadoActividadConCorrelativo($actividad),
             'Población objetivo: ' . ($actividad->poblacion_objetivo ?? 'N/A'),
             'Medio de verificación: ' . ($actividad->medio_verificacion ?? 'N/A'),
             'Categoría: ' . ($actividad->categoria->categoria ?? 'N/A'),
             'Tipo de actividad: ' . ($actividad->tipo->tipo ?? 'N/A'),
             'Encargados: ' . ($encargados !== '' ? $encargados : 'N/A'),
         ]);
+    }
+
+    public function getResultadoActividadConCorrelativo(Actividad $actividad): string
+    {
+        $resultadoActividad = $actividad->resultadoActividad ?: 'N/A';
+
+        if (! $actividad->correlativo) {
+            return $resultadoActividad;
+        }
+
+        return $actividad->correlativo . ' - ' . $resultadoActividad;
     }
 
     public function buildIndicadorTexto(Indicador $indicador): string

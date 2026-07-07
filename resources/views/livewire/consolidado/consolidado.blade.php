@@ -2,19 +2,47 @@
     x-data="{
         copied: false,
         copiedLabel: '',
+        copyTimeout: null,
+        showCopied(label) {
+            this.copied = true;
+            this.copiedLabel = label;
+            clearTimeout(this.copyTimeout);
+            this.copyTimeout = setTimeout(() => {
+                this.copied = false;
+            }, 1800);
+        },
+        fallbackCopyText(text, label) {
+            const textArea = document.createElement('textarea');
+            textArea.value = text ?? '';
+            textArea.setAttribute('readonly', '');
+            textArea.style.position = 'fixed';
+            textArea.style.top = '-9999px';
+            textArea.style.left = '-9999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+
+            try {
+                const copied = document.execCommand('copy');
+                if (copied) {
+                    this.showCopied(label);
+                }
+            } finally {
+                document.body.removeChild(textArea);
+            }
+        },
         copyText(text, label = 'Texto copiado') {
-            if (!navigator.clipboard) {
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(text).then(() => {
+                    this.showCopied(label);
+                }).catch(() => {
+                    this.fallbackCopyText(text, label);
+                });
+
                 return;
             }
 
-            navigator.clipboard.writeText(text).then(() => {
-                this.copied = true;
-                this.copiedLabel = label;
-                clearTimeout(this.copyTimeout);
-                this.copyTimeout = setTimeout(() => {
-                    this.copied = false;
-                }, 1800);
-            });
+            this.fallbackCopyText(text, label);
         }
     }"
     class="space-y-6"
@@ -321,9 +349,9 @@
                                         <div>
                                             <div class="flex items-center justify-between gap-3">
                                                 <p class="font-medium text-zinc-700 dark:text-zinc-300">Resultado de actividad</p>
-                                                <button type="button" x-on:click="copyText(@js($actividadDetalle->resultadoActividad ?? 'N/A'), 'Resultado de actividad copiado')" class="inline-flex items-center rounded-lg border border-zinc-300 px-2 py-1 text-[11px] font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800">Copiar</button>
+                                                <button type="button" x-on:click="copyText(@js($this->getResultadoActividadConCorrelativo($actividadDetalle)), 'Resultado de actividad copiado')" class="inline-flex items-center rounded-lg border border-zinc-300 px-2 py-1 text-[11px] font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800">Copiar</button>
                                             </div>
-                                            <p class="text-zinc-600 dark:text-zinc-400">{{ $actividadDetalle->resultadoActividad ?? 'N/A' }}</p>
+                                            <p class="text-zinc-600 dark:text-zinc-400">{{ $this->getResultadoActividadConCorrelativo($actividadDetalle) }}</p>
                                         </div>
                                         <div>
                                             <div class="flex items-center justify-between gap-3">

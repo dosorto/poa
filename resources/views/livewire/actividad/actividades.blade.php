@@ -49,15 +49,44 @@
             @if($puedeCrearActividades && $diasRestantes !== null)
                 @php
                     $plazoPlanificacionFinJs = $plazoPlanificacionFin;
+                    $fechaHoraServidorIso = now()->timezone(config('app.timezone'))->toIso8601String();
                 @endphp
                 <div
                     class="mb-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300 px-4 py-3 rounded-lg flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"
                     role="alert"
                     x-data="{
                         target: @js($plazoPlanificacionFinJs),
+                        serverNow: @js($fechaHoraServidorIso),
                         timer: null,
                         remaining: { dias: '00', horas: '00', minutos: '00', segundos: '00' },
                         isLastDay: false,
+                        serverTimeLabel: '',
+                        tickServerTime() {
+                            if (!this.serverNow) {
+                                return;
+                            }
+                            const nextServerTime = new Date(this.serverNow);
+                            nextServerTime.setSeconds(nextServerTime.getSeconds() + 1);
+                            this.serverNow = nextServerTime.toISOString();
+                            this.formatServerTime();
+                        },
+                        formatServerTime() {
+                            if (!this.serverNow) {
+                                this.serverTimeLabel = '';
+                                return;
+                            }
+                            const date = new Date(this.serverNow);
+                            this.serverTimeLabel = date.toLocaleString('es-HN', {
+                                day: '2-digit',
+                                month: '2-digit',
+                                year: 'numeric',
+                                hour: '2-digit',
+                                minute: '2-digit',
+                                second: '2-digit',
+                                hour12: true,
+                                timeZone: 'America/Tegucigalpa',
+                            });
+                        },
                         sync() {
                             if (!this.target) {
                                 return;
@@ -83,11 +112,16 @@
                             this.isLastDay = dias === 0;
                         },
                         init() {
+                            this.formatServerTime();
                             if (!this.target) {
+                                this.timer = setInterval(() => this.tickServerTime(), 1000);
                                 return;
                             }
                             this.sync();
-                            this.timer = setInterval(() => this.sync(), 1000);
+                            this.timer = setInterval(() => {
+                                this.tickServerTime();
+                                this.sync();
+                            }, 1000);
                         }
                     }"
                 >
@@ -98,6 +132,9 @@
                         <div>
                             <p class="font-semibold text-sm">Plazo de planificación activo</p>
                             <p class="text-xs mt-0.5">Puedes crear y editar actividades hasta el cierre del plazo</p>
+                            <p class="text-[11px] mt-1 text-blue-700/70 dark:text-blue-300/70">
+                                Hora del servidor: <span x-text="serverTimeLabel"></span>
+                            </p>
                         </div>
                     </div>
                     <div class="flex flex-wrap items-center gap-3 lg:justify-end">

@@ -98,7 +98,7 @@ class ConsolidadoUnidadEjecutoraExport
             'objetivo' => $actividad->resultado->area->objetivo->nombre ?? '',
             'area' => $actividad->resultado->area->nombre ?? '',
             'resultado_institucional' => $actividad->resultado->nombre ?? '',
-            'resultado_actividad' => $actividad->resultadoActividad ?? '',
+            'resultado_actividad' => $this->getResultadoActividadConCorrelativo($actividad),
             'poblacion_objetivo' => $actividad->poblacion_objetivo ?? '',
             'medio_verificacion' => $actividad->medio_verificacion ?? '',
             'categoria' => $actividad->categoria->categoria ?? '',
@@ -108,10 +108,21 @@ class ConsolidadoUnidadEjecutoraExport
                     . ' (#' . ($empleado->num_empleado ?? 'N/A') . ')';
             })->implode('; '),
             'indicadores' => $actividad->indicadores
-                ->map(fn (Indicador $indicador) => $this->buildIndicadorTexto($indicador))
-                ->implode("\n\n"),
+                ->map(fn (Indicador $indicador) => $indicador->nombre ?? 'N/A')
+                ->implode('; '),
             'subido_spi' => $actividad->uploadedIntoSPI ? 'Sí' : 'No',
         ];
+    }
+
+    private function getResultadoActividadConCorrelativo(Actividad $actividad): string
+    {
+        $resultadoActividad = $actividad->resultadoActividad ?? '';
+
+        if (! $actividad->correlativo) {
+            return $resultadoActividad;
+        }
+
+        return $actividad->correlativo . ' - ' . $resultadoActividad;
     }
 
     private function buildTareaRow(Tarea $tarea): array
@@ -174,54 +185,6 @@ class ConsolidadoUnidadEjecutoraExport
             'fuente_financiamiento' => '',
             'mes_ejecucion' => '',
         ];
-    }
-
-    private function buildIndicadorTexto(Indicador $indicador): string
-    {
-        $lineas = [
-            'Indicador: ' . ($indicador->nombre ?? 'N/A'),
-            'Tipo: ' . ($indicador->isPorcentaje ? 'Porcentaje' : 'Cantidad'),
-            'Descripción: ' . ($indicador->descripcion ?: 'N/A'),
-            'Meta planificada: ' . $this->formatDecimal($indicador->cantidadPlanificada ?? 0),
-            'Cantidad ejecutada: ' . $this->formatDecimal($indicador->cantidadEjecutada ?? 0),
-        ];
-
-        foreach ($this->getIndicadorTrimestres($indicador) as $trimestre) {
-            if (($trimestre['planificado'] ?? 0) <= 0 && ($trimestre['ejecutado'] ?? 0) <= 0) {
-                continue;
-            }
-
-            $lineas[] = $trimestre['nombre']
-                . ': Planificado ' . $this->formatDecimal($trimestre['planificado'])
-                . ' | Ejecutado ' . $this->formatDecimal($trimestre['ejecutado']);
-        }
-
-        return implode("\n", $lineas);
-    }
-
-    private function getIndicadorTrimestres(Indicador $indicador): array
-    {
-        $trimestres = [
-            'T1' => ['meses' => [1, 2, 3], 'nombre' => 'Trimestre 1', 'planificado' => 0, 'ejecutado' => 0],
-            'T2' => ['meses' => [4, 5, 6], 'nombre' => 'Trimestre 2', 'planificado' => 0, 'ejecutado' => 0],
-            'T3' => ['meses' => [7, 8, 9], 'nombre' => 'Trimestre 3', 'planificado' => 0, 'ejecutado' => 0],
-            'T4' => ['meses' => [10, 11, 12], 'nombre' => 'Trimestre 4', 'planificado' => 0, 'ejecutado' => 0],
-        ];
-
-        foreach ($indicador->planificacions as $planificacion) {
-            $mesId = $planificacion->mes->id ?? null;
-
-            foreach ($trimestres as &$trimestre) {
-                if (! $mesId || ! in_array($mesId, $trimestre['meses'], true)) {
-                    continue;
-                }
-
-                $trimestre['planificado'] += (float) ($planificacion->cantidad ?? 0);
-                $trimestre['ejecutado'] += (float) $planificacion->seguimientos->sum('cantidad');
-            }
-        }
-
-        return $trimestres;
     }
 
     private function formatDecimal($valor): string
