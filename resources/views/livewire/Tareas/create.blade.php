@@ -17,7 +17,7 @@
     </x-slot>
 
     <x-slot name="content">
-        <form wire:submit.prevent="store" id="recurso-form">
+        <form wire:submit.prevent="store" id="recurso-form" wire:key="recurso-form-{{ $modalFormKey }}-{{ $isEditing ? 'edit' : 'create' }}">
 
             <div class="mb-4">
                 <x-label for="nombre" value="{{ __('Nombre del Recurso') }}" />
@@ -33,6 +33,7 @@
 
             <div class="mb-4">
                 <x-searchable-select
+                    wire:key="recurso-objeto-{{ $modalFormKey }}"
                     label="{{ __('Objeto de Gasto') }}"
                     wire:model="idobjeto"
                     :options="$objetosGasto"
@@ -42,6 +43,7 @@
 
             <div class="mb-4">
                 <x-searchable-select
+                    wire:key="recurso-unidad-{{ $modalFormKey }}"
                     label="{{ __('Unidad de Medida') }}"
                     wire:model="idunidad"
                     :options="$unidadesMedida"
@@ -51,6 +53,7 @@
 
             <div class="mb-4">
                 <x-searchable-select
+                    wire:key="recurso-proceso-{{ $modalFormKey }}"
                     label="{{ __('Proceso de Compra') }}"
                     wire:model="idProcesoCompra"
                     :options="$procesosCompra"
@@ -60,6 +63,7 @@
 
             <div class="mb-4">
                 <x-searchable-select
+                    wire:key="recurso-cubs-{{ $modalFormKey }}-{{ $idCubs ?: 'empty' }}"
                     label="{{ __('CUBS') }}"
                     wire:model="idCubs"
                     searchAction="buscarCubs"

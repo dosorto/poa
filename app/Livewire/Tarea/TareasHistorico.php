@@ -43,6 +43,7 @@ use Maatwebsite\Excel\Facades\Excel;
         public $isEditing = false;
         public $excelFile = null;
         public array $importErrors = [];
+        public int $modalFormKey = 0;
 
         protected $rules = [
             'nombre' => 'required|min:3',
@@ -116,6 +117,7 @@ use Maatwebsite\Excel\Facades\Excel;
 
         public function openModal()
         {
+            $this->modalFormKey++;
             $this->showModal = true;
         }
 
@@ -332,10 +334,10 @@ use Maatwebsite\Excel\Facades\Excel;
             $tarea = TareaHistorico::findOrFail($id);
             $this->tareaId = $id;
             $this->nombre = $tarea->nombre;
-            $this->idobjeto = $tarea->idobjeto;
-            $this->idunidad = $tarea->idunidad;
-            $this->idProcesoCompra = $tarea->idProcesoCompra;
-            $this->idCubs = $tarea->idCubs;
+            $this->idobjeto = $tarea->idobjeto ? (string) $tarea->idobjeto : null;
+            $this->idunidad = $tarea->idunidad ? (string) $tarea->idunidad : null;
+            $this->idProcesoCompra = $tarea->idProcesoCompra ? (string) $tarea->idProcesoCompra : null;
+            $this->idCubs = $tarea->idCubs ? (string) $tarea->idCubs : null;
             $this->isEditing = true;
             $this->openModal();
         }
@@ -379,7 +381,17 @@ use Maatwebsite\Excel\Facades\Excel;
             $recursos = TareaHistorico::with(['objeto', 'unidadMedida', 'procesoCompra', 'cub'])
                 ->where(function ($query) {
                     if ($this->search) {
-                        $query->where('nombre', 'like', '%' . $this->search . '%');
+                        $search = '%' . $this->search . '%';
+
+                        $query->where('nombre', 'like', $search)
+                            ->orWhereHas('objeto', function ($objetoQuery) use ($search) {
+                                $objetoQuery->where('nombre', 'like', $search)
+                                    ->orWhere('identificador', 'like', $search);
+                            })
+                            ->orWhereHas('cub', function ($cubQuery) use ($search) {
+                                $cubQuery->where('descripcion_esp', 'like', $search)
+                                    ->orWhere('IDUNSPSC', 'like', $search);
+                            });
                     }
                 })
                 ->orderBy($this->sortField, $this->sortDirection)
