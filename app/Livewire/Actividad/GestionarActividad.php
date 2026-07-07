@@ -136,6 +136,8 @@ class GestionarActividad extends Component
         'total' => 0
     ];
     public $presupuestoEditandoId = null;
+    public $presupuestoEditandoTotalOriginal = 0;
+    public $presupuestoEditandoFuenteOriginal = null;
 
     // URL parameter
     #[\Livewire\Attributes\Url]
@@ -1600,6 +1602,8 @@ class GestionarActividad extends Component
 
     public function updatedNuevoPresupuestoIdfuente($value)
     {
+        $this->clearPresupuestoBudgetError();
+
         // Cuando cambia la fuente, recalcular el presupuesto disponible
         if ($this->tareaSeleccionada) {
             $tarea = Tarea::find($this->tareaSeleccionada);
@@ -1622,6 +1626,38 @@ class GestionarActividad extends Component
         $costounitario = floatval($this->nuevoPresupuesto['costounitario'] ?? 0);
         $cantidad = floatval($this->nuevoPresupuesto['cantidad'] ?? 0);
         $this->nuevoPresupuesto['total'] = $costounitario * $cantidad;
+        $this->clearPresupuestoBudgetError();
+    }
+
+    private function clearPresupuestoBudgetError(): void
+    {
+        $this->resetErrorBag('nuevoPresupuesto.total');
+    }
+
+    public function getPresupuestoDisponibleParaFormulario(): float
+    {
+        $presupuestoDisponible = (float) ($this->presupuestoTechoInfo['presupuestoDisponible'] ?? 0);
+
+        if (
+            $this->presupuestoEditandoId
+            && (string) $this->presupuestoEditandoFuenteOriginal === (string) ($this->nuevoPresupuesto['idfuente'] ?? '')
+        ) {
+            $presupuestoDisponible += (float) $this->presupuestoEditandoTotalOriginal;
+        }
+
+        return $presupuestoDisponible;
+    }
+
+    private function addPresupuestoInsuficienteError(float $disponible, float $solicitado): void
+    {
+        $this->addError(
+            'nuevoPresupuesto.total',
+            'Presupuesto insuficiente. Disponible: L '
+            . number_format($disponible, 2)
+            . '. Solicitado: L '
+            . number_format($solicitado, 2)
+            . '.'
+        );
     }
 
     private function loadDetallesTecnicosPorRecurso($recursoId)
@@ -1675,6 +1711,7 @@ class GestionarActividad extends Component
     {
         // Verificar permisos basados en la tarea seleccionada
         $this->verificarPuedeEditarTarea($this->tareaSeleccionada);
+        $this->clearPresupuestoBudgetError();
         $this->syncUnidadMedidaFromRecurso($this->nuevoPresupuesto['idRecurso'] ?? '');
         $this->nuevoPresupuesto['detalle_tecnico'] = trim((string) ($this->nuevoPresupuesto['detalle_tecnico'] ?? ''));
         
@@ -1756,37 +1793,48 @@ class GestionarActividad extends Component
             // Calcular disponible = techo del departamento - presupuesto ya asignado a todas las tareas
             $presupuestoDisponible = $techosTotalDisponible - $presupuestoYaAsignado;
             
-            // Verificar que el presupuesto disponible sea mayor a 0
-            if ($presupuestoDisponible <= 0) {
-                session()->flash('error', 'No hay presupuesto disponible para esta fuente. Todo el techo ha sido asignado.');
-                DB::rollBack();
-                return;
-            }
-            
-            // Verificar que haya suficiente presupuesto disponible para el monto solicitado
             $presupuestoTotal = $this->nuevoPresupuesto['total'];
-            if ($presupuestoTotal > $presupuestoDisponible) {
-                session()->flash('error', 'Presupuesto insuficiente. Disponible: L ' . number_format($presupuestoDisponible, 2) . ', Solicitado: L ' . number_format($presupuestoTotal, 2));
+            $presupuestoDisponibleParaGuardar = $presupuestoDisponible;
+
+            if ($this->presupuestoEditandoId) {
+                $presupuestoExistente = Presupuesto::findOrFail($this->presupuestoEditandoId);
+
+                if ((int) $presupuestoExistente->idfuente === (int) $idFuente) {
+                    $presupuestoDisponibleParaGuardar += (float) $presupuestoExistente->total;
+                }
+            }
+
+            if ($presupuestoDisponibleParaGuardar <= 0 && $presupuestoTotal > 0) {
+                if ($this->presupuestoEditandoId) {
+                    $this->addPresupuestoInsuficienteError($presupuestoDisponibleParaGuardar, $presupuestoTotal);
+                } else {
+                    session()->flash('error', 'No hay presupuesto disponible para esta fuente. Todo el techo ha sido asignado.');
+                }
                 DB::rollBack();
                 return;
             }
-            
+
+            if ($presupuestoTotal > $presupuestoDisponibleParaGuardar) {
+                if ($this->presupuestoEditandoId) {
+                    $this->addPresupuestoInsuficienteError($presupuestoDisponibleParaGuardar, $presupuestoTotal);
+                } else {
+                    session()->flash(
+                        'error',
+                        'Presupuesto insuficiente. Disponible: L '
+                        . number_format($presupuestoDisponibleParaGuardar, 2)
+                        . ', Solicitado: L '
+                        . number_format($presupuestoTotal, 2)
+                    );
+                }
+                DB::rollBack();
+                return;
+            }
+
             // Crear o actualizar el presupuesto
             if ($this->presupuestoEditandoId) {
                 // Modo edición - Actualizar presupuesto existente
-                $presupuestoExistente = Presupuesto::findOrFail($this->presupuestoEditandoId);
-                
-                // Calcular el presupuesto disponible sin contar el presupuesto actual
-                $presupuestoYaAsignadoSinActual = $presupuestoYaAsignado - $presupuestoExistente->total;
-                $presupuestoDisponibleConActual = $techosTotalDisponible - $presupuestoYaAsignadoSinActual;
-                
-                // Verificar que haya suficiente presupuesto disponible
-                if ($presupuestoTotal > $presupuestoDisponibleConActual) {
-                    session()->flash('error', 'Presupuesto insuficiente. Disponible: L ' . number_format($presupuestoDisponibleConActual, 2) . ', Solicitado: L ' . number_format($presupuestoTotal, 2));
-                    DB::rollBack();
-                    return;
-                }
-                
+                $presupuestoExistente = $presupuestoExistente ?? Presupuesto::findOrFail($this->presupuestoEditandoId);
+
                 $presupuestoExistente->update([
                     'cantidad' => $this->nuevoPresupuesto['cantidad'],
                     'costounitario' => $this->nuevoPresupuesto['costounitario'],
@@ -1905,9 +1953,12 @@ class GestionarActividad extends Component
             'total' => 0
         ];
         $this->presupuestoEditandoId = null;
+        $this->presupuestoEditandoTotalOriginal = 0;
+        $this->presupuestoEditandoFuenteOriginal = null;
         $this->recursoPresupuestoOption = null;
         $this->refreshRecursosPresupuestoOptions();
         $this->detallesTecnicosPorRecurso = [];
+        $this->clearPresupuestoBudgetError();
     }
 
     public function editPresupuesto($presupuestoId)
@@ -1931,14 +1982,16 @@ class GestionarActividad extends Component
         $this->loadDetallesTecnicosPorRecurso($recurso?->id);
         
         $this->presupuestoEditandoId = $presupuestoId;
+        $this->presupuestoEditandoTotalOriginal = (float) $presupuesto->total;
+        $this->presupuestoEditandoFuenteOriginal = (string) $presupuesto->idfuente;
         $this->nuevoPresupuesto = [
             'idRecurso' => $recurso ? (string) $recurso->id : '',
             'detalle_tecnico' => $presupuesto->detalle_tecnico,
-            'idfuente' => $presupuesto->idfuente,
-            'idunidad' => $presupuesto->idunidad,
+            'idfuente' => (string) $presupuesto->idfuente,
+            'idunidad' => (string) $presupuesto->idunidad,
             'costounitario' => $presupuesto->costounitario,
             'cantidad' => $presupuesto->cantidad,
-            'idMes' => $presupuesto->idMes,
+            'idMes' => (string) $presupuesto->idMes,
             'total' => $presupuesto->total
         ];
         $this->syncRecursoPresupuestoOption($this->nuevoPresupuesto['idRecurso']);

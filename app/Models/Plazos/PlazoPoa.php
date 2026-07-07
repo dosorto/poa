@@ -54,31 +54,34 @@ class PlazoPoa extends BaseModel
     // Scope para plazos vigentes (activos y dentro del rango de fechas)
     public function scopeVigente($query)
     {
-        $hoy = Carbon::now()->format('Y-m-d');
+        $hoy = Carbon::today();
         return $query->where('activo', true)
-                    ->where('fecha_inicio', '<=', $hoy)
-                    ->where('fecha_fin', '>=', $hoy);
+                    ->whereDate('fecha_inicio', '<=', $hoy)
+                    ->whereDate('fecha_fin', '>=', $hoy);
     }
 
     // Verificar si el plazo está vigente actualmente
     public function estaVigente()
     {
         $hoy = Carbon::now();
+        $inicio = Carbon::parse($this->fecha_inicio)->startOfDay();
+        $fin = Carbon::parse($this->fecha_fin)->endOfDay();
+
         return $this->activo && 
-               $hoy->greaterThanOrEqualTo($this->fecha_inicio) && 
-               $hoy->lessThanOrEqualTo($this->fecha_fin);
+               $hoy->greaterThanOrEqualTo($inicio) && 
+               $hoy->lessThanOrEqualTo($fin);
     }
 
     // Verificar si el plazo ya venció
     public function haVencido()
     {
-        return Carbon::now()->greaterThan($this->fecha_fin);
+        return Carbon::now()->greaterThan(Carbon::parse($this->fecha_fin)->endOfDay());
     }
 
     // Verificar si el plazo aún no ha comenzado
     public function esProximo()
     {
-        return Carbon::now()->lessThan($this->fecha_inicio);
+        return Carbon::now()->lessThan(Carbon::parse($this->fecha_inicio)->startOfDay());
     }
 
     // Días restantes del plazo
@@ -93,7 +96,7 @@ class PlazoPoa extends BaseModel
         }
         
         $hoy = Carbon::now()->startOfDay();
-        $fechaFin = Carbon::parse($this->fecha_fin)->startOfDay();
+        $fechaFin = Carbon::parse($this->fecha_fin)->endOfDay();
         
         return (int) $hoy->diffInDays($fechaFin) + 1;
     }
@@ -151,10 +154,10 @@ class PlazoPoa extends BaseModel
      */
     public static function desactivarPlazosVencidos($idPoa = null)
     {
-        $hoy = Carbon::now()->format('Y-m-d');
+        $hoy = Carbon::today();
         
         $query = self::where('activo', true)
-                    ->where('fecha_fin', '<', $hoy);
+                    ->whereDate('fecha_fin', '<', $hoy);
         
         if ($idPoa) {
             $query->where('idPoa', $idPoa);

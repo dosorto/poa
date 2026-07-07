@@ -29,6 +29,12 @@ class Revisiones extends Component
 	public $showActividades = false;
 	public $departamentoId = null;
 
+	protected $queryString = [
+		'poaYear' => ['except' => ''],
+		'showActividades' => ['except' => false],
+		'departamentoId' => ['except' => null],
+	];
+
 	public function updatingSearch()
 	{
 		$this->resetPage();
@@ -58,6 +64,10 @@ class Revisiones extends Component
 		$this->poaYears = Poa::orderBy('anio', 'desc')->pluck('anio')->unique()->toArray();
 		if (empty($this->poaYear) && count($this->poaYears)) {
 			$this->poaYear = $this->poaYears[0];
+		}
+
+		if ($this->departamentoId) {
+			$this->showActividades = true;
 		}
 	}
 

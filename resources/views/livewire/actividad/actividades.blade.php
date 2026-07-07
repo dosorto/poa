@@ -47,22 +47,157 @@
 
             {{-- Contador de días restantes --}}
             @if($puedeCrearActividades && $diasRestantes !== null)
-                <div class="mb-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300 px-4 py-3 rounded-lg flex items-center justify-between" role="alert">
+                @php
+                    $plazoPlanificacionFinJs = $plazoPlanificacionFin;
+                @endphp
+                <div
+                    class="mb-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 text-blue-800 dark:text-blue-300 px-4 py-3 rounded-lg flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"
+                    role="alert"
+                    x-data="{
+                        target: @js($plazoPlanificacionFinJs),
+                        timer: null,
+                        remaining: { dias: '00', horas: '00', minutos: '00', segundos: '00' },
+                        isLastDay: false,
+                        sync() {
+                            if (!this.target) {
+                                return;
+                            }
+                            const diff = new Date(this.target).getTime() - Date.now();
+                            if (diff <= 0) {
+                                this.remaining = { dias: '00', horas: '00', minutos: '00', segundos: '00' };
+                                this.isLastDay = false;
+                                if (this.timer) clearInterval(this.timer);
+                                return;
+                            }
+                            const totalSeconds = Math.floor(diff / 1000);
+                            const dias = Math.floor(totalSeconds / 86400);
+                            const horas = Math.floor((totalSeconds % 86400) / 3600);
+                            const minutos = Math.floor((totalSeconds % 3600) / 60);
+                            const segundos = totalSeconds % 60;
+                            this.remaining = {
+                                dias: String(dias).padStart(2, '0'),
+                                horas: String(horas).padStart(2, '0'),
+                                minutos: String(minutos).padStart(2, '0'),
+                                segundos: String(segundos).padStart(2, '0'),
+                            };
+                            this.isLastDay = dias === 0;
+                        },
+                        init() {
+                            if (!this.target) {
+                                return;
+                            }
+                            this.sync();
+                            this.timer = setInterval(() => this.sync(), 1000);
+                        }
+                    }"
+                >
                     <div class="flex items-center">
                         <svg class="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
                         <div>
                             <p class="font-semibold text-sm">Plazo de planificación activo</p>
-                            <p class="text-xs mt-0.5">Puedes crear y editar actividades</p>
+                            <p class="text-xs mt-0.5">Puedes crear y editar actividades hasta el cierre del plazo</p>
                         </div>
                     </div>
-                    <div class="text-right">
-                        <div class="flex items-baseline">
-                            <span class="text-3xl font-bold">{{ $diasRestantes }}</span>
-                            <span class="text-sm ml-1">{{ $diasRestantes == 1 ? 'día' : 'días' }}</span>
+                    <div class="flex flex-wrap items-center gap-3 lg:justify-end">
+                        @if($plazoPlanificacionFin)
+                            <div class="grid grid-cols-4 gap-2 w-full sm:w-auto">
+                                <div
+                                    class="min-w-[72px] rounded-lg px-3 py-2 text-center transition-colors"
+                                    :class="isLastDay ? 'bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300' : 'bg-white/80 dark:bg-blue-950/50'"
+                                >
+                                    <div class="text-xl font-bold" x-text="remaining.dias">00</div>
+                                    <div class="text-[11px] uppercase tracking-wide">Días</div>
+                                </div>
+                                <div
+                                    class="min-w-[72px] rounded-lg px-3 py-2 text-center transition-colors"
+                                    :class="isLastDay ? 'bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300' : 'bg-white/80 dark:bg-blue-950/50'"
+                                >
+                                    <div class="text-xl font-bold" x-text="remaining.horas">00</div>
+                                    <div class="text-[11px] uppercase tracking-wide">Horas</div>
+                                </div>
+                                <div
+                                    class="min-w-[72px] rounded-lg px-3 py-2 text-center transition-colors"
+                                    :class="isLastDay ? 'bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300' : 'bg-white/80 dark:bg-blue-950/50'"
+                                >
+                                    <div class="text-xl font-bold" x-text="remaining.minutos">00</div>
+                                    <div class="text-[11px] uppercase tracking-wide">Min</div>
+                                </div>
+                                <div
+                                    class="min-w-[72px] rounded-lg px-3 py-2 text-center transition-colors"
+                                    :class="isLastDay ? 'bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300' : 'bg-white/80 dark:bg-blue-950/50'"
+                                >
+                                    <div class="text-xl font-bold" x-text="remaining.segundos">00</div>
+                                    <div class="text-[11px] uppercase tracking-wide">Seg</div>
+                                </div>
+                            </div>
+                        @else
+                            <div class="text-right">
+                                <div class="flex items-baseline justify-end">
+                                    <span class="text-3xl font-bold">{{ $diasRestantes }}</span>
+                                    <span class="text-sm ml-1">{{ $diasRestantes == 1 ? 'día' : 'días' }}</span>
+                                </div>
+                                <p class="text-xs mt-0.5">{{ $diasRestantes == 1 ? 'restante' : 'restantes' }}</p>
+                            </div>
+                        @endif
+                    </div>
+                </div>
+            @endif
+
+            @if($resumenPresupuesto->count() > 0)
+                <div class="mb-6 bg-gradient-to-r from-indigo-50 to-sky-50 dark:from-indigo-900/20 dark:to-sky-900/20 border border-indigo-200 dark:border-indigo-800 rounded-xl p-6">
+                    <div class="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        <div>
+                            <h3 class="text-lg font-semibold text-indigo-900 dark:text-indigo-100">
+                                Resumen General del Departamento
+                            </h3>
+                            <p class="text-sm text-indigo-700/80 dark:text-indigo-300/80 mt-1">
+                                Vista rápida del presupuesto asignado y disponible para este departamento.
+                            </p>
                         </div>
-                        <p class="text-xs mt-0.5">{{ $diasRestantes == 1 ? 'restante' : 'restantes' }}</p>
+                        <button
+                            type="button"
+                            wire:click="setActiveTab('resumen')"
+                            class="inline-flex items-center justify-center rounded-lg border border-indigo-300 dark:border-indigo-700 px-4 py-2 text-sm font-medium text-indigo-700 dark:text-indigo-300 hover:bg-white/70 dark:hover:bg-indigo-900/30 transition-colors"
+                        >
+                            Ver detalle por fuente
+                        </button>
+                    </div>
+
+                    <div class="mt-5 grid grid-cols-2 xl:grid-cols-4 gap-4">
+                        <div class="rounded-xl bg-white/80 dark:bg-zinc-900/50 p-4 border border-white/60 dark:border-zinc-800">
+                            <div class="text-xs font-semibold uppercase tracking-wide text-indigo-600 dark:text-indigo-400">Techo Asignado</div>
+                            <div class="mt-2 text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+                                L {{ number_format($resumenGeneralPresupuesto['totalGeneral'], 2) }}
+                            </div>
+                        </div>
+                        <div class="rounded-xl bg-white/80 dark:bg-zinc-900/50 p-4 border border-white/60 dark:border-zinc-800">
+                            <div class="text-xs font-semibold uppercase tracking-wide text-green-600 dark:text-green-400">En Actividades</div>
+                            <div class="mt-2 text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+                                L {{ number_format($resumenGeneralPresupuesto['asignadoGeneral'], 2) }}
+                            </div>
+                        </div>
+                        <div class="rounded-xl bg-white/80 dark:bg-zinc-900/50 p-4 border border-white/60 dark:border-zinc-800">
+                            <div class="text-xs font-semibold uppercase tracking-wide {{ $resumenGeneralPresupuesto['disponibleGeneral'] >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400' }}">
+                                Disponible
+                            </div>
+                            <div class="mt-2 text-2xl font-bold {{ $resumenGeneralPresupuesto['disponibleGeneral'] >= 0 ? 'text-emerald-700 dark:text-emerald-300' : 'text-red-700 dark:text-red-300' }}">
+                                L {{ number_format($resumenGeneralPresupuesto['disponibleGeneral'], 2) }}
+                            </div>
+                        </div>
+                        <div class="rounded-xl bg-white/80 dark:bg-zinc-900/50 p-4 border border-white/60 dark:border-zinc-800">
+                            <div class="text-xs font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-400">% Utilizado</div>
+                            <div class="mt-2 text-2xl font-bold text-zinc-900 dark:text-zinc-100">
+                                {{ number_format($resumenGeneralPresupuesto['porcentajeGeneral'], 1) }}%
+                            </div>
+                            <div class="mt-3 h-2 w-full rounded-full bg-zinc-200 dark:bg-zinc-700 overflow-hidden">
+                                <div
+                                    class="{{ $resumenGeneralPresupuesto['porcentajeGeneral'] >= 100 ? 'bg-red-500' : ($resumenGeneralPresupuesto['porcentajeGeneral'] >= 60 ? 'bg-yellow-500' : 'bg-green-500') }} h-2 rounded-full transition-all duration-300"
+                                    style="width: {{ min($resumenGeneralPresupuesto['porcentajeGeneral'], 100) }}%"
+                                ></div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             @endif
@@ -86,30 +221,6 @@
                     'duration' => 8,
                     'slot' => session('error')
                 ])
-            @endif
-
-            {{-- Contexto del Usuario --}}
-            @if(!empty($this->userContext))
-            <div class="mb-6 bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg p-4">
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
-                    <div>
-                        <span class="text-indigo-700 dark:text-indigo-400 font-medium">POA:</span>
-                        <span class="text-indigo-900 dark:text-indigo-200">{{ $this->userContext['poa']->anio . ' - ' . $this->userContext['poa']->name ?? 'POA ' . $this->userContext['poa']->anio }}</span>
-                    </div>
-                    <div>
-                        <span class="text-indigo-700 dark:text-indigo-400 font-medium">Departamento:</span>
-                        <span class="text-indigo-900 dark:text-indigo-200">{{ $this->userContext['departamento']->name }}</span>
-                    </div>
-                    <div>
-                        <span class="text-indigo-700 dark:text-indigo-400 font-medium">Unidad Ejecutora:</span>
-                        <span class="text-indigo-900 dark:text-indigo-200">{{ $this->userContext['unidadEjecutora']->name ?? 'N/A' }}</span>
-                    </div>
-                    <div>
-                        <span class="text-indigo-700 dark:text-indigo-400 font-medium">Empleado:</span>
-                        <span class="text-indigo-900 dark:text-indigo-200">{{ $this->userContext['empleado']->nombre }} {{ $this->userContext['empleado']->apellido }}</span>
-                    </div>
-                </div>
-            </div>
             @endif
 
             {{-- Sistema de Tabs --}}
@@ -382,35 +493,28 @@
                                     Resumen General del Departamento
                                 </h3>
                                 
-                                @php
-                                    $totalGeneral = $resumenPresupuesto->sum('montoTotal');
-                                    $asignadoGeneral = $resumenPresupuesto->sum('montoAsignado');
-                                    $disponibleGeneral = $resumenPresupuesto->sum('montoDisponible');
-                                    $porcentajeGeneral = $totalGeneral > 0 ? ($asignadoGeneral / $totalGeneral) * 100 : 0;
-                                @endphp
-                                
                                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                                     <div class="text-center">
                                         <div class="text-2xl font-bold text-indigo-600 dark:text-indigo-400">
-                                            L {{ number_format($totalGeneral, 2) }}
+                                            L {{ number_format($resumenGeneralPresupuesto['totalGeneral'], 2) }}
                                         </div>
                                         <div class="text-sm text-zinc-500 dark:text-zinc-400">Techo Asignado</div>
                                     </div>
                                     <div class="text-center">
                                         <div class="text-2xl font-bold text-green-600 dark:text-green-400">
-                                            L {{ number_format($asignadoGeneral, 2) }}
+                                            L {{ number_format($resumenGeneralPresupuesto['asignadoGeneral'], 2) }}
                                         </div>
                                         <div class="text-sm text-zinc-500 dark:text-zinc-400">En Actividades</div>
                                     </div>
                                     <div class="text-center">
-                                        <div class="text-2xl font-bold {{ $disponibleGeneral > 0 ? 'text-green-600' : 'text-red-600' }} dark:{{ $disponibleGeneral > 0 ? 'text-green-400' : 'text-red-400' }}">
-                                            L {{ number_format($disponibleGeneral, 2) }}
+                                        <div class="text-2xl font-bold {{ $resumenGeneralPresupuesto['disponibleGeneral'] > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400' }}">
+                                            L {{ number_format($resumenGeneralPresupuesto['disponibleGeneral'], 2) }}
                                         </div>
                                         <div class="text-sm text-zinc-500 dark:text-zinc-400">Disponible</div>
                                     </div>
                                     <div class="text-center">
                                         <div class="text-2xl font-bold text-zinc-900 dark:text-zinc-100">
-                                            {{ number_format($porcentajeGeneral, 1) }}%
+                                            {{ number_format($resumenGeneralPresupuesto['porcentajeGeneral'], 1) }}%
                                         </div>
                                         <div class="text-sm text-zinc-500 dark:text-zinc-400">% Utilizado</div>
                                     </div>

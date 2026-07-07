@@ -86,14 +86,14 @@ class AdministrarRequisiciones extends Component
             return;
         }
 
-        if (now()->lt($plazo->fecha_inicio)) {
+        if (now()->lt($plazo->fecha_inicio->copy()->startOfDay())) {
             $this->puedeSeguimiento = false;
             $this->mensajePlazoSeguimiento = 'El plazo para esta acción aún no ha iniciado. Inicia el ' . $plazo->fecha_inicio->format('d/m/Y') . '.';
             $this->diasRestantes = null;
             return;
         }
 
-        if (now()->gt($plazo->fecha_fin)) {
+        if (now()->gt($plazo->fecha_fin->copy()->endOfDay())) {
             $this->puedeSeguimiento = false;
             $this->mensajePlazoSeguimiento = 'El plazo para esta acción ya pasó.';
             $this->diasRestantes = null;

@@ -908,15 +908,7 @@
                     </div>
 
                     @php
-                        $presupuestoEditandoActual = $presupuestoEditandoId
-                            ? collect($presupuestosTarea)->firstWhere('id', $presupuestoEditandoId)
-                            : null;
-                        $presupuestoDisponibleFormulario = (float) ($presupuestoTechoInfo['presupuestoDisponible'] ?? 0);
-
-                        if ($presupuestoEditandoActual) {
-                            $presupuestoDisponibleFormulario += (float) ($presupuestoEditandoActual['total'] ?? 0);
-                        }
-
+                        $presupuestoDisponibleFormulario = $this->getPresupuestoDisponibleParaFormulario();
                         $presupuestoSolicitado = (float) ($nuevoPresupuesto['total'] ?? 0);
                         $presupuestoExcedidoFormulario = $presupuestoSolicitado > $presupuestoDisponibleFormulario;
                     @endphp
@@ -934,6 +926,11 @@
                             Solicitado: L {{ number_format($presupuestoSolicitado, 2) }}.
                         </div>
                     @endif
+                    @error('nuevoPresupuesto.total')
+                        <div class="p-3 bg-red-100 dark:bg-red-900/20 border border-red-300 dark:border-red-700 rounded-lg text-sm text-red-700 dark:text-red-300">
+                            {{ $message }}
+                        </div>
+                    @enderror
                     @php
                         // Calcular si puede editar presupuesto basándose en la tarea seleccionada
                         $tareaActual = \App\Models\Tareas\Tarea::find($tareaSeleccionada);

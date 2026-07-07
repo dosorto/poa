@@ -50,6 +50,7 @@ class ReviewActividadDetalle extends Component
         $this->actividad = Actividad::with([
             'indicadores.planificacions.mes.trimestre',
             'empleados',
+            'poa',
             'tareas.presupuestos.fuente',
             'tareas.presupuestos.objetoGasto',
             'tareas.presupuestos.grupoGasto',

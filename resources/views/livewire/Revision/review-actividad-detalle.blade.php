@@ -6,7 +6,7 @@
             <div class="mb-6 pb-4 border-b border-zinc-200 dark:border-zinc-700">
                 <div class="flex items-center justify-between">
                     <div>
-                        <a href="{{ route('revisiones') }}" wire:navigate
+                        <a href="{{ route('revisiones', ['showActividades' => 1, 'departamentoId' => $actividad->idDeptartamento, 'poaYear' => $actividad->poa?->anio]) }}" wire:navigate
                             class="inline-flex items-center text-indigo-600 dark:text-indigo-400 hover:text-indigo-800 dark:hover:text-indigo-300 mb-2">
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 mr-1" viewBox="0 0 20 20"
                                 fill="currentColor">
@@ -14,7 +14,7 @@
                                     d="M9.707 16.707a1 1 0 01-1.414 0l-6-6a1 1 0 010-1.414l6-6a1 1 0 011.414 1.414L5.414 9H17a1 1 0 110 2H5.414l4.293 4.293a1 1 0 010 1.414z"
                                     clip-rule="evenodd" />
                             </svg>
-                            Volver a Revisiones
+                            Volver a Actividades del Departamento
                         </a>
                         <h2 class="text-2xl font-bold text-zinc-800 dark:text-zinc-200">
                             Revisión de Actividad

@@ -1646,7 +1646,7 @@ class Requisicion extends Component
         }
 
         // Validar si el plazo aún no ha iniciado
-        if (now()->lt($plazo->fecha_inicio)) {
+        if (now()->lt($plazo->fecha_inicio->copy()->startOfDay())) {
             $this->puedeCrearRequisicion = false;
             $this->mensajePlazoRequisicion = 'El plazo para esta acción aún no ha iniciado. Inicia el ' . $plazo->fecha_inicio->format('d/m/Y') . '.';
             $this->diasRestantes = null;
@@ -1654,7 +1654,7 @@ class Requisicion extends Component
         }
 
         // Validar si el plazo ya pasó
-        if (now()->gt($plazo->fecha_fin)) {
+        if (now()->gt($plazo->fecha_fin->copy()->endOfDay())) {
             $this->puedeCrearRequisicion = false;
             $this->mensajePlazoRequisicion = 'El plazo para esta acción ya pasó.';
             $this->diasRestantes = null;

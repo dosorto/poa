@@ -88,6 +88,7 @@ class Actividades extends Component
     public $mensajePlazo = '';
     public $diasRestantes = null;
     public $esPoaHistorico = false; // Nueva propiedad para POAs históricos
+    public $plazoPlanificacionFin = null;
 
     // Propiedades para IA
     public $usarIA = false;
@@ -157,6 +158,8 @@ class Actividades extends Component
 
     public function verificarPlazo()
     {
+        $this->plazoPlanificacionFin = null;
+
         if (isset($this->userContext['poa'])) {
             $poa = $this->userContext['poa'];
             
@@ -171,6 +174,20 @@ class Actividades extends Component
             } else {
                 $this->puedeCrearActividades = $poa->puedePlanificar();
                 $this->diasRestantes = $poa->getDiasRestantesPlanificacion();
+
+                $plazoPlanificacion = $poa->plazos()
+                    ->where('tipo_plazo', 'planificacion')
+                    ->where('activo', true)
+                    ->whereDate('fecha_inicio', '<=', now())
+                    ->whereDate('fecha_fin', '>=', now())
+                    ->orderByDesc('fecha_fin')
+                    ->first();
+
+                if ($plazoPlanificacion) {
+                    $this->plazoPlanificacionFin = $plazoPlanificacion->fecha_fin
+                        ? $plazoPlanificacion->fecha_fin->copy()->endOfDay()->toIso8601String()
+                        : null;
+                }
                 
                 if (!$this->puedeCrearActividades) {
                     $this->mensajePlazo = $poa->getMensajeErrorPlazo('planificacion');
@@ -1059,6 +1076,21 @@ class Actividades extends Component
         }
     }
 
+    private function getResumenGeneralPresupuesto($resumenPresupuesto)
+    {
+        $totalGeneral = $resumenPresupuesto->sum('montoTotal');
+        $asignadoGeneral = $resumenPresupuesto->sum('montoAsignado');
+        $disponibleGeneral = $resumenPresupuesto->sum('montoDisponible');
+        $porcentajeGeneral = $totalGeneral > 0 ? ($asignadoGeneral / $totalGeneral) * 100 : 0;
+
+        return [
+            'totalGeneral' => $totalGeneral,
+            'asignadoGeneral' => $asignadoGeneral,
+            'disponibleGeneral' => $disponibleGeneral,
+            'porcentajeGeneral' => $porcentajeGeneral,
+        ];
+    }
+
     public function render()
     {
         if (!$this->idDeptartamento) {
@@ -1072,7 +1104,8 @@ class Actividades extends Component
             
             return view('livewire.actividad.actividades', [
                 'actividades' => $actividadesVacias,
-                'resumenPresupuesto' => collect([])
+                'resumenPresupuesto' => collect([]),
+                'resumenGeneralPresupuesto' => $this->getResumenGeneralPresupuesto(collect([])),
             ]);
         }
 
@@ -1090,10 +1123,12 @@ class Actividades extends Component
             ->paginate(10);
 
         $resumenPresupuesto = $this->getResumenPresupuesto();
+        $resumenGeneralPresupuesto = $this->getResumenGeneralPresupuesto($resumenPresupuesto);
 
         return view('livewire.actividad.actividades', [
             'actividades' => $actividades,
-            'resumenPresupuesto' => $resumenPresupuesto
+            'resumenPresupuesto' => $resumenPresupuesto,
+            'resumenGeneralPresupuesto' => $resumenGeneralPresupuesto,
         ]);
     }
 }
