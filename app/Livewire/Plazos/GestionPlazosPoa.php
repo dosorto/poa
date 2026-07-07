@@ -7,6 +7,7 @@ use Livewire\Component;
 use App\Models\Poa\Poa;
 use App\Models\Plazos\PlazoPoa;
 use App\Services\LogService;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 
@@ -63,6 +64,41 @@ class GestionPlazosPoa extends Component
         'fecha_fin_form.date' => 'La fecha de fin debe ser una fecha válida',
         'fecha_fin_form.after' => 'La fecha de fin debe ser posterior a la fecha de inicio',
     ];
+
+    private function timezone(): string
+    {
+        return config('app.timezone', 'America/Tegucigalpa');
+    }
+
+    public function nowLocal(): Carbon
+    {
+        return Carbon::now($this->timezone());
+    }
+
+    public function getFechaInicioLocal(?string $fecha): ?Carbon
+    {
+        if (empty($fecha)) {
+            return null;
+        }
+
+        return Carbon::createFromFormat('Y-m-d', $fecha, $this->timezone())->startOfDay();
+    }
+
+    public function getFechaFinLocal(?string $fecha): ?Carbon
+    {
+        if (empty($fecha)) {
+            return null;
+        }
+
+        return Carbon::createFromFormat('Y-m-d', $fecha, $this->timezone())->endOfDay();
+    }
+
+    public function plazoEstaVencido(?string $fechaFin): bool
+    {
+        $fin = $this->getFechaFinLocal($fechaFin);
+
+        return $fin ? $this->nowLocal()->gt($fin) : false;
+    }
 
     
     public function mount($idPoa = null)
@@ -152,20 +188,6 @@ class GestionPlazosPoa extends Component
         if ($plazo['fecha_fin'] <= $plazo['fecha_inicio']) {
             session()->flash('error', 'La fecha de fin debe ser posterior a la fecha de inicio');
             return;
-        }
-        
-        // Verificar si el plazo está vencido (no permitir editar)
-        if ($plazo['existe'] && $plazo['id']) {
-            $plazoExistente = PlazoPoa::find($plazo['id']);
-            if ($plazoExistente && $plazoExistente->fecha_fin) {
-                $now = \Carbon\Carbon::now();
-                $fin = \Carbon\Carbon::parse($plazoExistente->fecha_fin);
-                if ($now->gt($fin)) {
-                    session()->flash('error', 'No se puede editar un plazo vencido. La fecha de fin ya ha pasado.');
-                    $this->loadPlazos(); // Recargar datos originales
-                    return;
-                }
-            }
         }
         
         try {
@@ -265,16 +287,6 @@ class GestionPlazosPoa extends Component
     {
         $plazo = $this->plazosEstandar[$tipo];
         
-        // Verificar si el plazo está vencido (fecha fin ya pasó)
-        if ($plazo['existe'] && !empty($plazo['fecha_fin'])) {
-            $now = \Carbon\Carbon::now();
-            $fin = \Carbon\Carbon::parse($plazo['fecha_fin']);
-            if ($now->gt($fin)) {
-                session()->flash('error', 'No se puede modificar un plazo vencido. La fecha de fin ya ha pasado.');
-                return;
-            }
-        }
-        
         // Cambiar el estado en la propiedad
         $this->plazosEstandar[$tipo]['activo'] = !$this->plazosEstandar[$tipo]['activo'];
         
@@ -354,14 +366,6 @@ class GestionPlazosPoa extends Component
     {
         $plazo = PlazoPoa::findOrFail($id);
         
-        // Verificar si el plazo está vencido
-        $now = \Carbon\Carbon::now();
-        $fin = \Carbon\Carbon::parse($plazo->fecha_fin);
-        if ($now->gt($fin)) {
-            session()->flash('error', 'No se puede editar un plazo vencido. La fecha de fin ya ha pasado.');
-            return;
-        }
-        
         $this->plazoId = $plazo->id;
         $this->tipo_plazo = $plazo->tipo_plazo;
         $this->nombre_plazo = $plazo->nombre_plazo;
@@ -400,15 +404,6 @@ class GestionPlazosPoa extends Component
 
             if ($this->isEditing) {
                 $plazo = PlazoPoa::findOrFail($this->plazoId);
-                
-                // Verificar si el plazo original está vencido
-                $now = \Carbon\Carbon::now();
-                $finOriginal = \Carbon\Carbon::parse($plazo->fecha_fin);
-                if ($now->gt($finOriginal)) {
-                    session()->flash('error', 'No se puede editar un plazo vencido. La fecha de fin original ya ha pasado.');
-                    DB::rollBack();
-                    return;
-                }
                 
                 $plazo->update($data);
                 
@@ -476,9 +471,7 @@ class GestionPlazosPoa extends Component
         $plazo = PlazoPoa::findOrFail($id);
         
         // Verificar si el plazo está vencido
-        $now = \Carbon\Carbon::now();
-        $fin = \Carbon\Carbon::parse($plazo->fecha_fin);
-        if ($now->gt($fin)) {
+        if ($this->plazoEstaVencido($plazo->fecha_fin?->format('Y-m-d'))) {
             session()->flash('error', 'No se puede eliminar un plazo vencido. La fecha de fin ya ha pasado.');
             return;
         }
@@ -492,9 +485,7 @@ class GestionPlazosPoa extends Component
         try {
             if ($this->plazoToDelete) {
                 // Verificar nuevamente si el plazo está vencido antes de eliminar
-                $now = \Carbon\Carbon::now();
-                $fin = \Carbon\Carbon::parse($this->plazoToDelete->fecha_fin);
-                if ($now->gt($fin)) {
+                if ($this->plazoEstaVencido($this->plazoToDelete->fecha_fin?->format('Y-m-d'))) {
                     session()->flash('error', 'No se puede eliminar un plazo vencido. La fecha de fin ya ha pasado.');
                     $this->closeDelete();
                     return;

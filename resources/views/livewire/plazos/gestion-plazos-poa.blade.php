@@ -97,13 +97,11 @@
                         <tbody class="bg-white dark:bg-zinc-900 divide-y divide-zinc-200 dark:divide-zinc-700">
                             @foreach($plazosEstandar as $tipo => $plazo)
                                 @php
-                                    $now = \Carbon\Carbon::now();
+                                    $now = $this->nowLocal();
                                     // Un plazo está vencido si ya pasó su fecha fin, independientemente del toggle
-                                    $esVencido = false;
-                                    if ($plazo['existe'] && !empty($plazo['fecha_fin'])) {
-                                        $fin = \Carbon\Carbon::parse($plazo['fecha_fin']);
-                                        $esVencido = $now->gt($fin);
-                                    }
+                                    $esVencido = $plazo['existe'] && !empty($plazo['fecha_fin'])
+                                        ? $this->plazoEstaVencido($plazo['fecha_fin'])
+                                        : false;
                                 @endphp
                                 <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
                                     <td class="px-6 py-4 whitespace-nowrap">
@@ -122,21 +120,19 @@
                                         <input type="date" 
                                                wire:model="plazosEstandar.{{ $tipo }}.fecha_inicio"
                                                value="{{ $plazo['fecha_inicio'] }}"
-                                               {{ $esVencido ? 'disabled' : '' }}
-                                               class="rounded-md border-zinc-300 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm {{ $esVencido ? 'opacity-50 cursor-not-allowed' : '' }}">
+                                               class="rounded-md border-zinc-300 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         <input type="date" 
                                                wire:model="plazosEstandar.{{ $tipo }}.fecha_fin"
                                                value="{{ $plazo['fecha_fin'] }}"
-                                               {{ $esVencido ? 'disabled' : '' }}
-                                               class="rounded-md border-zinc-300 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm {{ $esVencido ? 'opacity-50 cursor-not-allowed' : '' }}">
+                                               class="rounded-md border-zinc-300 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         @if($plazo['existe'] && !empty($plazo['fecha_inicio']) && !empty($plazo['fecha_fin']))
                                             @php
-                                                $inicio = \Carbon\Carbon::parse($plazo['fecha_inicio']);
-                                                $fin = \Carbon\Carbon::parse($plazo['fecha_fin']);
+                                                $inicio = $this->getFechaInicioLocal($plazo['fecha_inicio']);
+                                                $fin = $this->getFechaFinLocal($plazo['fecha_fin']);
                                             @endphp
                                             @if ($esVencido)
                                                 {{-- Si está vencido, mostrar siempre como Vencido --}}
@@ -168,35 +164,23 @@
                                         @endif
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        @if($esVencido)
-                                            <div class="flex flex-col items-start">
-                                                <span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300">
-                                                    Desactivado por vencimiento
-                                                </span>
-                                            </div>
-                                        @else
-                                            <button wire:click="toggleActivo('{{ $tipo }}')" 
-                                                    class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {{ $plazo['activo'] ? 'bg-indigo-600' : 'bg-zinc-200 dark:bg-zinc-700' }} cursor-pointer">
-                                                <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {{ $plazo['activo'] ? 'translate-x-6' : 'translate-x-1' }}"></span>
-                                            </button>
-                                        @endif
+                                        <button wire:click="toggleActivo('{{ $tipo }}')" 
+                                                class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {{ $plazo['activo'] ? 'bg-indigo-600' : 'bg-zinc-200 dark:bg-zinc-700' }} cursor-pointer">
+                                            <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {{ $plazo['activo'] ? 'translate-x-6' : 'translate-x-1' }}"></span>
+                                        </button>
                                     </td>
                                     <td class="px-6 py-4 text-right text-sm font-medium">
-                                        @if(!$esVencido)
-                                            <div class="inline-flex flex-col items-end gap-1">
-                                                <x-spinner-button loadingTarget="guardarPlazoEstandar('{{ $tipo }}')" loadingText="Guardando" wire:click="guardarPlazoEstandar('{{ $tipo }}')" 
-                                                        class="inline-flex items-center px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded transition-colors duration-150">
-                                                    Guardar
-                                                </x-spinner-button>
-                                                @if($ultimoPlazoGuardadoTipo === $tipo)
-                                                    <p wire:key="plazo-guardado-{{ $tipo }}-{{ $ultimoPlazoGuardadoKey }}" class="text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                                                        Guardado correctamente
-                                                    </p>
-                                                @endif
-                                            </div>
-                                        @else
-                                            <span class="text-xs text-zinc-400 dark:text-zinc-500">No editable</span>
-                                        @endif
+                                        <div class="inline-flex flex-col items-end gap-1">
+                                            <x-spinner-button loadingTarget="guardarPlazoEstandar('{{ $tipo }}')" loadingText="Guardando" wire:click="guardarPlazoEstandar('{{ $tipo }}')" 
+                                                    class="inline-flex items-center px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-medium rounded transition-colors duration-150">
+                                                Guardar
+                                            </x-spinner-button>
+                                            @if($ultimoPlazoGuardadoTipo === $tipo)
+                                                <p wire:key="plazo-guardado-{{ $tipo }}-{{ $ultimoPlazoGuardadoKey }}" class="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                                                    Guardado correctamente
+                                                </p>
+                                            @endif
+                                        </div>
                                     </td>
                                 </tr>
                             @endforeach
@@ -208,13 +192,11 @@
                 <div class="md:hidden space-y-4">
                     @foreach($plazosEstandar as $tipo => $plazo)
                         @php
-                            $now = \Carbon\Carbon::now();
+                            $now = $this->nowLocal();
                             // Un plazo está vencido si ya pasó su fecha fin, independientemente del toggle
-                            $esVencido = false;
-                            if ($plazo['existe'] && !empty($plazo['fecha_fin'])) {
-                                $fin = \Carbon\Carbon::parse($plazo['fecha_fin']);
-                                $esVencido = $now->gt($fin);
-                            }
+                            $esVencido = $plazo['existe'] && !empty($plazo['fecha_fin'])
+                                ? $this->plazoEstaVencido($plazo['fecha_fin'])
+                                : false;
                         @endphp
                         <div class="bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 p-4">
                             <div class="flex justify-between items-start mb-3">
@@ -226,24 +208,18 @@
                                     {{ $tipo === 'requerimientos' ? 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200' : '' }}">
                                     {{ $plazo['label'] }}
                                 </span>
-                                @if($esVencido)
-                                    <span class="px-2 py-1 text-xs font-semibold rounded-full bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300">
-                                        Vencido
-                                    </span>
-                                @else
-                                    <button wire:click="toggleActivo('{{ $tipo }}')" 
-                                            class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {{ $plazo['activo'] ? 'bg-indigo-600' : 'bg-zinc-200 dark:bg-zinc-700' }} cursor-pointer">
-                                        <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {{ $plazo['activo'] ? 'translate-x-6' : 'translate-x-1' }}"></span>
-                                    </button>
-                                @endif
+                                <button wire:click="toggleActivo('{{ $tipo }}')" 
+                                        class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {{ $plazo['activo'] ? 'bg-indigo-600' : 'bg-zinc-200 dark:bg-zinc-700' }} cursor-pointer">
+                                    <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {{ $plazo['activo'] ? 'translate-x-6' : 'translate-x-1' }}"></span>
+                                </button>
                             </div>
                             
                             <!-- Estado del plazo -->
                             <div class="mb-3">
                                 @if($plazo['existe'] && !empty($plazo['fecha_inicio']) && !empty($plazo['fecha_fin']))
                                     @php
-                                        $inicio = \Carbon\Carbon::parse($plazo['fecha_inicio']);
-                                        $fin = \Carbon\Carbon::parse($plazo['fecha_fin']);
+                                        $inicio = $this->getFechaInicioLocal($plazo['fecha_inicio']);
+                                        $fin = $this->getFechaFinLocal($plazo['fecha_fin']);
                                     @endphp
                                     @if ($esVencido)
                                         {{-- Si está vencido, mostrar siempre como Vencido --}}
@@ -271,8 +247,7 @@
                                     <input type="date" 
                                            wire:model="plazosEstandar.{{ $tipo }}.fecha_inicio"
                                            value="{{ $plazo['fecha_inicio'] }}"
-                                           {{ $esVencido ? 'disabled' : '' }}
-                                           class="w-full rounded-md border-zinc-300 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm {{ $esVencido ? 'opacity-50 cursor-not-allowed' : '' }}">
+                                           class="w-full rounded-md border-zinc-300 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                                 </div>
                                 
                                 <div>
@@ -280,32 +255,20 @@
                                     <input type="date" 
                                            wire:model="plazosEstandar.{{ $tipo }}.fecha_fin"
                                            value="{{ $plazo['fecha_fin'] }}"
-                                           {{ $esVencido ? 'disabled' : '' }}
-                                           class="w-full rounded-md border-zinc-300 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm {{ $esVencido ? 'opacity-50 cursor-not-allowed' : '' }}">
+                                           class="w-full rounded-md border-zinc-300 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-200 shadow-sm focus:border-indigo-500 focus:ring-indigo-500 text-sm">
                                 </div>
                                 
-                                @if(!$esVencido)
-                                    <div class="pt-2">
-                                        <button wire:click="guardarPlazoEstandar('{{ $tipo }}')" 
-                                                class="w-full inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors duration-150">
-                                            Guardar
-                                        </button>
-                                        @if($ultimoPlazoGuardadoTipo === $tipo)
-                                            <p wire:key="plazo-guardado-mobile-{{ $tipo }}-{{ $ultimoPlazoGuardadoKey }}" class="mt-2 text-center text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                                                Guardado correctamente
-                                            </p>
-                                        @endif
-                                    </div>
-                                @else
-                                    <div class="pt-3 mt-3 border-t border-zinc-200 dark:border-zinc-700">
-                                        <div class="flex items-center justify-center space-x-2 text-red-600 dark:text-red-400">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                            <span class="text-xs font-medium">Desactivado por vencimiento de fechas</span>
-                                        </div>
-                                    </div>
-                                @endif
+                                <div class="pt-2">
+                                    <button wire:click="guardarPlazoEstandar('{{ $tipo }}')" 
+                                            class="w-full inline-flex items-center justify-center px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium rounded-lg transition-colors duration-150">
+                                        Guardar
+                                    </button>
+                                    @if($ultimoPlazoGuardadoTipo === $tipo)
+                                        <p wire:key="plazo-guardado-mobile-{{ $tipo }}-{{ $ultimoPlazoGuardadoKey }}" class="mt-2 text-center text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                                            Guardado correctamente
+                                        </p>
+                                    @endif
+                                </div>
                             </div>
                         </div>
                     @endforeach
@@ -342,10 +305,10 @@
                             <tbody class="bg-white dark:bg-zinc-900 divide-y divide-zinc-200 dark:divide-zinc-700">
                                 @foreach($plazosPersonalizados as $plazo)
                                     @php
-                                        $now = \Carbon\Carbon::now();
-                                        $inicio = \Carbon\Carbon::parse($plazo->fecha_inicio);
-                                        $fin = \Carbon\Carbon::parse($plazo->fecha_fin);
-                                        $esVencido = $now->gt($fin);
+                                        $now = $this->nowLocal();
+                                        $inicio = $plazo->getFechaInicioLocal();
+                                        $fin = $plazo->getFechaFinLocal();
+                                        $esVencido = $plazo->haVencido();
                                     @endphp
                                     <tr class="hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
                                         <td class="px-6 py-4">
@@ -402,11 +365,6 @@
                                             @endif
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                                            @if($esVencido)
-                                                <span class="px-3 py-1.5 text-xs font-medium rounded-full bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-300">
-                                                    Desactivado por vencimiento
-                                                </span>
-                                            @else
                                             @can('consola.plazos.editar')
                                                 <button wire:click="editar({{ $plazo->id }})"
                                                     class="text-blue-600 hover:text-blue-900 dark:text-blue-400 dark:hover:text-blue-300 cursor-pointer mr-2"
@@ -433,7 +391,6 @@
                                                     </svg>
                                                 </button>
                                             @endcan
-                                            @endif
                                         </td>
                                     </tr>
                                 @endforeach
@@ -445,10 +402,10 @@
                     <div class="md:hidden space-y-4">
                         @foreach($plazosPersonalizados as $plazo)
                             @php
-                                $now = \Carbon\Carbon::now();
-                                $inicio = \Carbon\Carbon::parse($plazo->fecha_inicio);
-                                $fin = \Carbon\Carbon::parse($plazo->fecha_fin);
-                                $esVencido = $now->gt($fin);
+                                $now = $this->nowLocal();
+                                $inicio = $plazo->getFechaInicioLocal();
+                                $fin = $plazo->getFechaFinLocal();
+                                $esVencido = $plazo->haVencido();
                             @endphp
                             <div class="bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 p-4">
                                 <div class="flex justify-between items-start mb-3">
@@ -499,27 +456,16 @@
                                     @endif
                                 </div>
 
-                                @if($esVencido)
-                                    <div class="pt-3 border-t border-zinc-200 dark:border-zinc-700">
-                                        <div class="flex items-center justify-center space-x-2 text-red-600 dark:text-red-400">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                                            </svg>
-                                            <span class="text-xs font-medium">Desactivado por vencimiento de fechas</span>
-                                        </div>
-                                    </div>
-                                @else
-                                    <div class="pt-3 border-t border-zinc-200 dark:border-zinc-700 flex space-x-4">
-                                        <button wire:click="editar({{ $plazo->id }})" 
-                                                class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 text-sm font-medium">
-                                            Editar
-                                        </button>
-                                        <button wire:click="confirmDelete({{ $plazo->id }})" 
-                                                class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 text-sm font-medium">
-                                            Eliminar
-                                        </button>
-                                    </div>
-                                @endif
+                                <div class="pt-3 border-t border-zinc-200 dark:border-zinc-700 flex space-x-4">
+                                    <button wire:click="editar({{ $plazo->id }})" 
+                                            class="text-indigo-600 dark:text-indigo-400 hover:text-indigo-900 dark:hover:text-indigo-300 text-sm font-medium">
+                                        Editar
+                                    </button>
+                                    <button wire:click="confirmDelete({{ $plazo->id }})" 
+                                            class="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300 text-sm font-medium">
+                                        Eliminar
+                                    </button>
+                                </div>
                             </div>
                         @endforeach
                     </div>
