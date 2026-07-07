@@ -33,6 +33,7 @@ class Consolidado extends Component
     public $dimensionId = '';
     public $departamentoId = '';
     public $expandedRow = null;
+    public $activeTab = 'todas';
 
     public array $anios = [];
     public Collection $dimensiones;
@@ -137,6 +138,12 @@ class Consolidado extends Component
         $this->resetPage();
     }
 
+    public function updatingActiveTab(): void
+    {
+        $this->expandedRow = null;
+        $this->resetPage();
+    }
+
     public function toggleExpand($actividadId): void
     {
         $this->expandedRow = $this->expandedRow === $actividadId ? null : $actividadId;
@@ -223,14 +230,30 @@ class Consolidado extends Component
     protected function getActividadesExportacion(): EloquentCollection
     {
         return $this->actividadesBaseQuery()
+            ->where('estado', 'APROBADO')
             ->orderBy('correlativo')
             ->orderBy('nombre')
             ->get();
     }
 
+    protected function actividadesListadoQuery(): Builder
+    {
+        $query = $this->actividadesBaseQuery()
+            ->where('estado', 'APROBADO');
+
+        return match ($this->activeTab) {
+            'pendientes_spi' => $query->where(function (Builder $builder) {
+                $builder->where('uploadedIntoSPI', false)
+                    ->orWhereNull('uploadedIntoSPI');
+            }),
+            'subidas_spi' => $query->where('uploadedIntoSPI', true),
+            default => $query,
+        };
+    }
+
     public function getActividadesProperty(): LengthAwarePaginator
     {
-        return $this->actividadesBaseQuery()
+        return $this->actividadesListadoQuery()
             ->orderBy('correlativo')
             ->orderBy('nombre')
             ->paginate(15);
@@ -242,7 +265,39 @@ class Consolidado extends Component
             return null;
         }
 
-        return $this->actividadesBaseQuery()->find($this->expandedRow);
+        return $this->actividadesListadoQuery()->find($this->expandedRow);
+    }
+
+    public function getTabsProperty(): array
+    {
+        $baseQuery = $this->actividadesBaseQuery()
+            ->where('estado', 'APROBADO');
+
+        $pendientesCount = (clone $baseQuery)
+            ->where(function (Builder $query) {
+                $query->where('uploadedIntoSPI', false)
+                    ->orWhereNull('uploadedIntoSPI');
+            })
+            ->count();
+
+        $subidasCount = (clone $baseQuery)
+            ->where('uploadedIntoSPI', true)
+            ->count();
+
+        return [
+            'todas' => [
+                'label' => 'Todas las aprobadas',
+                'count' => (clone $baseQuery)->count(),
+            ],
+            'pendientes_spi' => [
+                'label' => 'Pendientes de SPI',
+                'count' => $pendientesCount,
+            ],
+            'subidas_spi' => [
+                'label' => 'Subidas a SPI',
+                'count' => $subidasCount,
+            ],
+        ];
     }
 
     public function getEstadisticasProperty(): array
@@ -502,6 +557,7 @@ class Consolidado extends Component
             'unidadesEjecutoras' => $this->unidadesEjecutoras,
             'departamentos' => $this->departamentos,
             'estadisticas' => $this->estadisticas,
+            'tabs' => $this->tabs,
         ]);
     }
 }

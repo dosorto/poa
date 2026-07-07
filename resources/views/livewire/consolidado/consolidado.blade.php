@@ -163,15 +163,29 @@
             </div>
         </div>
 
+        <div class="mb-6 border-b border-zinc-200 dark:border-zinc-700">
+            <nav class="-mb-px flex flex-wrap gap-2" aria-label="Tabs">
+                @foreach($tabs as $tabKey => $tab)
+                    <button
+                        type="button"
+                        wire:click="$set('activeTab', '{{ $tabKey }}')"
+                        class="inline-flex items-center gap-2 rounded-t-xl border-b-2 px-4 py-3 text-sm font-medium transition-colors {{ $activeTab === $tabKey ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-zinc-500 hover:text-zinc-700 hover:border-zinc-300 dark:text-zinc-400 dark:hover:text-zinc-300' }}"
+                    >
+                        <span>{{ $tab['label'] }}</span>
+                        <span class="inline-flex min-w-[1.75rem] items-center justify-center rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 {{ $activeTab === $tabKey ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' : '' }}">
+                            {{ $tab['count'] }}
+                        </span>
+                    </button>
+                @endforeach
+            </nav>
+        </div>
+
         <div class="space-y-4">
             @forelse($actividades as $actividad)
                 <div class="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
                     <div class="flex flex-col gap-4 border-b border-zinc-200 px-4 py-4 dark:border-zinc-700 lg:flex-row lg:items-start lg:justify-between">
                         <div class="min-w-0 flex-1">
                             <div class="mb-2 flex flex-wrap items-center gap-2">
-                                <span class="inline-flex items-center rounded-full bg-indigo-100 px-2.5 py-1 text-xs font-semibold text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300">
-                                    {{ $actividad->correlativo }}
-                                </span>
                                 <span class="inline-flex items-center rounded-full px-2.5 py-1 text-xs font-semibold {{ $this->getEstadoBadgeClass($actividad->estado) }}">
                                     {{ $actividad->estado ?? 'N/A' }}
                                 </span>
@@ -179,9 +193,21 @@
                                     {{ $actividad->unidadEjecutora->name ?? 'N/A' }} | {{ $actividad->departamento->name ?? 'N/A' }}
                                 </span>
                             </div>
-                            <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
-                                {{ $actividad->nombre }}
-                            </h3>
+                            <div class="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                                <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">
+                                    {{ ($actividad->correlativo ? $actividad->correlativo . ' - ' : '') . ($actividad->nombre ?? 'N/A') }}
+                                </h3>
+                                <button
+                                    type="button"
+                                    x-on:click="copyText(@js(($actividad->correlativo ? $actividad->correlativo . ' - ' : '') . ($actividad->nombre ?? 'N/A')), 'Nombre de actividad copiado')"
+                                    class="inline-flex items-center rounded-lg border border-zinc-300 px-2.5 py-1.5 text-xs font-medium text-zinc-700 transition hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                                >
+                                    <svg class="mr-1.5 h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 16h8M8 12h8m-8-4h8m2 12H6a2 2 0 01-2-2V6a2 2 0 012-2h8l4 4v10a2 2 0 01-2 2z" />
+                                    </svg>
+                                    Copiar
+                                </button>
+                            </div>
                             <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
                                 {{ $actividad->resultadoActividad ?: 'Sin resultado de actividad registrado.' }}
                             </p>
@@ -250,19 +276,31 @@
                                     </div>
                                     <div class="space-y-3 text-sm">
                                         <div>
-                                            <p class="font-medium text-zinc-700 dark:text-zinc-300">Dimensión</p>
+                                            <div class="flex items-center justify-between gap-3">
+                                                <p class="font-medium text-zinc-700 dark:text-zinc-300">Dimensión</p>
+                                                <button type="button" x-on:click="copyText(@js($actividadDetalle->resultado->area->objetivo->dimension->nombre ?? 'N/A'), 'Dimensión copiada')" class="inline-flex items-center rounded-lg border border-zinc-300 px-2 py-1 text-[11px] font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800">Copiar</button>
+                                            </div>
                                             <p class="text-zinc-600 dark:text-zinc-400">{{ $actividadDetalle->resultado->area->objetivo->dimension->nombre ?? 'N/A' }}</p>
                                         </div>
                                         <div>
-                                            <p class="font-medium text-zinc-700 dark:text-zinc-300">Objetivo</p>
+                                            <div class="flex items-center justify-between gap-3">
+                                                <p class="font-medium text-zinc-700 dark:text-zinc-300">Objetivo</p>
+                                                <button type="button" x-on:click="copyText(@js($actividadDetalle->resultado->area->objetivo->nombre ?? 'N/A'), 'Objetivo copiado')" class="inline-flex items-center rounded-lg border border-zinc-300 px-2 py-1 text-[11px] font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800">Copiar</button>
+                                            </div>
                                             <p class="text-zinc-600 dark:text-zinc-400">{{ $actividadDetalle->resultado->area->objetivo->nombre ?? 'N/A' }}</p>
                                         </div>
                                         <div>
-                                            <p class="font-medium text-zinc-700 dark:text-zinc-300">Área</p>
+                                            <div class="flex items-center justify-between gap-3">
+                                                <p class="font-medium text-zinc-700 dark:text-zinc-300">Área</p>
+                                                <button type="button" x-on:click="copyText(@js($actividadDetalle->resultado->area->nombre ?? 'N/A'), 'Área copiada')" class="inline-flex items-center rounded-lg border border-zinc-300 px-2 py-1 text-[11px] font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800">Copiar</button>
+                                            </div>
                                             <p class="text-zinc-600 dark:text-zinc-400">{{ $actividadDetalle->resultado->area->nombre ?? 'N/A' }}</p>
                                         </div>
                                         <div>
-                                            <p class="font-medium text-zinc-700 dark:text-zinc-300">Resultado Institucional</p>
+                                            <div class="flex items-center justify-between gap-3">
+                                                <p class="font-medium text-zinc-700 dark:text-zinc-300">Resultado Institucional</p>
+                                                <button type="button" x-on:click="copyText(@js($actividadDetalle->resultado->nombre ?? 'N/A'), 'Resultado institucional copiado')" class="inline-flex items-center rounded-lg border border-zinc-300 px-2 py-1 text-[11px] font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800">Copiar</button>
+                                            </div>
                                             <p class="text-zinc-600 dark:text-zinc-400">{{ $actividadDetalle->resultado->nombre ?? 'N/A' }}</p>
                                         </div>
                                     </div>
@@ -281,29 +319,47 @@
                                     </div>
                                     <div class="space-y-3 text-sm">
                                         <div>
-                                            <p class="font-medium text-zinc-700 dark:text-zinc-300">Resultado de actividad</p>
+                                            <div class="flex items-center justify-between gap-3">
+                                                <p class="font-medium text-zinc-700 dark:text-zinc-300">Resultado de actividad</p>
+                                                <button type="button" x-on:click="copyText(@js($actividadDetalle->resultadoActividad ?? 'N/A'), 'Resultado de actividad copiado')" class="inline-flex items-center rounded-lg border border-zinc-300 px-2 py-1 text-[11px] font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800">Copiar</button>
+                                            </div>
                                             <p class="text-zinc-600 dark:text-zinc-400">{{ $actividadDetalle->resultadoActividad ?? 'N/A' }}</p>
                                         </div>
                                         <div>
-                                            <p class="font-medium text-zinc-700 dark:text-zinc-300">Población objetivo</p>
+                                            <div class="flex items-center justify-between gap-3">
+                                                <p class="font-medium text-zinc-700 dark:text-zinc-300">Población objetivo</p>
+                                                <button type="button" x-on:click="copyText(@js($actividadDetalle->poblacion_objetivo ?? 'N/A'), 'Población objetivo copiada')" class="inline-flex items-center rounded-lg border border-zinc-300 px-2 py-1 text-[11px] font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800">Copiar</button>
+                                            </div>
                                             <p class="text-zinc-600 dark:text-zinc-400">{{ $actividadDetalle->poblacion_objetivo ?? 'N/A' }}</p>
                                         </div>
                                         <div>
-                                            <p class="font-medium text-zinc-700 dark:text-zinc-300">Medio de verificación</p>
+                                            <div class="flex items-center justify-between gap-3">
+                                                <p class="font-medium text-zinc-700 dark:text-zinc-300">Medio de verificación</p>
+                                                <button type="button" x-on:click="copyText(@js($actividadDetalle->medio_verificacion ?? 'N/A'), 'Medio de verificación copiado')" class="inline-flex items-center rounded-lg border border-zinc-300 px-2 py-1 text-[11px] font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800">Copiar</button>
+                                            </div>
                                             <p class="text-zinc-600 dark:text-zinc-400">{{ $actividadDetalle->medio_verificacion ?? 'N/A' }}</p>
                                         </div>
                                         <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
                                             <div>
-                                                <p class="font-medium text-zinc-700 dark:text-zinc-300">Categoría</p>
+                                                <div class="flex items-center justify-between gap-3">
+                                                    <p class="font-medium text-zinc-700 dark:text-zinc-300">Categoría</p>
+                                                    <button type="button" x-on:click="copyText(@js($actividadDetalle->categoria->categoria ?? 'N/A'), 'Categoría copiada')" class="inline-flex items-center rounded-lg border border-zinc-300 px-2 py-1 text-[11px] font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800">Copiar</button>
+                                                </div>
                                                 <p class="text-zinc-600 dark:text-zinc-400">{{ $actividadDetalle->categoria->categoria ?? 'N/A' }}</p>
                                             </div>
                                             <div>
-                                                <p class="font-medium text-zinc-700 dark:text-zinc-300">Tipo de actividad</p>
+                                                <div class="flex items-center justify-between gap-3">
+                                                    <p class="font-medium text-zinc-700 dark:text-zinc-300">Tipo de actividad</p>
+                                                    <button type="button" x-on:click="copyText(@js($actividadDetalle->tipo->tipo ?? 'N/A'), 'Tipo de actividad copiado')" class="inline-flex items-center rounded-lg border border-zinc-300 px-2 py-1 text-[11px] font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800">Copiar</button>
+                                                </div>
                                                 <p class="text-zinc-600 dark:text-zinc-400">{{ $actividadDetalle->tipo->tipo ?? 'N/A' }}</p>
                                             </div>
                                         </div>
                                         <div>
-                                            <p class="font-medium text-zinc-700 dark:text-zinc-300">Encargados</p>
+                                            <div class="flex items-center justify-between gap-3">
+                                                <p class="font-medium text-zinc-700 dark:text-zinc-300">Encargados</p>
+                                                <button type="button" x-on:click="copyText(@js($actividadDetalle->empleados->map(fn ($empleado) => trim(($empleado->nombre ?? '') . ' ' . ($empleado->apellido ?? '')) . ' | #' . ($empleado->num_empleado ?? 'N/A'))->implode('; ') ?: 'N/A'), 'Encargados copiados')" class="inline-flex items-center rounded-lg border border-zinc-300 px-2 py-1 text-[11px] font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800">Copiar</button>
+                                            </div>
                                             <div class="mt-2 flex flex-wrap gap-2">
                                                 @forelse($actividadDetalle->empleados as $empleado)
                                                     <span class="inline-flex rounded-full bg-zinc-100 px-3 py-1 text-xs font-medium text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
@@ -460,7 +516,7 @@
                                                         </span>
                                                         <button
                                                             type="button"
-                                                            x-on:click="copyText(@js($this->buildTareaTexto($tarea)), 'Tarea copiada')"
+                                                            x-on:click="copyText(@js($tarea->nombre ?? 'N/A'), 'Tarea copiada')"
                                                             class="inline-flex items-center rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800"
                                                         >
                                                             Copiar tarea
@@ -477,35 +533,96 @@
                                                                     <th class="px-3 py-2 text-left font-semibold text-zinc-600 dark:text-zinc-300">Cantidad</th>
                                                                     <th class="px-3 py-2 text-left font-semibold text-zinc-600 dark:text-zinc-300">Costo Unitario</th>
                                                                     <th class="px-3 py-2 text-left font-semibold text-zinc-600 dark:text-zinc-300">Total</th>
+                                                                    <th class="px-3 py-2 text-left font-semibold text-zinc-600 dark:text-zinc-300">Objeto del Gasto</th>
                                                                     <th class="px-3 py-2 text-left font-semibold text-zinc-600 dark:text-zinc-300">Fuente / Mes</th>
-                                                                    <th class="px-3 py-2 text-left font-semibold text-zinc-600 dark:text-zinc-300">Copiar</th>
                                                                 </tr>
                                                             </thead>
                                                             <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
                                                                 @foreach($tarea->presupuestos as $presupuesto)
                                                                     <tr class="bg-white dark:bg-zinc-900">
                                                                         <td class="px-3 py-3 align-top text-zinc-800 dark:text-zinc-200">
-                                                                            <p class="font-medium">{{ $presupuesto->recurso ?? 'N/A' }}</p>
-                                                                            <p class="text-xs text-zinc-500 dark:text-zinc-400">{{ $presupuesto->detalle_tecnico ?: 'Sin detalle técnico' }}</p>
+                                                                            <div class="flex items-start justify-between gap-2">
+                                                                                <div>
+                                                                                    <p class="font-medium">{{ $presupuesto->recurso ?? 'N/A' }}</p>
+                                                                                    <p class="text-xs text-zinc-500 dark:text-zinc-400">{{ $presupuesto->detalle_tecnico ?: 'Sin detalle técnico' }}</p>
+                                                                                </div>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    x-on:click="copyText(@js(($presupuesto->recurso ?? 'N/A') . ' | ' . ($presupuesto->detalle_tecnico ?: 'Sin detalle técnico')), 'Recurso copiado')"
+                                                                                    class="inline-flex items-center rounded-lg border border-zinc-300 px-2 py-1 text-[11px] font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                                                                                >
+                                                                                    Copiar
+                                                                                </button>
+                                                                            </div>
                                                                             <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                                                                {{ $presupuesto->grupoGasto->nombre ?? 'N/A' }} | {{ $presupuesto->objetoGasto->nombre ?? 'N/A' }}
+                                                                                {{ $presupuesto->grupoGasto->nombre ?? 'N/A' }}
                                                                             </p>
                                                                         </td>
-                                                                        <td class="px-3 py-3 align-top text-zinc-600 dark:text-zinc-400">{{ number_format($presupuesto->cantidad ?? 0, 2) }}</td>
-                                                                        <td class="px-3 py-3 align-top text-zinc-600 dark:text-zinc-400">L {{ number_format($presupuesto->costounitario ?? 0, 2) }}</td>
-                                                                        <td class="px-3 py-3 align-top font-semibold text-zinc-800 dark:text-zinc-200">L {{ number_format($presupuesto->total ?? 0, 2) }}</td>
                                                                         <td class="px-3 py-3 align-top text-zinc-600 dark:text-zinc-400">
-                                                                            {{ $presupuesto->fuente->nombre ?? 'N/A' }}<br>
-                                                                            <span class="text-xs">{{ $presupuesto->mes->mes ?? 'N/A' }}</span>
+                                                                            <div class="flex items-start justify-between gap-2">
+                                                                                <span>{{ number_format($presupuesto->cantidad ?? 0, 2) }}</span>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    x-on:click="copyText(@js(number_format($presupuesto->cantidad ?? 0, 2, '.', ',')), 'Cantidad copiada')"
+                                                                                    class="inline-flex items-center rounded-lg border border-zinc-300 px-2 py-1 text-[11px] font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                                                                                >
+                                                                                    Copiar
+                                                                                </button>
+                                                                            </div>
                                                                         </td>
-                                                                        <td class="px-3 py-3 align-top">
-                                                                            <button
-                                                                                type="button"
-                                                                                x-on:click="copyText(@js($this->buildPresupuestoTexto($presupuesto)), 'Recurso copiado')"
-                                                                                class="inline-flex items-center rounded-lg border border-zinc-300 px-3 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800"
-                                                                            >
-                                                                                Copiar
-                                                                            </button>
+                                                                        <td class="px-3 py-3 align-top text-zinc-600 dark:text-zinc-400">
+                                                                            <div class="flex items-start justify-between gap-2">
+                                                                                <span>L {{ number_format($presupuesto->costounitario ?? 0, 2) }}</span>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    x-on:click="copyText(@js('L ' . number_format($presupuesto->costounitario ?? 0, 2, '.', ',')), 'Costo unitario copiado')"
+                                                                                    class="inline-flex items-center rounded-lg border border-zinc-300 px-2 py-1 text-[11px] font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                                                                                >
+                                                                                    Copiar
+                                                                                </button>
+                                                                            </div>
+                                                                        </td>
+                                                                        <td class="px-3 py-3 align-top font-semibold text-zinc-800 dark:text-zinc-200">
+                                                                            <div class="flex items-start justify-between gap-2">
+                                                                                <span>L {{ number_format($presupuesto->total ?? 0, 2) }}</span>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    x-on:click="copyText(@js('L ' . number_format($presupuesto->total ?? 0, 2, '.', ',')), 'Total copiado')"
+                                                                                    class="inline-flex items-center rounded-lg border border-zinc-300 px-2 py-1 text-[11px] font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                                                                                >
+                                                                                    Copiar
+                                                                                </button>
+                                                                            </div>
+                                                                        </td>
+                                                                        <td class="px-3 py-3 align-top text-zinc-600 dark:text-zinc-400">
+                                                                            <div class="flex items-start justify-between gap-2">
+                                                                                <div>
+                                                                                    {{ $presupuesto->objetoGasto->identificador ?? 'N/A' }}<br>
+                                                                                    <span class="text-xs">{{ $presupuesto->objetoGasto->nombre ?? 'N/A' }}</span>
+                                                                                </div>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    x-on:click="copyText(@js(($presupuesto->objetoGasto->identificador ?? 'N/A') . ' | ' . ($presupuesto->objetoGasto->nombre ?? 'N/A')), 'Objeto del gasto copiado')"
+                                                                                    class="inline-flex items-center rounded-lg border border-zinc-300 px-2 py-1 text-[11px] font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                                                                                >
+                                                                                    Copiar
+                                                                                </button>
+                                                                            </div>
+                                                                        </td>
+                                                                        <td class="px-3 py-3 align-top text-zinc-600 dark:text-zinc-400">
+                                                                            <div class="flex items-start justify-between gap-2">
+                                                                                <div>
+                                                                                    {{ $presupuesto->fuente->identificador ?? 'N/A' }} - {{ $presupuesto->fuente->nombre ?? 'N/A' }}<br>
+                                                                                    <span class="text-xs">{{ $presupuesto->mes->mes ?? 'N/A' }}</span>
+                                                                                </div>
+                                                                                <button
+                                                                                    type="button"
+                                                                                    x-on:click="copyText(@js(($presupuesto->fuente->identificador ?? 'N/A') . ' - ' . ($presupuesto->fuente->nombre ?? 'N/A') . ' | ' . ($presupuesto->mes->mes ?? 'N/A')), 'Fuente y mes copiados')"
+                                                                                    class="inline-flex items-center rounded-lg border border-zinc-300 px-2 py-1 text-[11px] font-medium text-zinc-700 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                                                                                >
+                                                                                    Copiar
+                                                                                </button>
+                                                                            </div>
                                                                         </td>
                                                                     </tr>
                                                                 @endforeach
