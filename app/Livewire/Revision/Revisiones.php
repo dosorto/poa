@@ -17,6 +17,8 @@ class Revisiones extends Component
 	protected string $layout = 'layouts.app';
 	use WithPagination;
 
+	private const ESTADOS_REVISION = ['REVISION', 'REFORMULACION', 'APROBADO', 'RECHAZADO'];
+
 	public $search = '';
 	public $perPage = 10;
 	public $sortField = 'name';
@@ -26,6 +28,12 @@ class Revisiones extends Component
 
 	public $showActividades = false;
 	public $departamentoId = null;
+
+	protected $queryString = [
+		'poaYear' => ['except' => ''],
+		'showActividades' => ['except' => false],
+		'departamentoId' => ['except' => null],
+	];
 
 	public function updatingSearch()
 	{
@@ -57,6 +65,10 @@ class Revisiones extends Component
 		if (empty($this->poaYear) && count($this->poaYears)) {
 			$this->poaYear = $this->poaYears[0];
 		}
+
+		if ($this->departamentoId) {
+			$this->showActividades = true;
+		}
 	}
 
 	public function render()
@@ -70,7 +82,7 @@ class Revisiones extends Component
 
 		$revisiones = Departamento::query()
 			->withCount(['actividades as actividades_count' => function($q) {
-				$q->whereIn('estado', ['REVISION', 'APROBADO', 'RECHAZADO']);
+				$q->whereIn('estado', self::ESTADOS_REVISION);
 				if ($this->poaYear) {
 					$q->whereHas('poa', function($q2) {
 						$q2->where('anio', $this->poaYear);
@@ -78,7 +90,7 @@ class Revisiones extends Component
 				}
 			}])
 			->whereHas('actividades', function($q) {
-				$q->whereIn('estado', ['REVISION', 'APROBADO', 'RECHAZADO']);
+				$q->whereIn('estado', self::ESTADOS_REVISION);
 				if ($this->poaYear) {
 					$q->whereHas('poa', function($q2) {
 						$q2->where('anio', $this->poaYear);

@@ -75,12 +75,17 @@ class AnalysisTechoUe extends Component
         $this->presupuestoPlanificado = Presupuesto::whereHas('tarea', function ($query) {
             $query->where('idUE', $this->idUE)
                   ->where('idPoa', $this->idPoa);
+        })->whereHas('tarea.actividad', function ($query) {
+            $query->where('idPoa', $this->idPoa);
         })->sum('total');
 
         // Presupuesto Requerido: Total de cantidades requeridas en detalle_requisicion
         $this->presupuestoRequerido = DetalleRequisicion::where('idPoa', $this->idPoa)
             ->whereHas('presupuesto.tarea', function ($query) {
                 $query->where('idUE', $this->idUE);
+            })
+            ->whereHas('presupuesto.tarea.actividad', function ($query) {
+                $query->where('idPoa', $this->idPoa);
             })
             ->selectRaw('SUM(cantidad * COALESCE((SELECT costounitario FROM presupuestos WHERE presupuestos.id = detalle_requisicion.idPresupuesto), 0)) as total')
             ->value('total') ?? 0;
@@ -91,6 +96,9 @@ class AnalysisTechoUe extends Component
             })
             ->whereHas('presupuesto.tarea', function ($query) {
                 $query->where('idUE', $this->idUE);
+            })
+            ->whereHas('presupuesto.tarea.actividad', function ($query) {
+                $query->where('idPoa', $this->idPoa);
             })
             ->sum('monto_total_ejecutado') ?? 0;
 
@@ -117,6 +125,8 @@ class AnalysisTechoUe extends Component
                     $planificado = Presupuesto::whereHas('tarea', function ($query) {
                         $query->where('idUE', $this->idUE)
                               ->where('idPoa', $this->idPoa);
+                    })->whereHas('tarea.actividad', function ($query) {
+                        $query->where('idPoa', $this->idPoa);
                     })->where('idFuente', $fuenteId)
                       ->sum('total');
 
@@ -126,6 +136,9 @@ class AnalysisTechoUe extends Component
                             $query->where('idFuente', $fuenteId)
                                   ->whereHas('tarea', function ($q) {
                                       $q->where('idUE', $this->idUE);
+                                  })
+                                  ->whereHas('tarea.actividad', function ($q) {
+                                      $q->where('idPoa', $this->idPoa);
                                   });
                         })
                         ->selectRaw('SUM(cantidad * COALESCE((SELECT costounitario FROM presupuestos WHERE presupuestos.id = detalle_requisicion.idPresupuesto), 0)) as total')
@@ -139,6 +152,9 @@ class AnalysisTechoUe extends Component
                             $query->where('idFuente', $fuenteId)
                                   ->whereHas('tarea', function ($q) {
                                       $q->where('idUE', $this->idUE);
+                                  })
+                                  ->whereHas('tarea.actividad', function ($q) {
+                                      $q->where('idPoa', $this->idPoa);
                                   });
                         })
                         ->sum('monto_total_ejecutado') ?? 0;
@@ -167,4 +183,3 @@ class AnalysisTechoUe extends Component
         ]);
     }
 }
-

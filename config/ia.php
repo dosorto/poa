@@ -70,18 +70,18 @@ return [
         'gemini' => [
             'model' => env('GEMINI_MODEL', 'gemini-2.5-flash'),
             'temperature' => env('GEMINI_TEMPERATURE', 0.3),
-            'max_tokens' => env('GEMINI_MAX_TOKENS', 700),
-        ],
-        'ollama' => [
-            'model' => env('OLLAMA_MODEL', 'qwen2.5:7b-instruct-q8_0'),
-            'temperature' => env('OLLAMA_TEMPERATURE', 0.2),
-            'max_tokens' => env('OLLAMA_MAX_TOKENS', 700),
-            'timeout' => env('OLLAMA_TIMEOUT', 25),
+            'max_tokens' => env('GEMINI_MAX_TOKENS', 2000),
         ],
         'qwen' => [
             'model' => env('QWEN_MODEL', 'qwen2.5:32b'),
             'temperature' => 0.7,
             'max_tokens' => 1200,
+        ],
+        'ollama' => [
+            'model' => env('OLLAMA_MODEL', 'qwen2.5:7b-instruct-q8_0'),
+            'temperature' => env('OLLAMA_TEMPERATURE', 0.2),
+            'max_tokens' => env('OLLAMA_MAX_TOKENS', 1800),
+            'timeout' => env('OLLAMA_TIMEOUT', 90),
         ],
     ],
 

@@ -54,7 +54,7 @@
                             <svg class="w-5 h-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1M12 4v12m0-12l-4 4m4-4l4 4" />
                             </svg>
-                            {{ __('Importar CSV') }}
+                            {{ __('Importar Excel') }}
                         </x-spinner-secondary-button>
 
                         <x-spinner-button wire:click="create()" loadingTarget="create()" :loadingText="__('Abriendo...')">
@@ -75,7 +75,6 @@
                     ['key' => 'IDUNSPSC', 'label' => 'UNSPSC', 'sortable' => true],
                     ['key' => 'descripcion_esp', 'label' => 'Descripción (ES)', 'sortable' => true],
                     ['key' => 'descripcion_regional', 'label' => 'Descripción regional', 'sortable' => true],
-                    ['key' => 'ue', 'label' => 'Unidad Ejecutora', 'sortable' => false],
                     ['key' => 'actions', 'label' => 'Acciones', 'sortable' => false],
                 ]"
                 empty-message="{{ __('No se encontraron CUBS') }}"
@@ -95,9 +94,6 @@
                             </td>
                             <td class="px-6 py-4 text-zinc-900 dark:text-zinc-300">
                                 {{ $cub->descripcion_regional }}
-                            </td>
-                            <td class="px-6 py-4 whitespace-nowrap text-zinc-900 dark:text-zinc-300">
-                                {{ $cub->unidadEjecutora?->name ?? '-' }}
                             </td>
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <div class="flex space-x-2">
@@ -123,7 +119,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-6 py-4 text-center text-zinc-500 dark:text-zinc-400">
+                            <td colspan="5" class="px-6 py-4 text-center text-zinc-500 dark:text-zinc-400">
                                 {{ __('No se encontraron CUBS') }}
                             </td>
                         </tr>
@@ -138,6 +134,6 @@
     </div>
 
     @include('livewire.cub.create')
-    @include('livewire.cub.import-csv')
+    @include('livewire.cub.import-excel')
     @include('livewire.cub.delete-confirmation')
 </div>

@@ -12,7 +12,7 @@ class IAService
 
     public function __construct()
     {
-        $this->provider = config('ia.provider', 'openai');
+        $this->provider = strtolower(trim(config('ia.provider', 'openai')));
         $this->apiKey = $this->getApiKey();
     }
 
@@ -26,16 +26,18 @@ class IAService
         };
     }
 
-    public function generarActividad($nombreActividad, $contextoInstitucion = 'Universidad Nacional Autónoma de Honduras')
+    public function generarActividad($nombreActividad, $contextoInstitucion = 'Universidad Nacional Autónoma de Honduras', array $contextoAdicional = [])
     {
-        $prompt = $this->construirPrompt($nombreActividad, $contextoInstitucion);
+        $prompt = $this->provider === 'ollama'
+            ? $this->construirPromptOllama($nombreActividad, $contextoInstitucion, $contextoAdicional)
+            : $this->construirPrompt($nombreActividad, $contextoInstitucion, $contextoAdicional);
         $startedAt = microtime(true);
 
         try {
             $data = match ($this->provider) {
                 'gemini' => $this->generarConGemini($prompt),
-                'ollama' => $this->generarConOllama($prompt),
                 'qwen' => $this->generarConQwen($prompt),
+                'ollama' => $this->generarConOllama($prompt),
                 'openai' => $this->generarConOpenAI($prompt),
                 default => throw new \InvalidArgumentException("Proveedor de IA no soportado: {$this->provider}"),
             };
@@ -54,10 +56,18 @@ class IAService
         }
     }
 
-    
-    protected function construirPrompt($nombreActividad, $contextoInstitucion)
-{
-    return "Eres un experto en planificación estratégica institucional de la Universidad Nacional Autónoma de Honduras (UNAH), con profundo conocimiento del Plan Estratégico Institucional (PEI) 2024-2027 y del modelo de Gestión por Resultados adoptado por la institución.
+    protected function construirPrompt($nombreActividad, $contextoInstitucion, array $contextoAdicional = [])
+    {
+        $lineasContexto = collect($contextoAdicional)
+            ->filter(fn ($valor) => filled($valor))
+            ->map(fn ($valor, $clave) => '- ' . str_replace('_', ' ', ucfirst($clave)) . ': ' . $valor)
+            ->implode("\n");
+
+        $contextoEspecifico = $lineasContexto
+            ? "\n            ## CONTEXTO ESPECÍFICO DE LA ACTIVIDAD\n\n            {$lineasContexto}\n"
+            : '';
+
+        return "Eres un experto en planificación estratégica institucional de la Universidad Nacional Autónoma de Honduras (UNAH), con profundo conocimiento del Plan Estratégico Institucional (PEI) 2024-2027 y del modelo de Gestión por Resultados adoptado por la institución.
 
             ## CONTEXTO INSTITUCIONAL UNAH
 
@@ -95,6 +105,7 @@ class IAService
 
             Basándote en el nombre de actividad: **'{$nombreActividad}'**
             Contexto institucional: **{$contextoInstitucion}**
+            {$contextoEspecifico}
 
             Genera un JSON con los siguientes campos para incluir en el Plan Operativo Anual (POA):
 
@@ -110,20 +121,60 @@ class IAService
             * **isPorcentaje**: true si mide una tasa o proporción (%), false en caso contrario.
 
             **Reglas obligatorias:**
+            - Si se proporciona una descripcion ingresada en el contexto especifico, usala como base principal para generar y mejorar la descripcion, resultado, poblacion, medio de verificacion e indicadores. No la contradigas salvo que sea necesario para alinearla al PEI.
             - Los indicadores NO pueden ser de satisfacción ni requerir encuestas.
             - Al menos uno debe ser de cantidad absoluta (isCantidad: true).
             - Usar terminología oficial UNAH: 'Unidad Ejecutora', 'Plan Operativo Anual', 'funciones sustantivas', 'comunidad universitaria', 'CRU', etc.
             - El resultado debe ser coherente con las metas reales del PEI 2024-2027.
 
             Responde ÚNICAMENTE con el JSON válido, sin markdown ni explicaciones adicionales.";
-            }
+    }
 
+    protected function construirPromptOllama($nombreActividad, $contextoInstitucion, array $contextoAdicional = [])
+    {
+        $lineasContexto = collect($contextoAdicional)
+            ->filter(fn ($valor) => filled($valor))
+            ->map(fn ($valor, $clave) => '- ' . str_replace('_', ' ', ucfirst($clave)) . ': ' . $valor)
+            ->implode("\n");
 
+        $contexto = $lineasContexto ? "\nContexto adicional:\n{$lineasContexto}\n" : '';
+
+        return "Eres un asistente experto en planificacion operativa anual de la UNAH.
+Responde solo con un objeto JSON valido. No uses markdown, no expliques, no agregues texto fuera del JSON.
+
+Actividad: {$nombreActividad}
+Institucion: {$contextoInstitucion}
+{$contexto}
+Genera datos para un formulario POA con esta estructura exacta:
+{
+  \"descripcion\": \"texto de 2 oraciones\",
+  \"resultadoActividad\": \"resultado concreto y medible en 1 oracion\",
+  \"poblacion_objetivo\": \"poblacion beneficiaria\",
+  \"medio_verificacion\": \"medio oficial de verificacion\",
+  \"indicadores\": [
+    {
+      \"nombre\": \"nombre del indicador\",
+      \"descripcion\": \"que mide y como se calcula\",
+      \"cantidadPlanificada\": 1,
+      \"isCantidad\": true,
+      \"isPorcentaje\": false
+    }
+  ]
+}
+
+Reglas:
+- Si hay descripcion ingresada en el contexto adicional, usala como base principal para generar y mejorar la propuesta.
+- Usa lenguaje institucional de la UNAH.
+- Devuelve 2 indicadores como maximo.
+- Al menos un indicador debe ser de cantidad absoluta.
+- No uses indicadores de satisfaccion ni encuestas.
+- Manten todos los textos breves para que el JSON no se corte.";
+    }
 
     protected function generarConOpenAI($prompt)
     {
         if (empty($this->apiKey)) {
-            throw new \Exception('No se ha configurado la API Key de OpenAI. Por favor, agrega OPENAI_API_KEY en tu archivo .env o cambia el proveedor a Gemini con IA_PROVIDER=gemini');
+            throw new \Exception('No se ha configurado la API Key de OpenAI. Por favor, agrega OPENAI_API_KEY en tu archivo .env o cambia el proveedor a Ollama con IA_PROVIDER=ollama');
         }
 
         $client = \OpenAI::client($this->apiKey);
@@ -133,39 +184,39 @@ class IAService
             'model' => $config['model'],
             'messages' => [
                 ['role' => 'system', 'content' => 'Eres un asistente experto en planificación estratégica institucional. Respondes únicamente con JSON válido sin formato markdown.'],
-                ['role' => 'user', 'content' => $prompt]
+                ['role' => 'user', 'content' => $prompt],
             ],
             'temperature' => (float) $config['temperature'],
             'max_tokens' => (int) $config['max_tokens'],
             'response_format' => ['type' => 'json_object'],
         ]);
 
-        $content = $response->choices[0]->message->content;
-        return $this->procesarRespuesta($content);
+        return $this->procesarRespuesta($response->choices[0]->message->content);
     }
 
     protected function generarConGemini($prompt)
     {
+        if (empty($this->apiKey)) {
+            throw new \Exception('No se ha configurado la API Key de Gemini. Usa IA_PROVIDER=ollama para la IA local.');
+        }
+
         $config = config('ia.models.gemini');
         $modelName = $config['model'];
         $url = "https://generativelanguage.googleapis.com/v1/models/{$modelName}:generateContent?key={$this->apiKey}";
 
         $response = Http::timeout(30)
-            ->withHeaders([
-                'Content-Type' => 'application/json',
-            ])
+            ->withHeaders(['Content-Type' => 'application/json'])
             ->post($url, [
                 'contents' => [
                     [
                         'parts' => [
-                            ['text' => $prompt]
-                        ]
-                    ]
+                            ['text' => $prompt],
+                        ],
+                    ],
                 ],
                 'generationConfig' => [
                     'temperature' => (float) $config['temperature'],
-                    'maxOutputTokens' => (int) $config['max_tokens'],
-                    'responseMimeType' => 'application/json',
+                    'maxOutputTokens' => max((int) $config['max_tokens'], 2000),
                 ],
             ]);
 
@@ -175,20 +226,56 @@ class IAService
             Log::error('Error de Gemini API', [
                 'status' => $response->status(),
                 'error' => $errorData,
-                'url' => $url
             ]);
             throw new \Exception("Error de Gemini API: {$error}");
         }
 
-        $responseData = $response->json();
         $content = $response->json('candidates.0.content.parts.0.text');
-        
+
         if (!$content) {
-            Log::error('No se encontró contenido en la respuesta de Gemini', [
-                'response' => $responseData,
-                'candidates' => $response->json('candidates')
+            throw new \Exception('No se recibió respuesta válida de Gemini.');
+        }
+
+        return $this->procesarRespuesta($content);
+    }
+
+    protected function generarConQwen($prompt)
+    {
+        $baseUrl = rtrim(config('ia.qwen_base_url', 'http://localhost:8000'), '/');
+        $config = config('ia.models.qwen');
+        $url = "{$baseUrl}/v1/chat/completions";
+
+        Log::info('Conectando a Qwen API', [
+            'url' => $url,
+            'model' => $config['model'],
+        ]);
+
+        $response = Http::timeout(60)
+            ->withHeaders(['Content-Type' => 'application/json'])
+            ->post($url, [
+                'model' => $config['model'],
+                'messages' => [
+                    ['role' => 'system', 'content' => 'Eres un asistente experto en planificación estratégica institucional. Respondes únicamente con JSON válido sin formato markdown.'],
+                    ['role' => 'user', 'content' => $prompt],
+                ],
+                'temperature' => (float) $config['temperature'],
+                'max_tokens' => (int) $config['max_tokens'],
             ]);
-            throw new \Exception('No se recibió respuesta válida de Gemini. Por favor, revisa los logs para más detalles.');
+
+        if (!$response->successful()) {
+            $errorData = $response->json();
+            $error = $errorData['error']['message'] ?? $response->body();
+            Log::error('Error de Qwen API', [
+                'status' => $response->status(),
+                'error' => $errorData,
+            ]);
+            throw new \Exception("Error de Qwen API: {$error}");
+        }
+
+        $content = $response->json('choices.0.message.content');
+
+        if (!$content) {
+            throw new \Exception('No se recibió respuesta válida de Qwen.');
         }
 
         return $this->procesarRespuesta($content);
@@ -196,8 +283,8 @@ class IAService
 
     protected function generarConOllama($prompt)
     {
+        $host = rtrim(config('ia.ollama_host', 'http://localhost:11434'), '/');
         $config = config('ia.models.ollama');
-        $host = rtrim(config('ia.ollama_host'), '/');
         $url = "{$host}/api/chat";
 
         $request = Http::timeout((int) $config['timeout'])
@@ -212,19 +299,29 @@ class IAService
             'model' => $config['model'],
         ]);
 
-        $response = $request->post($url, [
-            'model' => $config['model'],
-            'stream' => false,
-            'format' => 'json',
-            'messages' => [
-                ['role' => 'system', 'content' => 'Responde únicamente JSON válido. No uses markdown.'],
-                ['role' => 'user', 'content' => $prompt],
-            ],
-            'options' => [
-                'temperature' => (float) $config['temperature'],
-                'num_predict' => (int) $config['max_tokens'],
-            ],
-        ]);
+        try {
+            $response = $request->post($url, [
+                'model' => $config['model'],
+                'stream' => false,
+                'format' => 'json',
+                'messages' => [
+                    ['role' => 'system', 'content' => 'Eres un asistente experto en planificación estratégica institucional. Respondes únicamente con JSON válido sin formato markdown.'],
+                    ['role' => 'user', 'content' => $prompt],
+                ],
+                'options' => [
+                    'temperature' => (float) $config['temperature'],
+                    'num_predict' => max((int) $config['max_tokens'], 1800),
+                ],
+            ]);
+        } catch (\Illuminate\Http\Client\ConnectionException $e) {
+            Log::error('No se pudo conectar con Ollama', [
+                'url' => $url,
+                'model' => $config['model'],
+                'error' => $e->getMessage(),
+            ]);
+
+            throw new \Exception("No se pudo conectar con Ollama en {$host}. Verifica que Ollama este encendido, que el puerto 11434 este accesible y que OLLAMA_HOST sea correcto.");
+        }
 
         if (!$response->successful()) {
             Log::error('Error de Ollama API', [
@@ -248,12 +345,11 @@ class IAService
 
     protected function procesarRespuesta($content)
     {
-        // Limpiar posibles markdown
         $content = trim($content);
         $content = preg_replace('/^```json\s*/', '', $content);
         $content = preg_replace('/^```\s*/', '', $content);
         $content = preg_replace('/\s*```$/', '', $content);
-        
+
         $data = json_decode($content, true);
 
         if (!$data && preg_match('/\{.*\}/s', $content, $matches)) {
@@ -265,7 +361,6 @@ class IAService
             throw new \Exception('No se pudo procesar la respuesta de la IA. Intente nuevamente.');
         }
 
-        // Validar que tenga los campos necesarios
         $camposRequeridos = ['descripcion', 'resultadoActividad', 'poblacion_objetivo', 'medio_verificacion'];
         foreach ($camposRequeridos as $campo) {
             if (!isset($data[$campo])) {
@@ -296,67 +391,6 @@ class IAService
     public function getProvider()
     {
         return $this->provider;
-    }
-
-    protected function generarConQwen($prompt)
-    {
-        $baseUrl = config('ia.qwen_base_url', 'http://localhost:8000');
-        $modelName = config('ia.models.qwen.model', 'qwen2.5:32b');
-        
-        // Normalizando la URL base (sin trailing slash)
-        $baseUrl = rtrim($baseUrl, '/');
-        $url = "{$baseUrl}/v1/chat/completions";
-
-        Log::info('Conectando a Qwen API', [
-            'url' => $url,
-            'model' => $modelName
-        ]);
-
-        $response = Http::timeout(60)
-            ->withHeaders([
-                'Content-Type' => 'application/json',
-            ])
-            ->post($url, [
-                'model' => $modelName,
-                'messages' => [
-                    [
-                        'role' => 'system',
-                        'content' => 'Eres un asistente experto en planificación estratégica institucional. Respondes únicamente con JSON válido sin formato markdown.'
-                    ],
-                    [
-                        'role' => 'user',
-                        'content' => $prompt
-                    ]
-                ],
-                'temperature' => 0.3,
-                'max_tokens' => 600,
-            ]);
-
-        if (!$response->successful()) {
-            $errorData = $response->json();
-            $error = $errorData['error']['message'] ?? $response->body();
-            Log::error('Error de Qwen API', [
-                'status' => $response->status(),
-                'error' => $errorData,
-                'url' => $url
-            ]);
-            throw new \Exception("Error de Qwen API: {$error}");
-        }
-
-        $responseData = $response->json();
-        Log::info('Respuesta de Qwen recibida', ['model' => $modelName]);
-
-        $content = $response->json('choices.0.message.content');
-        
-        if (!$content) {
-            Log::error('No se encontró contenido en la respuesta de Qwen', [
-                'response' => $responseData,
-                'choices' => $response->json('choices')
-            ]);
-            throw new \Exception('No se recibió respuesta válida de Qwen. Por favor, revisa los logs para más detalles.');
-        }
-
-        return $this->procesarRespuesta($content);
     }
 
     public function getProviderName()

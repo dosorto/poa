@@ -21,6 +21,20 @@ return [
         ])
         ->setEndBlock('dashboard_group'),
 
+    RkNavigation::makeGroup('reportes')
+        ->setLabel('Reportes')
+        ->setHeroIcon('chart-pie')
+        ->setItems([
+            RkNavigation::make('reportes-direccion')
+                ->setParentId('reportes')
+                ->setDescription('Indicadores ejecutivos para Dirección')
+                ->setLabel('Dirección')
+                ->setHeroIcon('presentation-chart-line')
+                ->setItems([])
+                ->setEndBlock('reportes-direccion'),
+        ])
+        ->setEndBlock('reportes'),
+
     RkNavigation::makeGroup('planificacion')
         ->setLabel('Planificación')
         ->setHeroIcon('calendar')
@@ -130,7 +144,7 @@ return [
                 
             RkNavigation::make('consolidado')
                 ->setParentId('planificacion')
-                ->setDescription('Genera reportes consolidados')
+                ->setDescription('Visualiza el consolidado de actividades de tus departamentos')
                 ->setLabel('Consolidado')
                 ->setHeroIcon('chart-bar-square')
                 ->setItems([])
@@ -204,14 +218,6 @@ return [
                         ->setHeroIcon('building-office-2')
                         ->setItems([])
                         ->setEndBlock('instituciones'),
-
-                    RkNavigation::make('cubs')
-                        ->setParentId('estructura-organizacional')
-                        ->setDescription('Administración de cubs')
-                        ->setLabel('Cubs')
-                        ->setHeroIcon('cube')
-                        ->setItems([])
-                        ->setEndBlock('cubs'),
                 ])
                 ->setEndBlock('estructura-organizacional'),
 
@@ -236,6 +242,14 @@ return [
                         ->setHeroIcon('receipt-percent')
                         ->setItems([])
                         ->setEndBlock('grupo-gastos'),
+
+                    RkNavigation::make('objeto-gastos')
+                        ->setParentId('config-presupuestaria')
+                        ->setDescription('Gestión de objetos de gasto')
+                        ->setLabel('Objetos de gasto')
+                        ->setHeroIcon('rectangle-stack')
+                        ->setItems([])
+                        ->setEndBlock('objeto-gastos'),
 
                     RkNavigation::make('estados-ejecucion')
                         ->setParentId('config-presupuestaria')
@@ -326,6 +340,14 @@ return [
                 ->setHeroIcon('clipboard-document')
                 ->setItems([])
                 ->setEndBlock('recursos'),
+
+            RkNavigation::make('cubs')
+                ->setParentId('configuracion')
+                ->setDescription('Administración de cubs')
+                ->setLabel('Cubs')
+                ->setHeroIcon('cube')
+                ->setItems([])
+                ->setEndBlock('cubs'),
         ])
         ->setEndBlock('configuracion'),
 
@@ -386,6 +408,9 @@ return [
                         ->setDescription('Gestión de techos presupuestarios por Unidades Ejecutoras')
                         ->setLabel('Techos presupuestarios UE')
                         ->setHeroIcon('arrow-trending-up')
+                        ->setUrl((request()->route('idPoa') || request()->query('idPoa'))
+                            ? '/techonacional?idPoa=' . (request()->route('idPoa') ?? request()->query('idPoa'))
+                            : '/techonacional')
                         ->setItems([
                             RkNavigation::make('plazos-poa')
                                 ->setDescription('Gestión de plazos estándar y personalizados para el POA')
@@ -399,6 +424,21 @@ return [
                                 ->setDescription('Análisis detallado de techo UE')
                                 ->setLabel('Análisis techo UE')
                                 ->setHeroIcon('chart-bar')
+                                ->setUrl((function () {
+                                    $idPoa = request()->route('idPoa') ?? request()->query('idPoa');
+                                    $idUE = request()->route('idUE');
+
+                                    if ($idPoa && ! $idUE) {
+                                        $idUE = \App\Models\TechoUes\TechoUe::where('idPoa', $idPoa)
+                                            ->whereNotNull('idUE')
+                                            ->orderBy('idUE')
+                                            ->value('idUE');
+                                    }
+
+                                    return ($idPoa && $idUE)
+                                        ? '/techonacional/' . $idPoa . '/analysis/' . $idUE
+                                        : '#';
+                                })())
                                 ->setItems([])
                                 ->setEndBlock('analysis-techo-ue'),
                 ])
@@ -417,14 +457,65 @@ return [
                         ->setItems([
                             RkNavigation::make('techodeptos.detalle-estructura')
                                 ->setLabel('Detalle de estructura')
-                                ->setDescription('Detalle de asignaciones a departamentos por estructura'),
+                                ->setDescription('Detalle de asignaciones a departamentos por estructura')
+                                ->setUrl((function () {
+                                    $idPoa = request()->route('idPoa') ?? request()->query('idPoa');
+                                    $idUE = request()->route('idUE') ?? request()->query('idUE');
+                                    $estructura = request()->query('estructura');
+                                    $idDepartamento = request()->route('idDepartamento') ?? request()->query('idDepartamento');
+
+                                    if (! $estructura && $idDepartamento) {
+                                        $estructura = \App\Models\Departamento\Departamento::whereKey($idDepartamento)->value('estructura') ?? 'Sin Estructura';
+                                    }
+
+                                    return ($idPoa && $idUE && $estructura)
+                                        ? '/techodeptos.detalle-estructura?' . http_build_query([
+                                            'idPoa' => $idPoa,
+                                            'idUE' => $idUE,
+                                            'idDepartamento' => $idDepartamento,
+                                            'estructura' => $estructura,
+                                        ])
+                                        : '#';
+                                })()),
                             RkNavigation::make('analysis-techo-depto')
                                 ->setLabel('Análisis presupuestario')
                                 ->setDescription('Análisis presupuestario del departamento')
+                                ->setUrl((function () {
+                                    $idPoa = request()->route('idPoa') ?? request()->query('idPoa');
+                                    $idUE = request()->route('idUE') ?? request()->query('idUE');
+                                    $idDepartamento = request()->route('idDepartamento') ?? request()->query('idDepartamento');
+                                    $estructura = request()->query('estructura');
+
+                                    if (! $idDepartamento && $idPoa && $idUE && $estructura) {
+                                        $idDepartamento = \App\Models\TechoUes\TechoDepto::where('idPoa', $idPoa)
+                                            ->where('idUE', $idUE)
+                                            ->whereHas('departamento', function ($query) use ($estructura) {
+                                                if ($estructura === 'Sin Estructura') {
+                                                    $query->whereNull('estructura');
+                                                } else {
+                                                    $query->where('estructura', $estructura);
+                                                }
+                                            })
+                                            ->orderBy('idDepartamento')
+                                            ->value('idDepartamento');
+                                    }
+
+                                    return ($idPoa && $idUE && $idDepartamento)
+                                        ? '/techodeptos/' . $idPoa . '/' . $idUE . '/analysis/' . $idDepartamento
+                                        : '#';
+                                })())
                         ])
                         ->setEndBlock('techodeptos'),
                 ])
                 ->setEndBlock('asignacionpresupuestaria'),
+
+            RkNavigation::make('consolidado-ue')
+                ->setParentId('consola')
+                ->setDescription('Visualiza el consolidado completo de la unidad ejecutora')
+                ->setLabel('Consolidado UE')
+                ->setHeroIcon('clipboard-document-list')
+                ->setItems([])
+                ->setEndBlock('consolidado-ue'),
             /*
             RkNavigation::make('techodeptos')
                 ->setParentId('consola')

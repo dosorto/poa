@@ -167,6 +167,22 @@ return [
                 ->setItems([])
                 ->setEndBlock('grupo-gastos'),
 
+            RkRoute::make('objeto-gastos')
+                ->setParentId('auth_group')
+                ->setAccessPermission('acceso-configuracion')
+                ->setPermissions([
+                    'configuracion.objetogastos.ver',
+                    'configuracion.objetogastos.editar',
+                    'configuracion.objetogastos.crear',
+                    'configuracion.objetogastos.eliminar',
+                    'acceso-configuracion'
+                ])
+                ->setUrlMethod('get')
+                ->setUrlController('App\Livewire\GrupoGastos\ObjetoGastos')
+                ->setRoles(['super_admin', 'admin'])
+                ->setItems([])
+                ->setEndBlock('objeto-gastos'),
+
             RkRoute::make('instituciones')
                 ->setParentId('auth_group')
                 ->setAccessPermission('acceso-configuracion')
@@ -620,21 +636,38 @@ return [
 
                     RkRoute::make('consolidado')
                         ->setParentId('planificacion')
-                        ->setAccessPermission('acceso-planificacion')
+                        ->setAccessPermission('planificacion.consolidado.ver')
                         ->setPermissions([
                             'planificacion.consolidado.ver',
-                            'planificacion.consolidado.crear',
-                            'planificacion.consolidado.editar',
-                            'planificacion.consolidado.eliminar',
+                            'planificacion.consolidado.generar',
                             'acceso-planificacion',
                         ])
                         ->setUrlMethod('get')
-                        ->setUrlController('App\Livewire\Consolidado\Consolidado')
+                        ->setUrlController('App\Livewire\Consolidado\PlanificacionConsolidado')
                         ->setRoles(['super_admin', 'admin', 'direccion', 'planificador'])
                         ->setItems([])
                         ->setEndBlock('consolidado'),
                 ])
                 ->setEndBlock('planificacion'),
+
+            RkRoute::makeGroup('reportes')
+                ->setParentId('auth_group')
+                ->setItems([
+                    RkRoute::make('reportes-direccion')
+                        ->setParentId('reportes')
+                        ->setAccessPermission('reportes.direccion.ver')
+                        ->setPermissions([
+                            'acceso-reportes',
+                            'reportes.direccion.ver',
+                            'reportes.direccion.exportar',
+                        ])
+                        ->setUrlMethod('get')
+                        ->setUrlController('App\Livewire\Reportes\ReportesDireccion')
+                        ->setRoles(['super_admin', 'direccion', 'Dirección'])
+                        ->setItems([])
+                        ->setEndBlock('reportes-direccion'),
+                ])
+                ->setEndBlock('reportes'),
 
             RkRoute::makeGroup('consola')
                 ->setParentId('auth_group')
@@ -751,6 +784,20 @@ return [
                                 ->setEndBlock('analysis-techo-ue'),
                         ])
                         ->setEndBlock('asignacionnacionalpresupuestaria'),
+
+                    RkRoute::make('consolidado-ue')
+                        ->setParentId('consola')
+                        ->setAccessPermission('consola.consolidado.ver')
+                        ->setPermissions([
+                            'consola.consolidado.ver',
+                            'consola.consolidado.generar',
+                            'acceso-consola',
+                        ])
+                        ->setUrlMethod('get')
+                        ->setUrlController('App\Livewire\Consolidado\Consolidado')
+                        ->setRoles(['super_admin', 'direccion'])
+                        ->setItems([])
+                        ->setEndBlock('consolidado-ue'),
 
                     RkRoute::make('asignacionpresupuestaria')
                         ->setParentId('consola')

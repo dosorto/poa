@@ -2,12 +2,13 @@
 
 namespace App\Livewire\Cub;
 
+use App\Imports\CubsImport;
 use App\Models\Cubs\Cub;
-use App\Models\UnidadEjecutora\UnidadEjecutora;
 use Livewire\Component;
 use Livewire\Attributes\Layout;
 use Livewire\WithFileUploads;
 use Livewire\WithPagination;
+use Maatwebsite\Excel\Facades\Excel;
 
 #[Layout('layouts.app')]
 class Cubs extends Component
@@ -19,15 +20,13 @@ class Cubs extends Component
     public string $IDUNSPSC = '';
     public string $descripcion_esp = '';
     public string $descripcion_regional = '';
-    public int|string|null $idUE = null;
     public bool $isModalOpen = false;
     public bool $isImportModalOpen = false;
     public bool $showDeleteModal = false;
     public bool $showErrorModal = false;
     public string $errorMessage = '';
     public ?Cub $cubToDelete = null;
-    public $csvFile = null;
-    public int|string|null $importIdUE = null;
+    public $excelFile = null;
     public array $importErrors = [];
 
     public string $search = '';
@@ -45,7 +44,6 @@ class Cubs extends Component
         'IDUNSPSC' => 'required|max:50',
         'descripcion_esp' => 'required|max:1000',
         'descripcion_regional' => 'nullable|max:1000',
-        'idUE' => 'nullable|exists:unidad_ejecutora,id',
     ];
 
     protected $messages = [
@@ -54,7 +52,6 @@ class Cubs extends Component
         'descripcion_esp.required' => 'La descripción en español es obligatoria.',
         'descripcion_esp.max' => 'La descripción en español no puede exceder 1000 caracteres.',
         'descripcion_regional.max' => 'La descripción regional no puede exceder 1000 caracteres.',
-        'idUE.exists' => 'La unidad ejecutora seleccionada no existe.',
     ];
 
     public function updatingSearch(): void
@@ -78,7 +75,6 @@ class Cubs extends Component
         $this->IDUNSPSC = '';
         $this->descripcion_esp = '';
         $this->descripcion_regional = '';
-        $this->idUE = null;
         $this->resetValidation();
     }
 
@@ -102,7 +98,6 @@ class Cubs extends Component
             'IDUNSPSC' => $this->IDUNSPSC,
             'descripcion_esp' => $this->descripcion_esp,
             'descripcion_regional' => $this->descripcion_regional,
-            'idUE' => $this->idUE ?: null,
         ]);
 
         session()->flash('message', $this->cubId
@@ -121,7 +116,6 @@ class Cubs extends Component
         $this->IDUNSPSC = $cub->IDUNSPSC;
         $this->descripcion_esp = $cub->descripcion_esp;
         $this->descripcion_regional = $cub->descripcion_regional ?? '';
-        $this->idUE = $cub->idUE;
         $this->isModalOpen = true;
     }
 
@@ -160,25 +154,35 @@ class Cubs extends Component
 
     public function resetImportFields(): void
     {
-        $this->csvFile = null;
-        $this->importIdUE = null;
+        $this->excelFile = null;
         $this->importErrors = [];
-        $this->resetValidation(['csvFile', 'importIdUE']);
+        $this->resetValidation(['excelFile']);
     }
 
-    public function importCsv(): void
+    public function importExcel(): void
     {
+        @set_time_limit(300);
+
         $this->validate([
-            'csvFile' => 'required|file|mimes:csv,txt|max:5120',
-            'importIdUE' => 'required|exists:unidad_ejecutora,id',
+            'excelFile' => 'required|file|mimes:xlsx,xls|max:5120',
         ], [
-            'csvFile.required' => 'Debes seleccionar un archivo CSV.',
-            'csvFile.file' => 'El archivo seleccionado no es válido.',
-            'csvFile.mimes' => 'El archivo debe ser CSV.',
-            'csvFile.max' => 'El archivo no debe superar 5 MB.',
-            'importIdUE.required' => 'Debes seleccionar una unidad ejecutora.',
-            'importIdUE.exists' => 'La unidad ejecutora seleccionada no existe.',
+            'excelFile.required' => 'Debes seleccionar un archivo Excel.',
+            'excelFile.file' => 'El archivo seleccionado no es válido.',
+            'excelFile.mimes' => 'El archivo debe ser Excel (.xlsx o .xls).',
+            'excelFile.max' => 'El archivo no debe superar 5 MB.',
         ]);
+
+        $this->importErrors = [];
+        $import = new CubsImport();
+
+        Excel::import($import, $this->excelFile);
+
+        $this->importErrors = $import->importErrors;
+
+        $message = "Importación completada. Creados: {$import->created}. Actualizados: {$import->updated}. Omitidos: {$import->skipped}.";
+
+        /*
+        Código CSV anterior, conservado para reversa:
 
         $path = $this->csvFile->getRealPath();
         $handle = fopen($path, 'r');
@@ -238,7 +242,6 @@ class Cubs extends Component
 
             $cub = Cub::updateOrCreate([
                 'IDUNSPSC' => $IDUNSPSC,
-                'idUE' => $this->importIdUE,
             ], [
                 'descripcion_esp' => $descripcionEsp,
                 'descripcion_regional' => $descripcionRegional !== '' ? $descripcionRegional : $descripcionEsp,
@@ -250,6 +253,7 @@ class Cubs extends Component
         fclose($handle);
 
         $message = "Importación completada. Creados: {$created}. Actualizados: {$updated}. Omitidos: {$skipped}.";
+        */
 
         if (! empty($this->importErrors)) {
             session()->flash('error', $message . ' Revisa los errores en el modal.');
@@ -281,7 +285,6 @@ class Cubs extends Component
     public function render()
     {
         $cubs = Cub::query()
-            ->with(['unidadEjecutora'])
             ->when($this->search, function ($query) {
                 $s = '%' . $this->search . '%';
 
@@ -292,11 +295,8 @@ class Cubs extends Component
             ->orderBy($this->sortField, $this->sortDirection)
             ->paginate((int) $this->perPage);
 
-        $unidadesEjecutoras = UnidadEjecutora::orderBy('name')->get();
-
         return view('livewire.cub.cubs', [
             'cubs' => $cubs,
-            'unidadesEjecutoras' => $unidadesEjecutoras,
         ]);
     }
 }

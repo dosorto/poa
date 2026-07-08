@@ -34,8 +34,10 @@ class AdministrarRequisiciones extends Component
     public $showDetalleModal = false;
     public $detalleRecursos = [];
     public $detalleRequisicion = [];
+    public $detallePdf = [];
     public $observacionModal = '';
     public $requisicionSeleccionadaId;
+    public $showConfirmRechazoModal = false;
     public $showPdfModal = false;
     public $pdfUrl = '';
     public $pdfDownloadUrl = '';
@@ -84,14 +86,14 @@ class AdministrarRequisiciones extends Component
             return;
         }
 
-        if (now()->lt($plazo->fecha_inicio)) {
+        if (now()->lt($plazo->fecha_inicio->copy()->startOfDay())) {
             $this->puedeSeguimiento = false;
             $this->mensajePlazoSeguimiento = 'El plazo para esta acción aún no ha iniciado. Inicia el ' . $plazo->fecha_inicio->format('d/m/Y') . '.';
             $this->diasRestantes = null;
             return;
         }
 
-        if (now()->gt($plazo->fecha_fin)) {
+        if (now()->gt($plazo->fecha_fin->copy()->endOfDay())) {
             $this->puedeSeguimiento = false;
             $this->mensajePlazoSeguimiento = 'El plazo para esta acción ya pasó.';
             $this->diasRestantes = null;
@@ -128,7 +130,15 @@ class AdministrarRequisiciones extends Component
     public function verDetalleRequisicion($id)
     {
         $this->requisicionSeleccionadaId = $id;
-        $requisicion = Requisicion::with(['departamento', 'estado', 'creador', 'detalleRequisiciones.presupuesto'])
+        $requisicion = Requisicion::with([
+            'departamento',
+            'estado',
+            'creador.empleado',
+            'aprobadoPor.empleado',
+            'logs',
+            'detalleRequisiciones.poa',
+            'detalleRequisiciones.presupuesto.unidadMedida'
+        ])
             ->findOrFail($id);
 
         $recursos = [];
@@ -141,8 +151,11 @@ class AdministrarRequisiciones extends Component
                 'recurso' => $presupuesto->recurso ?? '-',
                 'detalle_tecnico' => $presupuesto->detalle_tecnico ?? '-',
                 'cantidad' => $detalle->cantidad ?? '-',
+                'unidad' => $presupuesto->unidadMedida->nombre ?? '-',
                 'precio_unitario' => $presupuesto->costounitario ?? 0,
                 'total' => $total,
+                'ref_poa' => $detalle->poa->correlativo ?? '',
+                'ref_acta' => $detalle->referenciaActaEntrega ?? '',
                 'idDetalleRequisicion' => $detalle->id,
             ];
         }
@@ -167,9 +180,49 @@ class AdministrarRequisiciones extends Component
             'tipo_proceso' => $this->obtenerTipoProcesoSugerido($monto_total),
         ];
         $this->detalleRecursos = $recursos;
+        $this->detallePdf = $this->prepararDatosVistaRequisicion($requisicion, $recursos, $monto_total);
         $this->showDetalleModal = true;
         $this->observacionModal = '';
         
+    }
+
+    private function prepararDatosVistaRequisicion(Requisicion $requisicion, array $recursos, float|int $montoTotal): array
+    {
+        $logRecibido = $requisicion->logs->first(function ($log) {
+            return stripos($log->log, 'recibido') !== false;
+        });
+
+        $fechaPresentado = $requisicion->fechaSolicitud ? \Carbon\Carbon::parse($requisicion->fechaSolicitud) : null;
+        $fechaRequerido = $requisicion->fechaRequerido ? \Carbon\Carbon::parse($requisicion->fechaRequerido) : null;
+
+        $recibidoNombre = 'No recibido';
+        if ($requisicion->aprobadoPor) {
+            $recibidoNombre = $requisicion->aprobadoPor->empleado
+                ? $requisicion->aprobadoPor->empleado->nombre . ' ' . $requisicion->aprobadoPor->empleado->apellido
+                : $requisicion->aprobadoPor->name;
+        }
+
+        return [
+            'estado' => $requisicion->estado->estado ?? '',
+            'departamento' => $requisicion->departamento->name ?? '',
+            'correlativo' => $requisicion->correlativo,
+            'jefe_departamento' => $requisicion->creador && $requisicion->creador->empleado
+                ? $requisicion->creador->empleado->nombre . ' ' . $requisicion->creador->empleado->apellido
+                : ($requisicion->creador->name ?? ''),
+            'proposito' => $requisicion->descripcion ?? '',
+            'fecha_presentado_dia' => $fechaPresentado ? $fechaPresentado->format('d') : '',
+            'fecha_presentado_mes' => $fechaPresentado ? $fechaPresentado->format('m') : '',
+            'fecha_presentado_anio' => $fechaPresentado ? $fechaPresentado->format('Y') : '',
+            'fecha_requerido_dia' => $fechaRequerido ? $fechaRequerido->format('d') : '',
+            'fecha_requerido_mes' => $fechaRequerido ? $fechaRequerido->format('m') : '',
+            'fecha_requerido_anio' => $fechaRequerido ? $fechaRequerido->format('Y') : '',
+            'recibido_nombre' => $recibidoNombre,
+            'recibido_fecha' => $logRecibido && $logRecibido->created_at ? $logRecibido->created_at->format('d/m/Y') : 'No recibido',
+            'recibido_hora' => $logRecibido && $logRecibido->created_at ? $logRecibido->created_at->format('H:i') : 'No recibido',
+            'recursos' => $recursos,
+            'monto_total' => $montoTotal,
+            'observaciones' => $requisicion->observacion ?? '',
+        ];
     }
 
     private function obtenerTipoProcesoSugerido($monto)
@@ -185,7 +238,7 @@ class AdministrarRequisiciones extends Component
     public function cerrarDetalleModal()
     {
         $this->showDetalleModal = false;
-        $this->reset(['requisicionSeleccionadaId', 'detalleRequisicion', 'detalleRecursos', 'observacionModal']);
+        $this->reset(['requisicionSeleccionadaId', 'detalleRequisicion', 'detalleRecursos', 'detallePdf', 'observacionModal', 'showConfirmRechazoModal']);
     }
 
     public function marcarComoRecibido()
@@ -219,6 +272,8 @@ class AdministrarRequisiciones extends Component
 
     public function marcarComoRechazado()
     {
+        $this->showConfirmRechazoModal = false;
+
         if (!isset($this->detalleRequisicion['correlativo'])) {
             session()->flash('error', 'No se encontró la requisición.');
             return;
@@ -245,6 +300,16 @@ class AdministrarRequisiciones extends Component
         $this->detalleRequisicion['estado'] = $estadoRechazado ? $estadoRechazado->estado : 'Rechazado';
         $this->cerrarDetalleModal();
         session()->flash('message', 'Requisición marcada como Rechazada.');
+    }
+
+    public function solicitarConfirmacionRechazo()
+    {
+        $this->showConfirmRechazoModal = true;
+    }
+
+    public function cancelarRechazo()
+    {
+        $this->showConfirmRechazoModal = false;
     }
 
     public function marcarComoAprobado()

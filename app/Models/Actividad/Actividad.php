@@ -14,6 +14,7 @@ use App\Models\Actividad\Revision;
 use App\Models\Actividad\MedioVerificacionActividad;
 use App\Models\Empleados\Empleado;
 use App\Models\Categoria\Categoria;
+use App\Models\User;
 
 class Actividad extends BaseModel
 {
@@ -106,6 +107,20 @@ class Actividad extends BaseModel
     public function tareas()
     {
         return $this->hasMany(\App\Models\Tareas\Tarea::class, 'idActividad');
+    }
+
+    public function creador()
+    {
+        return $this->belongsTo(User::class, 'created_by');
+    }
+
+    protected static function booted(): void
+    {
+        static::deleting(function (self $actividad) {
+            $actividad->tareas()->get()->each(function ($tarea) {
+                $tarea->delete();
+            });
+        });
     }
 
     /**

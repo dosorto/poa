@@ -5,7 +5,7 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="csrf-token" content="{{ csrf_token() }}">
 
-        <title>{{ config('app.name', 'POA') }}</title>
+        <title>@yield('title', config('app.name', 'POA'))</title>
 
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
@@ -19,7 +19,25 @@
     </head>
     <body>
         <div class="font-sans text-gray-900 antialiased">
-            {{ $slot }}
+            @isset($slot)
+                {{ $slot }}
+            @else
+                @hasSection('content')
+                    @yield('content')
+                @elseif(View::exists('errors.error') && trim($__env->yieldContent('code')) !== '')
+                    <div class="min-h-screen flex items-center justify-center px-4">
+                        <div class="max-w-xl w-full text-center">
+                            <h1 class="text-5xl font-bold text-zinc-900">@yield('code')</h1>
+                            <p class="mt-4 text-lg text-zinc-700">@yield('message')</p>
+                            <div class="mt-6">
+                                @yield('action-buttons')
+                            </div>
+                        </div>
+                    </div>
+                @else
+                    @yield('body')
+                @endif
+            @endisset
         </div>
 
         @livewireScripts

@@ -1,25 +1,28 @@
 <x-dialog-modal wire:model="showImportModal" maxWidth="lg">
     <x-slot name="title">
-        {{ __('Importar Recursos desde CSV') }}
+        {{ __('Importar Recursos desde Excel') }}
     </x-slot>
 
     <x-slot name="content">
         <div class="space-y-4">
             <div>
-                <x-label for="csvFile" :value="__('Archivo CSV')" />
+                <x-label for="excelFile" :value="__('Archivo Excel')" />
                 <input
-                    id="csvFile"
+                    id="excelFile"
                     type="file"
-                    wire:model="csvFile"
-                    accept=".csv,text/csv"
+                    wire:model="excelFile"
+                    accept=".xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel"
                     class="mt-1 block w-full text-sm text-zinc-700 dark:text-zinc-200 file:mr-4 file:rounded-md file:border-0 file:bg-indigo-50 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-indigo-700 hover:file:bg-indigo-100 dark:file:bg-zinc-800 dark:file:text-zinc-100"
                 />
-                <x-input-error for="csvFile" class="mt-2" />
+                <x-input-error for="excelFile" class="mt-2" />
             </div>
 
             <div class="rounded-md bg-zinc-50 p-3 text-sm text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
                 <p class="font-medium">{{ __('Formato requerido') }}</p>
                 <p class="mt-1 font-mono text-xs">nombre,idobjeto,idunidad,idProcesoCompra,idCubs</p>
+                <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">idobjeto debe contener el identificador del objeto de gasto, no el ID interno de la base de datos.</p>
+                <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">idProcesoCompra debe ser el ID de un proceso de compra existente.</p>
+                <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">idCubs debe contener el código IDUNSPSC, no el ID interno de la base de datos.</p>
             </div>
 
             @if (! empty($importErrors))
@@ -40,7 +43,7 @@
             {{ __('Cancelar') }}
         </x-spinner-secondary-button>
 
-        <x-spinner-button class="ml-3" type="button" wire:click="importCsv" loadingTarget="importCsv" loadingText="Importando...">
+        <x-spinner-button class="ml-3" type="button" wire:click="importExcel" loadingTarget="importExcel" loadingText="Importando...">
             {{ __('Importar') }}
         </x-spinner-button>
     </x-slot>

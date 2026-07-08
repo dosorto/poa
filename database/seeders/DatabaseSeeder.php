@@ -54,48 +54,24 @@ class DatabaseSeeder extends Seeder
         $this->call(UsuariosSeeder::class);
         $this->call(InstitucionSeeder::class);
         $this->call(UnidadEjecutoraSeeder::class);
-        $this->call(FuenteSeeder::class);
         $this->call(DepartamentoSeeder::class);
+        $this->call(EmpleadosSeeder::class);
+        $this->call(CatalogoDumpMergeSeeder::class);
+        $this->call(UsuariosSeeder::class);
+        $this->call(EmpleadoDeptoSeeder::class);
+        $this->call(FuenteSeeder::class);
+        $this->call(GrupoGastoSeeder::class);
+        $this->call(ObjetogastosSeeder::class);
+        $this->call(PeiDataSeeder::class);
+        $this->call(PeiSeeder::class);
         $this->call(TrimestresSeeder::class);
         $this->call(MesesSeeder::class);
         $this->call(TipoActividadSeeder::class);
         $this->call(UnidadMedidaSeeder::class);
         $this->call(CategoriasSeeder::class);
-        $this->call(CubSeeder::class);
-        $this->call(GrupoGastoSeeder::class);
-        $this->call(ObjetogastosSeeder::class);
-        $this->call(PeiDataSeeder::class);
-        $this->call(PeiSeeder::class);
-        $this->call(ProcesoCompraSeeder::class);
-        $this->call(RecursoSeeder::class);
-        $this->call(RecursoDetalleTecnicoSeeder::class);
-
-        
-        $this->call(TechoDeptoSeeder::class);
-        $this->call(TechoUesSeeder::class);
-        $this->call(PoasSeeder::class);
-        $this->call(PoaDeptoSeeder::class);
-        $this->call(EmpleadosSeeder::class);
-        $this->call(EmpleadoDeptoSeeder::class);
-        $this->call(ActividadesSeeder::class);
-        $this->call(IndicadoresSeeder::class);
-        $this->call(PlanificacionsSeeder::class);
-        $this->call(EmpleadoActividadsSeeder::class);
-        $this->call(TareasSeeder::class);
-        $this->call(PresupuestosSeeder::class);
-        $this->call(RevisionesSeeder::class);
-        $this->call(EstadoRequisicionLogsSeeder::class);
-        $this->call(RequisicionSeeder::class);
-        $this->call(DetalleRequisicionSeeder::class);
-        $this->call(EjecucionPresupuestariaSeeder::class);
-        $this->call(EjecucionPresupuestariaLogsSeeder::class);
-        $this->call(DetalleEjecucionPresupuestariaSeeder::class);
-        $this->call(OrdenCombustibleSeeder::class);
-        
-
-
-
-
-        
+        $this->call(RoleHasPermissionsSeeder::class);
+        $this->call(PlazosPermissionSeeder::class);
+        $this->call(ConsolidadoPermissionsSeeder::class);
+        $this->call(ReportesDireccionSeeder::class);
     }
 }

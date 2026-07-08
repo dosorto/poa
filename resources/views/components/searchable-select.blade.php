@@ -10,6 +10,8 @@
     'required'     => false,
     'disabled'     => false,
     'error'        => null,
+    'allowCustom'  => false,
+    'customText'   => 'Usar',
 ])
 
 @php
@@ -45,15 +47,19 @@
             loading: false,
             selected: $wire.get(@js($modelName)),
             selectedLabel: '{{ $defaultText }}',
+            customInput: '',
             modelName: @js($modelName),
             isLive: {{ $isLive ? 'true' : 'false' }},
             initialOptions: {{ $normalizedOptions }},
             options: {{ $normalizedOptions }},
             results: [],
             debounceTimer: null,
+            allowCustom: {{ $allowCustom ? 'true' : 'false' }},
+            customText: @js($customText),
 
             init() {
                 this.syncSelectedLabel();
+                this.customInput = this.selected ? this.selectedText : '';
 
                 if (this.isLive) {
                     this.fetchResults('');
@@ -64,6 +70,7 @@
                         this.options = this.initialOptions;
                         this.selected = $wire.get(this.modelName);
                         this.syncSelectedLabel();
+                        this.customInput = this.selected ? this.selectedText : '';
                     });
                 }
             },
@@ -80,7 +87,18 @@
                 let found = this.options.find(o => o.id == this.selected) || this.results.find(o => o.id == this.selected);
                 if (found) return found.text;
                 if (this.isLive && this.selectedLabel !== '{{ $defaultText }}') return this.selectedLabel;
+                if (this.allowCustom) return this.selectedLabel !== '{{ $defaultText }}' ? this.selectedLabel : this.selected;
                 return '{{ $defaultText }}';
+            },
+
+            get customSearchText() {
+                return String(this.search || '').trim();
+            },
+
+            get canUseCustomSearch() {
+                if (!this.allowCustom || this.customSearchText === '') return false;
+
+                return !this.displayOptions.some(o => String(o.text).toLowerCase() === this.customSearchText.toLowerCase());
             },
 
             normalizeResults(r) {
@@ -99,6 +117,7 @@
 
                 const found = this.options.find(o => o.id == this.selected) || this.results.find(o => o.id == this.selected);
                 if (found) this.selectedLabel = found.text;
+                if (!found && this.allowCustom) this.selectedLabel = this.selected;
             },
 
             fetchResults(q) {
@@ -129,14 +148,38 @@
             selectOption(id, text) {
                 this.selected = id;
                 this.selectedLabel = text;
+                this.customInput = text;
                 this.open = false;
                 this.search = '';
                 $wire.set(this.modelName, id);
             },
 
+            selectCustom(text = null) {
+                const value = String(text || this.customSearchText).trim();
+                if (!this.allowCustom || value === '') return;
+
+                this.selected = value;
+                this.selectedLabel = value;
+                this.customInput = value;
+                this.open = false;
+                this.search = '';
+                $wire.set(this.modelName, value);
+            },
+
+            typeCustom(value) {
+                this.customInput = value;
+                this.search = value;
+                this.selected = String(value || '');
+                this.selectedLabel = this.selected || '{{ $defaultText }}';
+                this.open = true;
+                $wire.set(this.modelName, this.selected);
+                this.doSearch(value);
+            },
+
             clearSelection() {
                 this.selected = null;
                 this.selectedLabel = '{{ $defaultText }}';
+                this.customInput = '';
                 this.search = '';
                 $wire.set(this.modelName, '');
             },
@@ -145,7 +188,31 @@
         class="relative"
     >
         {{-- Botón principal --}}
+        <div x-show="allowCustom" class="relative">
+            <input
+                x-model="customInput"
+                @input="typeCustom(customInput)"
+                @focus="if (!{{ $disabled ? 'true' : 'false' }}) { open = true; search = customInput; }"
+                @click="if (!{{ $disabled ? 'true' : 'false' }}) { open = true; search = customInput; }"
+                @keydown.escape="open = false"
+                type="text"
+                :disabled="{{ $disabled ? 'true' : 'false' }}"
+                {{ $attributes->whereStartsWith('wire:model') }}
+                class="w-full bg-white dark:bg-zinc-900 border rounded-md shadow-sm pl-3 pr-10 py-2 text-left focus:outline-none focus:ring-1 sm:text-sm
+                    {{ $error    ? 'border-red-500 focus:ring-red-500 focus:border-red-500'
+                                 : 'border-zinc-300 dark:border-zinc-700 focus:ring-indigo-500 focus:border-indigo-500' }}
+                    {{ $disabled ? 'opacity-50 cursor-not-allowed' : '' }}"
+                placeholder="{{ $defaultText }}"
+            />
+            <span class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+                <svg class="h-5 w-5 text-zinc-400" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+                    <path fill-rule="evenodd" d="M10 3a1 1 0 01.707.293l3 3a1 1 0 01-1.414 1.414L10 5.414 7.707 7.707a1 1 0 01-1.414-1.414l3-3A1 1 0 0110 3zm-3.707 9.293a1 1 0 011.414 0L10 14.586l2.293-2.293a1 1 0 011.414 1.414l-3 3a1 1 0 01-1.414 0l-3-3a1 1 0 010-1.414z" clip-rule="evenodd"/>
+                </svg>
+            </span>
+        </div>
+
         <button
+            x-show="!allowCustom"
             type="button"
             @click="if (!{{ $disabled ? 'true' : 'false' }}) { open = !open; if(open && isLive && results.length === 0 && search === '') fetchResults(''); }"
             :disabled="{{ $disabled ? 'true' : 'false' }}"
@@ -154,7 +221,7 @@
                              : 'border-zinc-300 dark:border-zinc-700 focus:ring-indigo-500 focus:border-indigo-500' }}
                 {{ $disabled ? 'opacity-50 cursor-not-allowed' : '' }}"
         >
-            <span class="block truncate" x-text="selectedText"
+            <span class="block truncate pr-2" x-text="selectedText"
                 :class="!selected ? 'text-zinc-400' : 'text-zinc-900 dark:text-zinc-300'">
             </span>
             <span class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
@@ -182,10 +249,11 @@
             style="display: none;"
         >
             {{-- Input de búsqueda --}}
-            <div class="sticky top-0 z-10 bg-white dark:bg-zinc-800 px-2 py-2 border-b border-zinc-200 dark:border-zinc-700">
+            <div x-show="!allowCustom" class="sticky top-0 z-10 bg-white dark:bg-zinc-800 px-2 py-2 border-b border-zinc-200 dark:border-zinc-700">
                 <input
                     x-model="search"
                     @input="doSearch(search)"
+                    @keydown.enter.prevent="selectCustom()"
                     type="text"
                     @click.stop
                     class="w-full px-3 py-2 border border-zinc-300 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-300 rounded-md focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
@@ -211,6 +279,19 @@
 
             {{-- Hint mínimo eliminado porque ahora cargamos opciones iniciales --}}
 
+            <div
+                x-show="!loading && canUseCustomSearch"
+                @mousedown.prevent="selectCustom()"
+                @touchstart.prevent="selectCustom()"
+                @click="selectCustom()"
+                class="cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-indigo-50 dark:hover:bg-indigo-900/20 text-zinc-900 dark:text-zinc-300"
+            >
+                <span class="block pr-8 leading-tight break-words max-h-10 overflow-hidden">
+                    <span x-text="customText"></span>
+                    "<span x-text="customSearchText"></span>"
+                </span>
+            </div>
+
             {{-- Lista de opciones --}}
             <template x-for="option in displayOptions" :key="option.id">
                 <div
@@ -222,7 +303,7 @@
                         ? 'bg-indigo-50 dark:bg-indigo-900/20 text-indigo-900 dark:text-indigo-100'
                         : 'text-zinc-900 dark:text-zinc-300'"
                 >
-                    <span class="block truncate" x-text="option.text"></span>
+                    <span class="block pr-8 leading-tight break-words max-h-10 overflow-hidden" x-text="option.text"></span>
                     <span x-show="selected == option.id"
                         class="absolute inset-y-0 right-0 flex items-center pr-4 text-indigo-600 dark:text-indigo-400">
                         <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">

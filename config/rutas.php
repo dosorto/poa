@@ -137,6 +137,22 @@ return [
                 'icono' => '',
                 'breadcrumb' => true
             ],
+            [
+                'titulo' => 'Recursos',
+                'route' => 'recursos',
+                'routes' => ['recursos'],
+                'permisos' => ['configuracion.recursos.ver'],
+                'icono' => '',
+                'breadcrumb' => true
+            ],
+            [
+                'titulo' => 'Objetos de gasto',
+                'route' => 'objeto-gastos',
+                'routes' => ['objeto-gastos'],
+                'permisos' => ['configuracion.objetogastos.ver'],
+                'icono' => '',
+                'breadcrumb' => true
+            ],
         ],
         'footer' => true
     ],
@@ -162,6 +178,14 @@ return [
                 'route' => 'asignacionpresupuestaria',
                 'routes' => ['asignacionpresupuestaria', 'techodeptos', 'techodeptos.detalle-estructura'],
                 'permisos' => ['consola.asignacionpresupuestaria.ver'],
+                'icono' => '',
+                'breadcrumb' => true
+            ],
+            [
+                'titulo' => 'Consolidado UE',
+                'route' => 'consolidado-ue',
+                'routes' => ['consolidado-ue'],
+                'permisos' => ['consola.consolidado.ver', 'consola.consolidado.generar'],
                 'icono' => '',
                 'breadcrumb' => true
             ],

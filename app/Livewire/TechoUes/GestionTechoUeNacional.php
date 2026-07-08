@@ -91,15 +91,22 @@ class GestionTechoUeNacional extends Component
             ->whereNull('idUE')
             ->where('monto', '>', 0)
             ->get()
-            ->map(function($techo) {
+            ->groupBy(function ($techo) {
+                return ($techo->fuente->identificador ?? '') . '|' . ($techo->fuente->nombre ?? '');
+            })
+            ->map(function ($techos) {
+                $techo = $techos->first();
+
                 return (object)[
                     'id' => $techo->idFuente,
+                    'identificador' => $techo->fuente->identificador ?? null,
                     'nombre' => $techo->fuente->nombre ?? 'Sin nombre',
                     'descripcion' => $techo->fuente->descripcion ?? 'Sin descripción',
-                    'disponible' => $techo->monto,  // Este es el monto total del techo global
-                    'total' => $techo->monto        // Agregamos total para claridad
+                    'disponible' => $techos->sum('monto'),
+                    'total' => $techos->sum('monto')
                 ];
-            });
+            })
+            ->values();
     }
     
     protected $rules = [
@@ -117,7 +124,8 @@ class GestionTechoUeNacional extends Component
         $this->idPoa = $idPoa ?? request()->get('idPoa') ?? request()->route('idPoa');
         
         if (!$this->idPoa) {
-            abort(404, 'POA no encontrado');
+            session()->flash('error', 'Seleccione un POA para gestionar sus techos presupuestarios.');
+            return redirect()->route('asignacionnacionalpresupuestaria');
         }
         
         $this->loadPoa();
@@ -236,13 +244,28 @@ class GestionTechoUeNacional extends Component
                 });
         }
 
+        $fuentes = \App\Models\GrupoGastos\Fuente::select('id', 'nombre', 'identificador')
+            ->orderBy('identificador')
+            ->get()
+            ->groupBy(fn($fuente) => ($fuente->identificador ?? '') . '|' . ($fuente->nombre ?? ''))
+            ->map(function ($grupo) {
+                $fuente = $grupo->first();
+
+                return (object) [
+                    'id' => $fuente->id,
+                    'nombre' => $fuente->nombre,
+                    'identificador' => $fuente->identificador,
+                ];
+            })
+            ->values();
+
         return view('livewire.techo-ues.gestion-techo-ue-nacional', [
             'techoUesConTecho' => $techoUesConTecho,
             'unidadesSinTecho' => $unidadesSinTecho,
             'resumenPorFuente' => $resumenPorFuente,
             'totalAsignado' => $totalAsignado,
-            'fuentes' => \App\Models\GrupoGastos\Fuente::orderBy('nombre')->get()
-                ]);
+            'fuentes' => $fuentes,
+        ]);
 
 
     }

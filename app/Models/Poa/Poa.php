@@ -6,6 +6,7 @@ use App\Models\UnidadEjecutora\UnidadEjecutora;
 use App\Models\Instituciones\Institucion;
 use App\Models\Poa\PoaDepto;
 use App\Models\TechoUes\TechoUe;
+use Carbon\Carbon;
 
 
 class Poa extends BaseModel
@@ -90,8 +91,8 @@ class Poa extends BaseModel
         return $this->plazos()
             ->where('tipo_plazo', $tipoPlazo)
             ->where('activo', true)
-            ->where('fecha_inicio', '<=', now())
-            ->where('fecha_fin', '>=', now())
+            ->whereDate('fecha_inicio', '<=', today())
+            ->whereDate('fecha_fin', '>=', today())
             ->exists();
     }
 
@@ -167,15 +168,17 @@ class Poa extends BaseModel
         }
 
         $hoy = now();
+        $fechaInicio = Carbon::parse($plazo->fecha_inicio)->startOfDay();
+        $fechaFin = Carbon::parse($plazo->fecha_fin)->endOfDay();
         
         // Plazo aún no ha iniciado
-        if ($hoy < $plazo->fecha_inicio) {
+        if ($hoy < $fechaInicio) {
             return 'El plazo para esta acción aún no ha iniciado. Inicia el ' . \Carbon\Carbon::parse($plazo->fecha_inicio)->format('d/m/Y') . '.';
         }
 
         // Plazo vencido
-        if ($hoy > $plazo->fecha_fin) {
-            $diasVencido = (int) \Carbon\Carbon::parse($plazo->fecha_fin)->diffInDays($hoy);
+        if ($hoy > $fechaFin) {
+            $diasVencido = (int) $fechaFin->diffInDays($hoy);
             $nombrePlazo = $plazo->nombre_plazo ?: $this->getNombreTipoPlazo($tipoPlazo);
             return 'El plazo de ' . $nombrePlazo . ' venció hace ' . $diasVencido . ($diasVencido == 1 ? ' día' : ' días') . ' (el ' . \Carbon\Carbon::parse($plazo->fecha_fin)->format('d/m/Y') . ').';
         }
@@ -225,7 +228,7 @@ class Poa extends BaseModel
         // Filtrar y priorizar plazos vigentes
         $plazoVigente = $plazos->filter(function($p) use ($hoy) {
             $inicio = \Carbon\Carbon::parse($p->fecha_inicio)->startOfDay();
-            $fin = \Carbon\Carbon::parse($p->fecha_fin)->startOfDay();
+            $fin = \Carbon\Carbon::parse($p->fecha_fin)->endOfDay();
             // Un plazo está vigente si hoy está entre inicio y fin
             return $hoy->between($inicio, $fin);
         })->sortByDesc(function($p) {
@@ -255,7 +258,7 @@ class Poa extends BaseModel
             return null;
         }
 
-        $fechaFin = \Carbon\Carbon::parse($plazoVigente->fecha_fin)->startOfDay();
+        $fechaFin = \Carbon\Carbon::parse($plazoVigente->fecha_fin)->endOfDay();
         $fechaInicio = \Carbon\Carbon::parse($plazoVigente->fecha_inicio)->startOfDay();
 
         // Si el plazo no ha iniciado, retornar días hasta el inicio (negativo)

@@ -265,9 +265,6 @@ class Requisicion extends Component
 
         unset($this->cantidadesInput[$recursoId], $this->erroresCantidad[$recursoId]);
         unset($this->ordenesCombustible[$recursoId]);
-
-        // Sincronizar con sesión
-        session(['recursosSeleccionados' => $this->recursosSeleccionados]);
     }
 
 
@@ -435,7 +432,6 @@ class Requisicion extends Component
             $this->recursosSeleccionados[$index] = array_merge($this->recursosSeleccionados[$index], $recurso);
         }
 
-        session(['recursosSeleccionados' => $this->recursosSeleccionados]);
         $this->cerrarModalCantidad();
     }
 
@@ -493,7 +489,6 @@ class Requisicion extends Component
         $this->presupuestosSeleccionados[$presupuestoId] = (int) $this->cantidadesInput[$presupuestoId];
         $this->actualizarSumario();
         $this->cerrarModalOrdenCombustibleActual();
-        session(['recursosSeleccionados' => $this->recursosSeleccionados]);
     }
 
     public function editarOrdenCombustible(int $presupuestoId)
@@ -533,7 +528,6 @@ class Requisicion extends Component
         $this->ordenesCombustible[$this->combustibleEnModal] = $this->ordenDesdeOrdenCombustibleData();
         $this->presupuestosSeleccionados[$this->combustibleEnModal] = (int) $this->cantidadesInput[$this->combustibleEnModal];
         $this->actualizarSumario();
-        session(['recursosSeleccionados' => $this->recursosSeleccionados]);
         $this->cerrarModalOrdenCombustibleActual();
     }
 
@@ -637,8 +631,6 @@ class Requisicion extends Component
             $this->recursosSeleccionados[$index]['cantidad_disponible'] = $disponible;
             break;
         }
-
-        session(['recursosSeleccionados' => $this->recursosSeleccionados]);
     }
 
     private function construirRecursoSeleccionado(Presupuesto $presupuesto, int $cantidad): array
@@ -1278,14 +1270,6 @@ class Requisicion extends Component
     {
         $this->cargarEmpleadosOrdenCombustible();
 
-        $recursosGuardados = session('recursosSeleccionados', []);
-        if (!empty($recursosGuardados)) {
-            $this->recursosSeleccionados = $recursosGuardados;
-            foreach ($recursosGuardados as $recurso) {
-                $this->presupuestosSeleccionados[$recurso['id']] = $recurso['cantidad_seleccionada'];
-            }
-        }
-
         $this->departamentoSeleccionado = session('departamentoSeleccionado');
         
         $userId = Auth::id();
@@ -1662,7 +1646,7 @@ class Requisicion extends Component
         }
 
         // Validar si el plazo aún no ha iniciado
-        if (now()->lt($plazo->fecha_inicio)) {
+        if (now()->lt($plazo->fecha_inicio->copy()->startOfDay())) {
             $this->puedeCrearRequisicion = false;
             $this->mensajePlazoRequisicion = 'El plazo para esta acción aún no ha iniciado. Inicia el ' . $plazo->fecha_inicio->format('d/m/Y') . '.';
             $this->diasRestantes = null;
@@ -1670,7 +1654,7 @@ class Requisicion extends Component
         }
 
         // Validar si el plazo ya pasó
-        if (now()->gt($plazo->fecha_fin)) {
+        if (now()->gt($plazo->fecha_fin->copy()->endOfDay())) {
             $this->puedeCrearRequisicion = false;
             $this->mensajePlazoRequisicion = 'El plazo para esta acción ya pasó.';
             $this->diasRestantes = null;

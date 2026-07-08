@@ -14,6 +14,10 @@ class Tarea extends BaseModel
 {
     protected $table = 'tareas';
 
+    protected $casts = [
+        'isPresupuesto' => 'boolean',
+    ];
+
     protected $fillable = [
         'nombre',
         'descripcion',
@@ -57,5 +61,14 @@ class Tarea extends BaseModel
     public function presupuestos()
     {
         return $this->hasMany(\App\Models\Presupuestos\Presupuesto::class, 'idtarea');
+    }
+
+    protected static function booted(): void
+    {
+        static::deleting(function (self $tarea) {
+            $tarea->presupuestos()->get()->each(function ($presupuesto) {
+                $presupuesto->delete();
+            });
+        });
     }
 }

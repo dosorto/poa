@@ -71,7 +71,7 @@ class Usuarios extends Component
         // Obtener usuarios paginados
         $users = $query->paginate($this->perPage ?? 10);
         
-        return view('livewire.Usuario.usuarios', [
+        return view('livewire.usuario.usuarios', [
             'users' => $users,
             'roles' => $this->roles,
             'empleadosIniciales' => $this->empleadosIniciales,

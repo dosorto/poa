@@ -5,6 +5,7 @@ namespace App\Livewire\Revision;
 use Livewire\Component;
 use App\Models\Actividad\Actividad;
 use App\Models\Actividad\Revision;
+use App\Services\ActividadCorreoService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
@@ -49,6 +50,7 @@ class ReviewActividadDetalle extends Component
         $this->actividad = Actividad::with([
             'indicadores.planificacions.mes.trimestre',
             'empleados',
+            'poa',
             'tareas.presupuestos.fuente',
             'tareas.presupuestos.objetoGasto',
             'tareas.presupuestos.grupoGasto',
@@ -294,11 +296,9 @@ class ReviewActividadDetalle extends Component
     {
         $this->validate([
             'tipoDictamen' => 'required|in:aceptar,rechazar',
-            'comentarioDictamen' => 'required|min:10|max:1000',
+            'comentarioDictamen' => 'nullable|max:1000',
         ], [
             'tipoDictamen.required' => 'Debe seleccionar aceptar o rechazar',
-            'comentarioDictamen.required' => 'El comentario es requerido',
-            'comentarioDictamen.min' => 'El comentario debe tener al menos 10 caracteres',
             'comentarioDictamen.max' => 'El comentario no puede exceder 1000 caracteres',
         ]);
 
@@ -307,11 +307,12 @@ class ReviewActividadDetalle extends Component
 
             // Determinar estado según dictamen
             $nuevoEstado = $this->tipoDictamen === 'aceptar' ? 'APROBADO' : 'RECHAZADO';
+            $comentarioDictamen = trim((string) $this->comentarioDictamen);
 
             // Crear revisión de dictamen
             Revision::create([
                 'idActividad' => $this->idActividad,
-                'revision' => $this->comentarioDictamen,
+                'revision' => $comentarioDictamen,
                 'tipo' => 'DICTAMEN',
                 'corregido' => true,
             ]);
@@ -320,6 +321,15 @@ class ReviewActividadDetalle extends Component
             $this->actividad->update(['estado' => $nuevoEstado]);
 
             DB::commit();
+
+            if ($usuarioDictamen = Auth::user()) {
+                app(ActividadCorreoService::class)->enviarDictamenAlCreador(
+                    $this->actividad->fresh(),
+                    $usuarioDictamen,
+                    $nuevoEstado,
+                    $comentarioDictamen !== '' ? $comentarioDictamen : null
+                );
+            }
 
             session()->flash('message', 'Dictamen emitido exitosamente');
             $this->comentarioDictamen = '';

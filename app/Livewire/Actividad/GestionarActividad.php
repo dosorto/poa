@@ -13,6 +13,7 @@ use App\Models\Mes\Trimestre;
 use App\Models\Presupuestos\Presupuesto;
 use App\Models\Cubs\Cub;
 use App\Models\Tareas\TareaHistorico;
+use App\Models\Tareas\RecursoDetalleTecnico;
 use App\Models\GrupoGastos\Fuente;
 use App\Models\GrupoGastos\ObjetoGasto;
 use App\Models\Requisicion\UnidadMedida;
@@ -63,6 +64,8 @@ class GestionarActividad extends Component
     // Paso 3: Empleados Encargados
     public $empleadosAsignados = [];
     public $empleadosDisponibles = [];
+    public $empleadosDisponiblesOptions = [];
+    public $empleadoDisponibleOption = null;
     public $nuevoEmpleado = [
         'idEmpleado' => '',
         'descripcion' => ''
@@ -97,6 +100,7 @@ class GestionarActividad extends Component
     public $presupuestoToDelete = null;
     public $showDeletePlanificacionModal = false;
     public $planificacionToDelete = null;
+    public $showConfirmRevisionModal = false;
     
     // Asignación de empleados a tareas
     public $tareaSeleccionada = null;
@@ -132,6 +136,8 @@ class GestionarActividad extends Component
         'total' => 0
     ];
     public $presupuestoEditandoId = null;
+    public $presupuestoEditandoTotalOriginal = 0;
+    public $presupuestoEditandoFuenteOriginal = null;
 
     // URL parameter
     #[\Livewire\Attributes\Url]
@@ -240,17 +246,18 @@ class GestionarActividad extends Component
             ->get()
             ->toArray();
         
-        // Empleados disponibles del departamento
+        // Empleados disponibles de toda la unidad, excluyendo los ya asignados
         $empleadosAsignadosIds = collect($this->empleadosAsignados)->pluck('id')->toArray();
         
-        $this->empleadosDisponibles = Empleado::whereHas('departamentos', function($query) {
-            $query->where('departamentos.id', $this->actividad->idDeptartamento);
-        })
-        ->whereNotIn('id', $empleadosAsignadosIds)
-        ->with('user')
-        ->orderBy('nombre')
-        ->get()
-        ->toArray();
+        $this->empleadosDisponibles = Empleado::query()
+            ->whereNotIn('id', $empleadosAsignadosIds)
+            ->with('user')
+            ->orderBy('nombre')
+            ->orderBy('apellido')
+            ->get()
+            ->toArray();
+
+        $this->refreshEmpleadosDisponiblesOptions();
     }
 
     public function loadTodasPlanificaciones()
@@ -883,6 +890,123 @@ class GestionarActividad extends Component
             'idEmpleado' => '',
             'descripcion' => ''
         ];
+        $this->empleadoDisponibleOption = null;
+        $this->refreshEmpleadosDisponiblesOptions();
+    }
+
+    private function refreshEmpleadosDisponiblesOptions(): void
+    {
+        $options = collect($this->empleadosDisponibles)->map(function ($empleado) {
+            $nombreCompleto = trim(($empleado['nombre'] ?? '') . ' ' . ($empleado['apellido'] ?? ''));
+            $numero = $empleado['num_empleado'] ?? null;
+            $correo = $empleado['user']['email'] ?? null;
+
+            $partes = array_filter([$nombreCompleto, $numero, $correo]);
+
+            return [
+                'id' => (string) ($empleado['id'] ?? ''),
+                'text' => implode(' - ', $partes),
+            ];
+        })->filter(fn ($option) => $option['id'] !== '');
+
+        if ($this->empleadoDisponibleOption) {
+            $selectedId = (string) $this->empleadoDisponibleOption['id'];
+
+            if (! $options->contains(fn ($option) => (string) $option['id'] === $selectedId)) {
+                $options->prepend([
+                    'id' => $selectedId,
+                    'text' => $this->empleadoDisponibleOption['text'],
+                ]);
+            }
+        }
+
+        $this->empleadosDisponiblesOptions = $options->values()->take(30)->toArray();
+    }
+
+    private function syncEmpleadoDisponibleOption($value): void
+    {
+        if ($value === '' || $value === null) {
+            $this->empleadoDisponibleOption = null;
+            $this->refreshEmpleadosDisponiblesOptions();
+            return;
+        }
+
+        $empleado = Empleado::query()
+            ->with('user')
+            ->find((int) $value);
+
+        if (! $empleado) {
+            $this->empleadoDisponibleOption = null;
+            $this->refreshEmpleadosDisponiblesOptions();
+            return;
+        }
+
+        $partes = array_filter([
+            trim($empleado->nombre . ' ' . $empleado->apellido),
+            $empleado->num_empleado,
+            optional($empleado->user)->email,
+        ]);
+
+        $this->empleadoDisponibleOption = [
+            'id' => (string) $empleado->id,
+            'text' => implode(' - ', $partes),
+        ];
+
+        $this->refreshEmpleadosDisponiblesOptions();
+    }
+
+    public function updatedNuevoEmpleadoIdEmpleado($value): void
+    {
+        $this->syncEmpleadoDisponibleOption($value);
+    }
+
+    public function searchEmpleadosDisponibles($search = '')
+    {
+        $empleadosAsignadosIds = collect($this->empleadosAsignados)->pluck('id')->toArray();
+
+        $results = Empleado::query()
+            ->with('user')
+            ->whereNotIn('id', $empleadosAsignadosIds)
+            ->when($search, function ($query) use ($search) {
+                $query->where(function ($q) use ($search) {
+                    $q->where('nombre', 'like', '%' . $search . '%')
+                        ->orWhere('apellido', 'like', '%' . $search . '%')
+                        ->orWhere('num_empleado', 'like', '%' . $search . '%')
+                        ->orWhereHas('user', function ($userQuery) use ($search) {
+                            $userQuery->where('email', 'like', '%' . $search . '%');
+                        });
+                });
+            })
+            ->orderBy('nombre')
+            ->orderBy('apellido')
+            ->limit(30)
+            ->get()
+            ->map(function ($empleado) {
+                $partes = array_filter([
+                    trim($empleado->nombre . ' ' . $empleado->apellido),
+                    $empleado->num_empleado,
+                    optional($empleado->user)->email,
+                ]);
+
+                return [
+                    'id' => (string) $empleado->id,
+                    'text' => implode(' - ', $partes),
+                ];
+            })
+            ->toArray();
+
+        if ($this->empleadoDisponibleOption) {
+            $selectedId = (string) $this->empleadoDisponibleOption['id'];
+
+            if (! collect($results)->contains(fn ($option) => (string) $option['id'] === $selectedId)) {
+                array_unshift($results, [
+                    'id' => $selectedId,
+                    'text' => $this->empleadoDisponibleOption['text'],
+                ]);
+            }
+        }
+
+        return $results;
     }
 
     // ============= PASO 4: TAREAS =============
@@ -916,7 +1040,7 @@ class GestionarActividad extends Component
                     'nombre' => $this->nuevaTarea['nombre'],
                     'descripcion' => $this->nuevaTarea['descripcion'],
                     'estado' => $this->nuevaTarea['estado'],
-                    'isPresupuesto' => $this->nuevaTarea['isPresupuesto'],
+                    'isPresupuesto' => (bool) ($this->nuevaTarea['isPresupuesto'] ?? false),
                     'updated_by' => Auth::id()
                 ]);
                 $mensaje = 'Tarea actualizada exitosamente';
@@ -936,7 +1060,7 @@ class GestionarActividad extends Component
                     'descripcion' => $this->nuevaTarea['descripcion'],
                     'correlativo' => str_pad($correlativo, 3, '0', STR_PAD_LEFT),
                     'estado' => $this->nuevaTarea['estado'],
-                    'isPresupuesto' => $this->nuevaTarea['isPresupuesto'],
+                    'isPresupuesto' => (bool) ($this->nuevaTarea['isPresupuesto'] ?? false),
                     'idActividad' => $this->actividadId,
                     'idPoa' => $this->actividad->idPoa,
                     'idDeptartamento' => $this->actividad->idDeptartamento,
@@ -968,7 +1092,7 @@ class GestionarActividad extends Component
             'nombre' => $tarea->nombre,
             'descripcion' => $tarea->descripcion,
             'estado' => $tarea->estado,
-            'isPresupuesto' => $tarea->isPresupuesto
+            'isPresupuesto' => (bool) $tarea->isPresupuesto
         ];
         
         $this->showTareaModal = true;
@@ -1211,6 +1335,9 @@ class GestionarActividad extends Component
                 // Obtener todas las tareas del departamento en este POA
                 $tareasDepartamento = Tarea::where('idDeptartamento', $idDepartamento)
                     ->where('idPoa', $idPoa)
+                    ->whereHas('actividad', function ($query) use ($idPoa) {
+                        $query->where('idPoa', $idPoa);
+                    })
                     ->pluck('id')
                     ->toArray();
                 
@@ -1453,11 +1580,30 @@ class GestionarActividad extends Component
 
         $this->syncRecursoPresupuestoOption($this->nuevoPresupuesto['idRecurso']);
         $this->nuevoPresupuesto['detalle_tecnico'] = '';
+        $this->syncUnidadMedidaFromRecurso($this->nuevoPresupuesto['idRecurso']);
         $this->loadDetallesTecnicosPorRecurso($this->nuevoPresupuesto['idRecurso']);
+    }
+
+    private function syncUnidadMedidaFromRecurso($recursoId): void
+    {
+        if (empty($recursoId)) {
+            $this->nuevoPresupuesto['idunidad'] = '';
+            return;
+        }
+
+        $recurso = TareaHistorico::query()
+            ->select('id', 'idunidad')
+            ->find((int) $recursoId);
+
+        $this->nuevoPresupuesto['idunidad'] = $recurso?->idunidad
+            ? (string) $recurso->idunidad
+            : '';
     }
 
     public function updatedNuevoPresupuestoIdfuente($value)
     {
+        $this->clearPresupuestoBudgetError();
+
         // Cuando cambia la fuente, recalcular el presupuesto disponible
         if ($this->tareaSeleccionada) {
             $tarea = Tarea::find($this->tareaSeleccionada);
@@ -1480,6 +1626,38 @@ class GestionarActividad extends Component
         $costounitario = floatval($this->nuevoPresupuesto['costounitario'] ?? 0);
         $cantidad = floatval($this->nuevoPresupuesto['cantidad'] ?? 0);
         $this->nuevoPresupuesto['total'] = $costounitario * $cantidad;
+        $this->clearPresupuestoBudgetError();
+    }
+
+    private function clearPresupuestoBudgetError(): void
+    {
+        $this->resetErrorBag('nuevoPresupuesto.total');
+    }
+
+    public function getPresupuestoDisponibleParaFormulario(): float
+    {
+        $presupuestoDisponible = (float) ($this->presupuestoTechoInfo['presupuestoDisponible'] ?? 0);
+
+        if (
+            $this->presupuestoEditandoId
+            && (string) $this->presupuestoEditandoFuenteOriginal === (string) ($this->nuevoPresupuesto['idfuente'] ?? '')
+        ) {
+            $presupuestoDisponible += (float) $this->presupuestoEditandoTotalOriginal;
+        }
+
+        return $presupuestoDisponible;
+    }
+
+    private function addPresupuestoInsuficienteError(float $disponible, float $solicitado): void
+    {
+        $this->addError(
+            'nuevoPresupuesto.total',
+            'Presupuesto insuficiente. Disponible: L '
+            . number_format($disponible, 2)
+            . '. Solicitado: L '
+            . number_format($solicitado, 2)
+            . '.'
+        );
     }
 
     private function loadDetallesTecnicosPorRecurso($recursoId)
@@ -1501,10 +1679,41 @@ class GestionarActividad extends Component
             ->toArray();
     }
 
+    private function guardarDetalleTecnicoDelRecurso($recursoId, $detalleTecnico): void
+    {
+        $detalleTecnico = trim((string) $detalleTecnico);
+
+        if (empty($recursoId) || $detalleTecnico === '') {
+            return;
+        }
+
+        $detalleExistente = RecursoDetalleTecnico::query()
+            ->where('id_tareas_historicos', $recursoId)
+            ->whereRaw('LOWER(nombre) = ?', [strtolower($detalleTecnico)])
+            ->first();
+
+        if ($detalleExistente) {
+            if (!$detalleExistente->estado) {
+                $detalleExistente->update(['estado' => true]);
+            }
+
+            return;
+        }
+
+        RecursoDetalleTecnico::create([
+            'id_tareas_historicos' => $recursoId,
+            'nombre' => $detalleTecnico,
+            'estado' => true,
+        ]);
+    }
+
     public function savePresupuesto()
     {
         // Verificar permisos basados en la tarea seleccionada
         $this->verificarPuedeEditarTarea($this->tareaSeleccionada);
+        $this->clearPresupuestoBudgetError();
+        $this->syncUnidadMedidaFromRecurso($this->nuevoPresupuesto['idRecurso'] ?? '');
+        $this->nuevoPresupuesto['detalle_tecnico'] = trim((string) ($this->nuevoPresupuesto['detalle_tecnico'] ?? ''));
         
         $this->validate([
             'nuevoPresupuesto.idRecurso' => 'required|exists:tareas_historicos,id',
@@ -1528,12 +1737,12 @@ class GestionarActividad extends Component
             
             // Obtener el recurso seleccionado para obtener los datos del objeto de gasto
             $recurso = TareaHistorico::with('objeto')->findOrFail($this->nuevoPresupuesto['idRecurso']);
+            $this->guardarDetalleTecnicoDelRecurso($recurso->id, $this->nuevoPresupuesto['detalle_tecnico']);
             
             // Obtener idgrupo del objeto de gasto
             $idgrupo = null;
             if ($recurso->idobjeto) {
-                $objetoGasto = ObjetoGasto::find($recurso->idobjeto);
-                $idgrupo = $objetoGasto?->idgrupo;
+                $idgrupo = $recurso->objeto?->idgrupo;
             }
             
             // Obtener la tarea y el departamento
@@ -1549,7 +1758,9 @@ class GestionarActividad extends Component
                 ->toArray();
             
             if (empty($techoUesIds)) {
-                session()->flash('message', 'No hay techo presupuestario para la fuente de financiamiento seleccionada en este POA');
+                session()->flash('error', 'No hay techo presupuestario para la fuente de financiamiento seleccionada en este POA.');
+                DB::rollBack();
+                return;
             }
             
             // Obtener el techo del departamento para esta fuente en este POA
@@ -1559,12 +1770,17 @@ class GestionarActividad extends Component
                 ->sum('monto');
             
             if ($techosTotalDisponible <= 0) {
-                session()->flash('message', 'No hay techo presupuestario disponible para el departamento y fuente de financiamiento seleccionada en este POA');
+                session()->flash('error', 'No hay techo presupuestario disponible para el departamento y fuente de financiamiento seleccionada en este POA.');
+                DB::rollBack();
+                return;
             }
             
             // Obtener todas las tareas del departamento en este POA
             $todasLasTareas = Tarea::where('idDeptartamento', $idDepartamento)
                 ->where('idPoa', $idPoa)
+                ->whereHas('actividad', function ($query) use ($idPoa) {
+                    $query->where('idPoa', $idPoa);
+                })
                 ->pluck('id')
                 ->toArray();
             
@@ -1577,34 +1793,48 @@ class GestionarActividad extends Component
             // Calcular disponible = techo del departamento - presupuesto ya asignado a todas las tareas
             $presupuestoDisponible = $techosTotalDisponible - $presupuestoYaAsignado;
             
-            // Verificar que el presupuesto disponible sea mayor a 0
-            if ($presupuestoDisponible <= 0) {
-                session()->flash('message', 'No hay presupuesto disponible para esta fuente. Todo el techo ha sido asignado.');
-            }
-            
-            // Verificar que haya suficiente presupuesto disponible para el monto solicitado
             $presupuestoTotal = $this->nuevoPresupuesto['total'];
-            if ($presupuestoTotal > $presupuestoDisponible) {
-                session()->flash('message', 'Presupuesto insuficiente. Disponible: L ' . number_format($presupuestoDisponible, 2) . ', Solicitado: L ' . number_format($presupuestoTotal, 2));
+            $presupuestoDisponibleParaGuardar = $presupuestoDisponible;
 
+            if ($this->presupuestoEditandoId) {
+                $presupuestoExistente = Presupuesto::findOrFail($this->presupuestoEditandoId);
+
+                if ((int) $presupuestoExistente->idfuente === (int) $idFuente) {
+                    $presupuestoDisponibleParaGuardar += (float) $presupuestoExistente->total;
+                }
             }
-            
+
+            if ($presupuestoDisponibleParaGuardar <= 0 && $presupuestoTotal > 0) {
+                if ($this->presupuestoEditandoId) {
+                    $this->addPresupuestoInsuficienteError($presupuestoDisponibleParaGuardar, $presupuestoTotal);
+                } else {
+                    session()->flash('error', 'No hay presupuesto disponible para esta fuente. Todo el techo ha sido asignado.');
+                }
+                DB::rollBack();
+                return;
+            }
+
+            if ($presupuestoTotal > $presupuestoDisponibleParaGuardar) {
+                if ($this->presupuestoEditandoId) {
+                    $this->addPresupuestoInsuficienteError($presupuestoDisponibleParaGuardar, $presupuestoTotal);
+                } else {
+                    session()->flash(
+                        'error',
+                        'Presupuesto insuficiente. Disponible: L '
+                        . number_format($presupuestoDisponibleParaGuardar, 2)
+                        . ', Solicitado: L '
+                        . number_format($presupuestoTotal, 2)
+                    );
+                }
+                DB::rollBack();
+                return;
+            }
+
             // Crear o actualizar el presupuesto
             if ($this->presupuestoEditandoId) {
                 // Modo edición - Actualizar presupuesto existente
-                $presupuestoExistente = Presupuesto::findOrFail($this->presupuestoEditandoId);
-                
-                // Calcular el presupuesto disponible sin contar el presupuesto actual
-                $presupuestoYaAsignadoSinActual = $presupuestoYaAsignado - $presupuestoExistente->total;
-                $presupuestoDisponibleConActual = $techosTotalDisponible - $presupuestoYaAsignadoSinActual;
-                
-                // Verificar que haya suficiente presupuesto disponible
-                if ($presupuestoTotal > $presupuestoDisponibleConActual) {
-                    session()->flash('error', 'Presupuesto insuficiente. Disponible: L ' . number_format($presupuestoDisponibleConActual, 2) . ', Solicitado: L ' . number_format($presupuestoTotal, 2));
-                    DB::rollBack();
-                    return;
-                }
-                
+                $presupuestoExistente = $presupuestoExistente ?? Presupuesto::findOrFail($this->presupuestoEditandoId);
+
                 $presupuestoExistente->update([
                     'cantidad' => $this->nuevoPresupuesto['cantidad'],
                     'costounitario' => $this->nuevoPresupuesto['costounitario'],
@@ -1723,9 +1953,12 @@ class GestionarActividad extends Component
             'total' => 0
         ];
         $this->presupuestoEditandoId = null;
+        $this->presupuestoEditandoTotalOriginal = 0;
+        $this->presupuestoEditandoFuenteOriginal = null;
         $this->recursoPresupuestoOption = null;
         $this->refreshRecursosPresupuestoOptions();
         $this->detallesTecnicosPorRecurso = [];
+        $this->clearPresupuestoBudgetError();
     }
 
     public function editPresupuesto($presupuestoId)
@@ -1749,14 +1982,16 @@ class GestionarActividad extends Component
         $this->loadDetallesTecnicosPorRecurso($recurso?->id);
         
         $this->presupuestoEditandoId = $presupuestoId;
+        $this->presupuestoEditandoTotalOriginal = (float) $presupuesto->total;
+        $this->presupuestoEditandoFuenteOriginal = (string) $presupuesto->idfuente;
         $this->nuevoPresupuesto = [
             'idRecurso' => $recurso ? (string) $recurso->id : '',
             'detalle_tecnico' => $presupuesto->detalle_tecnico,
-            'idfuente' => $presupuesto->idfuente,
-            'idunidad' => $presupuesto->idunidad,
+            'idfuente' => (string) $presupuesto->idfuente,
+            'idunidad' => (string) $presupuesto->idunidad,
             'costounitario' => $presupuesto->costounitario,
             'cantidad' => $presupuesto->cantidad,
-            'idMes' => $presupuesto->idMes,
+            'idMes' => (string) $presupuesto->idMes,
             'total' => $presupuesto->total
         ];
         $this->syncRecursoPresupuestoOption($this->nuevoPresupuesto['idRecurso']);
@@ -1808,6 +2043,27 @@ class GestionarActividad extends Component
             'idPoa' => $this->actividad->idPoa,
             'departamento' => $this->actividad->idDeptartamento
         ])->with('message', 'Gestión de actividad completada exitosamente');
+    }
+
+    public function abrirConfirmacionRevision()
+    {
+        if (!$this->actividadEnFormulacion) {
+            return;
+        }
+
+        $this->showConfirmRevisionModal = true;
+    }
+
+    public function cerrarConfirmacionRevision()
+    {
+        $this->showConfirmRevisionModal = false;
+    }
+
+    public function confirmarEnvioRevision()
+    {
+        $this->showConfirmRevisionModal = false;
+
+        return $this->enviarARevision();
     }
 
     public function enviarARevision()

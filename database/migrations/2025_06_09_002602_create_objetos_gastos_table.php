@@ -13,7 +13,7 @@ return new class extends Migration {
                 $table->id();
                 $table->string('nombre');
                 $table->longText('descripcion');
-                $table->string('identificador');
+                $table->string('identificador')->index();
 
                 $table->foreignId('idgrupo')->constrained('grupogastos');
 
@@ -31,4 +31,3 @@ return new class extends Migration {
         Schema::dropIfExists('objetogastos');
     }
 };
-
