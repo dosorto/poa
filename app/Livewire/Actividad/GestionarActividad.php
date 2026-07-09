@@ -1600,6 +1600,34 @@ class GestionarActividad extends Component
             : '';
     }
 
+    private function resolveSelectedRecurso(): TareaHistorico
+    {
+        $selectedId = (int) ($this->nuevoPresupuesto['idRecurso'] ?? 0);
+        $selectedText = trim((string) ($this->recursoPresupuestoOption['text'] ?? ''));
+
+        $recursoById = $selectedId > 0
+            ? TareaHistorico::with('objeto')->find($selectedId)
+            : null;
+
+        if ($selectedText !== '') {
+            $recursoByName = TareaHistorico::with('objeto')
+                ->where('nombre', $selectedText)
+                ->first();
+
+            if ($recursoByName && (! $recursoById || (int) $recursoById->id !== (int) $recursoByName->id)) {
+                $this->nuevoPresupuesto['idRecurso'] = (string) $recursoByName->id;
+                $this->syncRecursoPresupuestoOption($this->nuevoPresupuesto['idRecurso']);
+                return $recursoByName;
+            }
+        }
+
+        if ($recursoById) {
+            return $recursoById;
+        }
+
+        throw new \RuntimeException('No se pudo resolver el recurso seleccionado.');
+    }
+
     public function updatedNuevoPresupuestoIdfuente($value)
     {
         $this->clearPresupuestoBudgetError();
@@ -1717,7 +1745,7 @@ class GestionarActividad extends Component
         
         $this->validate([
             'nuevoPresupuesto.idRecurso' => 'required|exists:tareas_historicos,id',
-            'nuevoPresupuesto.detalle_tecnico' => 'nullable|string',
+            'nuevoPresupuesto.detalle_tecnico' => 'nullable|string|max:60000',
             'nuevoPresupuesto.idfuente' => 'required|exists:fuente,id',
             'nuevoPresupuesto.idunidad' => 'required|exists:unidadmedidas,id',
             'nuevoPresupuesto.costounitario' => 'required|numeric|min:0',
@@ -1725,6 +1753,7 @@ class GestionarActividad extends Component
             'nuevoPresupuesto.idMes' => 'required|exists:mes,id'
         ], [
             'nuevoPresupuesto.idRecurso.required' => 'Debe seleccionar un recurso',
+            'nuevoPresupuesto.detalle_tecnico.max' => 'El detalle técnico es demasiado largo.',
             'nuevoPresupuesto.idfuente.required' => 'Debe seleccionar una fuente de financiamiento',
             'nuevoPresupuesto.idunidad.required' => 'Debe seleccionar una unidad de medida',
             'nuevoPresupuesto.costounitario.required' => 'El costo unitario es obligatorio',
@@ -1736,7 +1765,7 @@ class GestionarActividad extends Component
             DB::beginTransaction();
             
             // Obtener el recurso seleccionado para obtener los datos del objeto de gasto
-            $recurso = TareaHistorico::with('objeto')->findOrFail($this->nuevoPresupuesto['idRecurso']);
+            $recurso = $this->resolveSelectedRecurso();
             $this->guardarDetalleTecnicoDelRecurso($recurso->id, $this->nuevoPresupuesto['detalle_tecnico']);
             
             // Obtener idgrupo del objeto de gasto
@@ -1841,6 +1870,7 @@ class GestionarActividad extends Component
                     'total' => $this->nuevoPresupuesto['total'],
                     'detalle_tecnico' => $this->nuevoPresupuesto['detalle_tecnico'],
                     'recurso' => $recurso->nombre,
+                    'idHistorico' => $recurso->id,
                     'idgrupo' => $idgrupo ?? 1,
                     'idobjeto' => $recurso->idobjeto,
                     'idfuente' => $this->nuevoPresupuesto['idfuente'],
@@ -1857,6 +1887,7 @@ class GestionarActividad extends Component
                     'total' => $this->nuevoPresupuesto['total'],
                     'detalle_tecnico' => $this->nuevoPresupuesto['detalle_tecnico'],
                     'recurso' => $recurso->nombre,
+                    'idHistorico' => $recurso->id,
                     'idgrupo' => $idgrupo ?? 1,
                     'idobjeto' => $recurso->idobjeto,
                     'idtarea' => $this->tareaSeleccionada,
@@ -1973,8 +2004,16 @@ class GestionarActividad extends Component
         // Verificar permisos
         $this->verificarPuedeEditarTarea($presupuesto->idtarea);
         
-        // Buscar el recurso por nombre en tareas_historicos
-        $recurso = TareaHistorico::where('nombre', $presupuesto->recurso)->first();
+        $recurso = null;
+
+        if (! empty($presupuesto->idHistorico)) {
+            $recurso = TareaHistorico::find($presupuesto->idHistorico);
+        }
+
+        if (! $recurso || ($presupuesto->recurso && trim((string) $recurso->nombre) !== trim((string) $presupuesto->recurso))) {
+            $recurso = TareaHistorico::where('nombre', $presupuesto->recurso)->first();
+        }
+
         $this->recursosDisponibles = $recurso ? [[
             'id' => $recurso->id,
             'nombre' => $recurso->nombre,

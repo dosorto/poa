@@ -24,6 +24,8 @@ class ReviewActividadDetalle extends Component
     public $activeTab = 'informacion';
     public $showTareaModal = false;
     public $tareaSeleccionada = null;
+    public $showConfirmRevisionModal = false;
+    public $showConfirmDictamenModal = false;
     
     // Modales de comentarios
     public $showComentarioModal = false;
@@ -285,11 +287,30 @@ class ReviewActividadDetalle extends Component
             session()->flash('message', 'Actividad enviada a reformulación exitosamente');
             $this->comentarioRevision = '';
             $this->showFormRevision = false;
+            $this->showConfirmRevisionModal = false;
             $this->cargarActividad();
         } catch (\Exception $e) {
             DB::rollBack();
             session()->flash('error', 'Error: ' . $e->getMessage());
         }
+    }
+
+    public function abrirConfirmacionRevision()
+    {
+        $this->validate([
+            'comentarioRevision' => 'required|min:10|max:1000',
+        ], [
+            'comentarioRevision.required' => 'El comentario es requerido',
+            'comentarioRevision.min' => 'El comentario debe tener al menos 10 caracteres',
+            'comentarioRevision.max' => 'El comentario no puede exceder 1000 caracteres',
+        ]);
+
+        $this->showConfirmRevisionModal = true;
+    }
+
+    public function cerrarConfirmacionRevision()
+    {
+        $this->showConfirmRevisionModal = false;
     }
 
     public function emitirDictamen()
@@ -335,11 +356,30 @@ class ReviewActividadDetalle extends Component
             $this->comentarioDictamen = '';
             $this->tipoDictamen = '';
             $this->showFormDictamen = false;
+            $this->showConfirmDictamenModal = false;
             $this->cargarActividad();
         } catch (\Exception $e) {
             DB::rollBack();
             session()->flash('error', 'Error: ' . $e->getMessage());
         }
+    }
+
+    public function abrirConfirmacionDictamen()
+    {
+        $this->validate([
+            'tipoDictamen' => 'required|in:aceptar,rechazar',
+            'comentarioDictamen' => 'nullable|max:1000',
+        ], [
+            'tipoDictamen.required' => 'Debe seleccionar aceptar o rechazar',
+            'comentarioDictamen.max' => 'El comentario no puede exceder 1000 caracteres',
+        ]);
+
+        $this->showConfirmDictamenModal = true;
+    }
+
+    public function cerrarConfirmacionDictamen()
+    {
+        $this->showConfirmDictamenModal = false;
     }
 
     public function render()

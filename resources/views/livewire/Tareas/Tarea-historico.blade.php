@@ -64,6 +64,23 @@
                 </div>
             </div>
 
+            <div class="mb-6 border-b border-zinc-200 dark:border-zinc-700">
+                <nav class="-mb-px flex flex-wrap gap-2" aria-label="Tabs de recursos">
+                    @foreach($tabs as $tabKey => $tab)
+                        <button
+                            type="button"
+                            wire:click="$set('activeTab', '{{ $tabKey }}')"
+                            class="inline-flex items-center gap-2 rounded-t-xl border-b-2 px-4 py-3 text-sm font-medium transition-colors {{ $activeTab === $tabKey ? 'border-indigo-500 text-indigo-600 dark:text-indigo-400' : 'border-transparent text-zinc-500 hover:border-zinc-300 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-300' }}"
+                        >
+                            <span>{{ $tab['label'] }}</span>
+                            <span class="inline-flex min-w-[1.75rem] items-center justify-center rounded-full bg-zinc-100 px-2 py-0.5 text-xs font-semibold text-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 {{ $activeTab === $tabKey ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/40 dark:text-indigo-300' : '' }}">
+                                {{ $tab['count'] }}
+                            </span>
+                        </button>
+                    @endforeach
+                </nav>
+            </div>
+
             <x-table
                 sort-field="{{ $sortField }}"
                 sort-direction="{{ $sortDirection }}"

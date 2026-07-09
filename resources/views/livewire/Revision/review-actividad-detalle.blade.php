@@ -891,8 +891,10 @@
                                             @enderror
 
                                             <div class="mt-4 flex gap-2">
-                                                <button wire:click="enviarParaReformulacion"
-                                                    class="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg font-medium cursor-pointer">
+                                                <button wire:click="abrirConfirmacionRevision"
+                                                    wire:loading.attr="disabled"
+                                                    wire:target="abrirConfirmacionRevision"
+                                                    class="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg font-medium cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed">
                                                     Enviar a Reformular
                                                 </button>
                                                 <button wire:click="$set('showFormRevision', false)"
@@ -938,8 +940,10 @@
                                         </div>
 
                                         <div class="flex gap-2">
-                                            <button wire:click="emitirDictamen"
-                                                class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium cursor-pointer">
+                                            <button wire:click="abrirConfirmacionDictamen"
+                                                wire:loading.attr="disabled"
+                                                wire:target="abrirConfirmacionDictamen"
+                                                class="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed">
                                                 Emitir Dictamen
                                             </button>
                                             <button wire:click="$set('showFormDictamen', false)"
@@ -1064,4 +1068,69 @@
             </x-button>
         </x-slot>
     </x-dialog-modal>
+
+    <x-confirmation-modal wire:model="showConfirmRevisionModal" maxWidth="md">
+        <x-slot name="title">
+            Confirmar envío a reformulación
+        </x-slot>
+
+        <x-slot name="content">
+            <p class="text-sm text-zinc-600 dark:text-zinc-400">
+                Se enviará esta actividad a reformulación y se notificará al usuario creador por correo electrónico.
+            </p>
+
+            <div class="mt-4 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 p-4">
+                <p class="text-sm font-medium text-zinc-800 dark:text-zinc-100">Comentario enviado</p>
+                <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400 whitespace-pre-line">{{ $comentarioRevision }}</p>
+            </div>
+        </x-slot>
+
+        <x-slot name="footer">
+            <x-spinner-secondary-button wire:click="cerrarConfirmacionRevision" loadingTarget="cerrarConfirmacionRevision">
+                Cancelar
+            </x-spinner-secondary-button>
+
+            <x-spinner-button wire:click="enviarParaReformulacion" loadingTarget="enviarParaReformulacion" loadingText="Enviando..." class="ml-3 !bg-yellow-600 hover:!bg-yellow-700 focus:!ring-yellow-500">
+                Confirmar envío
+            </x-spinner-button>
+        </x-slot>
+    </x-confirmation-modal>
+
+    <x-confirmation-modal wire:model="showConfirmDictamenModal" maxWidth="md">
+        <x-slot name="title">
+            Confirmar dictamen final
+        </x-slot>
+
+        <x-slot name="content">
+            <p class="text-sm text-zinc-600 dark:text-zinc-400">
+                Se emitirá el dictamen final de la actividad y se notificará al usuario creador por correo electrónico.
+            </p>
+
+            <div class="mt-4 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 p-4 space-y-2">
+                <div>
+                    <span class="text-sm font-medium text-zinc-800 dark:text-zinc-100">Decisión:</span>
+                    <span class="text-sm text-zinc-600 dark:text-zinc-400">
+                        {{ $tipoDictamen === 'aceptar' ? 'Aceptar' : ($tipoDictamen === 'rechazar' ? 'Rechazar' : 'Sin definir') }}
+                    </span>
+                </div>
+
+                @if(filled($comentarioDictamen))
+                    <div>
+                        <p class="text-sm font-medium text-zinc-800 dark:text-zinc-100">Comentario</p>
+                        <p class="mt-2 text-sm text-zinc-600 dark:text-zinc-400 whitespace-pre-line">{{ $comentarioDictamen }}</p>
+                    </div>
+                @endif
+            </div>
+        </x-slot>
+
+        <x-slot name="footer">
+            <x-spinner-secondary-button wire:click="cerrarConfirmacionDictamen" loadingTarget="cerrarConfirmacionDictamen">
+                Cancelar
+            </x-spinner-secondary-button>
+
+            <x-spinner-button wire:click="emitirDictamen" loadingTarget="emitirDictamen" loadingText="Procesando..." class="ml-3">
+                Confirmar dictamen
+            </x-spinner-button>
+        </x-slot>
+    </x-confirmation-modal>
 </div>

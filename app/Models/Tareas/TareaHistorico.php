@@ -3,6 +3,7 @@
 namespace App\Models\Tareas;
 use App\Models\BaseModel;
 use App\Models\GrupoGastos\ObjetoGasto;
+use App\Models\Presupuestos\Presupuesto;
 use App\Models\Requisicion\UnidadMedida;
 use App\Models\ProcesoCompras\ProcesoCompra;
 use App\Models\Cubs\Cub;
@@ -44,5 +45,10 @@ class TareaHistorico extends BaseModel
     public function detallesTecnicos()
     {
         return $this->hasMany(RecursoDetalleTecnico::class, 'id_tareas_historicos');
+    }
+
+    public function presupuestos()
+    {
+        return $this->hasMany(Presupuesto::class, 'idHistorico');
     }
 }

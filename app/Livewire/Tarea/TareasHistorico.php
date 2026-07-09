@@ -3,17 +3,18 @@
 namespace App\Livewire\Tarea;
 
 use App\Imports\RecursosImport;
+use App\Models\GrupoGastos\ObjetoGasto;
+use App\Models\Poa\Poa;
+use App\Models\Requisicion\UnidadMedida;
+use App\Models\ProcesoCompras\ProcesoCompra;
+use App\Models\Tareas\TareaHistorico;
+use App\Models\Cubs\Cub;
+use Illuminate\Support\Facades\Auth;
+use Livewire\Attributes\Renderless;
+use Livewire\Attributes\Layout;
 use Livewire\Component;
 use Livewire\WithFileUploads;
 use Livewire\WithPagination;
-use Livewire\Attributes\Renderless;
-use App\Models\Tareas\TareaHistorico;
-use App\Models\GrupoGastos\ObjetoGasto;
-use App\Models\Requisicion\UnidadMedida;
-use App\Models\ProcesoCompras\ProcesoCompra;
-use App\Models\Cubs\Cub;
-use Illuminate\Support\Facades\Auth;
-use Livewire\Attributes\Layout;
 use Maatwebsite\Excel\Facades\Excel;
 
 #[Layout('layouts.app')]
@@ -34,6 +35,7 @@ use Maatwebsite\Excel\Facades\Excel;
         public $perPage = 10;
         public $sortField = 'id';
         public $sortDirection = 'desc';
+        public $activeTab = 'todos';
         public $showModal = false;
         public $showDeleteModal = false;
         public $showImportModal = false;
@@ -69,7 +71,92 @@ use Maatwebsite\Excel\Facades\Excel;
             'search' => ['except' => ''],
             'sortField' => ['except' => 'id'],
             'sortDirection' => ['except' => 'desc'],
+            'activeTab' => ['except' => 'todos'],
         ];
+
+        public function updatingActiveTab()
+        {
+            $this->resetPage();
+        }
+
+        private function getRecentPlanningYears(): array
+        {
+            return Poa::query()
+                ->whereNotNull('anio')
+                ->orderByDesc('anio')
+                ->orderByDesc('id')
+                ->pluck('anio')
+                ->map(fn ($year) => (int) $year)
+                ->unique()
+                ->take(2)
+                ->values()
+                ->toArray();
+        }
+
+        private function buildRecursosQuery()
+        {
+            $query = TareaHistorico::with(['objeto', 'unidadMedida', 'procesoCompra', 'cub']);
+
+            if ($this->activeTab !== 'todos') {
+                $year = (int) str_replace('anio_', '', $this->activeTab);
+
+                $query->whereHas('presupuestos.tarea', function ($tareaQuery) use ($year) {
+                    $tareaQuery->whereHas('poa', function ($poaQuery) use ($year) {
+                        $poaQuery->where('anio', $year);
+                    })->whereHas('actividad', function ($actividadQuery) {
+                        $actividadQuery->where('estado', 'APROBADO');
+                    });
+                });
+            }
+
+            if ($this->search) {
+                $search = '%' . $this->search . '%';
+
+                $query->where(function ($query) use ($search) {
+                    $query->where('nombre', 'like', $search)
+                        ->orWhereHas('objeto', function ($objetoQuery) use ($search) {
+                            $objetoQuery->where('nombre', 'like', $search)
+                                ->orWhere('identificador', 'like', $search);
+                        })
+                        ->orWhereHas('cub', function ($cubQuery) use ($search) {
+                            $cubQuery->where('descripcion_esp', 'like', $search)
+                                ->orWhere('IDUNSPSC', 'like', $search);
+                        });
+                });
+            }
+
+            return $query;
+        }
+
+        private function getTabs(): array
+        {
+            $recentYears = $this->getRecentPlanningYears();
+            $tabs = [
+                'todos' => [
+                    'label' => 'Todos los recursos',
+                    'count' => TareaHistorico::count(),
+                ],
+            ];
+
+            foreach ($recentYears as $year) {
+                $tabs['anio_' . $year] = [
+                    'label' => 'Planificados ' . $year,
+                    'count' => TareaHistorico::whereHas('presupuestos.tarea', function ($tareaQuery) use ($year) {
+                        $tareaQuery->whereHas('poa', function ($poaQuery) use ($year) {
+                            $poaQuery->where('anio', $year);
+                        })->whereHas('actividad', function ($actividadQuery) {
+                            $actividadQuery->where('estado', 'APROBADO');
+                        });
+                    })->count(),
+                ];
+            }
+
+            if (! array_key_exists($this->activeTab, $tabs)) {
+                $this->activeTab = 'todos';
+            }
+
+            return $tabs;
+        }
 
         public function updatedNombre($value)
         {
@@ -378,22 +465,9 @@ use Maatwebsite\Excel\Facades\Excel;
 
         public function render()
         {
-            $recursos = TareaHistorico::with(['objeto', 'unidadMedida', 'procesoCompra', 'cub'])
-                ->where(function ($query) {
-                    if ($this->search) {
-                        $search = '%' . $this->search . '%';
+            $tabs = $this->getTabs();
 
-                        $query->where('nombre', 'like', $search)
-                            ->orWhereHas('objeto', function ($objetoQuery) use ($search) {
-                                $objetoQuery->where('nombre', 'like', $search)
-                                    ->orWhere('identificador', 'like', $search);
-                            })
-                            ->orWhereHas('cub', function ($cubQuery) use ($search) {
-                                $cubQuery->where('descripcion_esp', 'like', $search)
-                                    ->orWhere('IDUNSPSC', 'like', $search);
-                            });
-                    }
-                })
+            $recursos = $this->buildRecursosQuery()
                 ->orderBy($this->sortField, $this->sortDirection)
                 ->paginate($this->perPage);
 
@@ -417,6 +491,7 @@ use Maatwebsite\Excel\Facades\Excel;
                 : [];
             return view('livewire.Tareas.Tarea-historico', [
                 'recursos' => $recursos,
+                'tabs' => $tabs,
                 'objetosGasto' => $objetosGasto,
                 'unidadesMedida' => $unidadesMedida,
                 'procesosCompra' => $procesosCompra,

@@ -31,13 +31,13 @@ class RecursoDetalleTecnico extends Component
     public $isEditing = false;
 
     protected $rules = [
-        'nombre' => 'required|min:3|max:255',
+        'nombre' => 'required|string|min:3|max:60000',
     ];
 
     protected $messages = [
         'nombre.required' => 'El nombre del detalle técnico es obligatorio.',
         'nombre.min' => 'El nombre debe tener al menos 3 caracteres.',
-        'nombre.max' => 'El nombre no puede exceder 255 caracteres.',
+        'nombre.max' => 'El nombre del detalle técnico es demasiado largo.',
     ];
 
     protected $queryString = [
@@ -99,6 +99,7 @@ class RecursoDetalleTecnico extends Component
 
     public function store()
     {
+        $this->nombre = trim((string) $this->nombre);
         $this->validate();
 
         try {

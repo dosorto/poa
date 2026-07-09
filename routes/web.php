@@ -50,6 +50,9 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     // Ruta para revisar detalles de actividad
     Route::get('/review-actividad-detalle/{id}', \App\Livewire\Revision\ReviewActividadDetalle::class)
         ->name('review-actividad-detalle');
+
+    Route::post('/revisiones/actividades/{actividad}/reformulacion', \App\Http\Controllers\Revision\RegresarActividadReformulacionController::class)
+        ->name('revisiones.actividades.reformulacion');
     
     // Ruta para detalles técnicos de recursos
     Route::get('/recurso-detalle-tecnico/{recursoId}', \App\Livewire\Tarea\RecursoDetalleTecnico::class)

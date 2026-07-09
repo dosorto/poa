@@ -1,5 +1,42 @@
-<div class="mx-auto rounded-lg mt-8 sm:mt-6 lg:mt-4 mb-6">
+<div
+    x-data="{
+        showReformulacionModal: false,
+        reformulacionAction: '',
+        actividadNombre: '',
+        abrirReformulacionModal(action, nombre) {
+            this.reformulacionAction = action;
+            this.actividadNombre = nombre;
+            this.showReformulacionModal = true;
+        },
+        cerrarReformulacionModal() {
+            this.showReformulacionModal = false;
+            this.reformulacionAction = '';
+            this.actividadNombre = '';
+        }
+    }"
+    class="mx-auto rounded-lg mt-8 sm:mt-6 lg:mt-4 mb-6"
+>
     <div class="bg-white dark:bg-zinc-900 overflow-hidden shadow sm:rounded-lg p-4 sm:p-6">
+        @if (session()->has('message'))
+            @include('rk.default.notifications.notification-alert', [
+                'type' => 'success',
+                'dismissible' => true,
+                'icon' => true,
+                'duration' => 5,
+                'slot' => session('message')
+            ])
+        @endif
+
+        @if (session()->has('error'))
+            @include('rk.default.notifications.notification-alert', [
+                'type' => 'error',
+                'dismissible' => true,
+                'icon' => true,
+                'duration' => 8,
+                'slot' => session('error')
+            ])
+        @endif
+
         <!-- Resumen de revisión y presupuesto -->
         <div class="mb-6">
             <div class="bg-indigo-50 dark:bg-indigo-900/20 border border-indigo-200 dark:border-indigo-800 rounded-lg p-4">
@@ -121,9 +158,21 @@
                             @endswitch
                         </td>
                         <td class="px-6 py-4 whitespace-nowrap">
-                            <a href="{{ route('review-actividad-detalle', $actividad->id) }}" class="inline-flex items-center px-3 py-1 bg-indigo-600 dark:bg-indigo-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-500 focus:bg-indigo-700 active:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150">
-                                Ver Detalles
-                            </a>
+                            <div class="flex items-center gap-2">
+                                <a href="{{ route('review-actividad-detalle', $actividad->id) }}" class="inline-flex items-center px-3 py-1 bg-indigo-600 dark:bg-indigo-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-indigo-500 focus:bg-indigo-700 active:bg-zinc-900 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150">
+                                    Ver Detalles
+                                </a>
+
+                                @if($actividad->estado !== 'REFORMULACION')
+                                    <button
+                                        type="button"
+                                        @click="abrirReformulacionModal('{{ route('revisiones.actividades.reformulacion', $actividad->id) }}', @js($actividad->nombre))"
+                                        class="inline-flex items-center px-4 py-2 bg-yellow-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-yellow-700 focus:bg-yellow-700 active:bg-yellow-800 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                                    >
+                                        Regresar a Reformulación
+                                    </button>
+                                @endif
+                            </div>
                         </td>
                     </tr>
                 @empty
@@ -180,6 +229,17 @@
                                     </span>
                             @endswitch
                         </div>
+                        @if($actividad->estado !== 'REFORMULACION')
+                            <div class="mt-3">
+                                <button
+                                    type="button"
+                                    @click="abrirReformulacionModal('{{ route('revisiones.actividades.reformulacion', $actividad->id) }}', @js($actividad->nombre))"
+                                    class="inline-flex w-full justify-center items-center px-4 py-2 bg-yellow-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-yellow-700 focus:bg-yellow-700 active:bg-yellow-800 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                                >
+                                    Regresar a Reformulación
+                                </button>
+                            </div>
+                        @endif
                     </div>
                 @empty
                     <div class="bg-white dark:bg-zinc-800 p-4 rounded-lg shadow text-center text-zinc-500 dark:text-zinc-400">
@@ -195,5 +255,74 @@
             </div>
         @endif
 
+        <div
+            x-cloak
+            x-show="showReformulacionModal"
+            x-on:keydown.escape.window="cerrarReformulacionModal()"
+            class="fixed inset-0 z-50 overflow-y-auto px-4 py-6 sm:px-0"
+            style="display: none;"
+        >
+            <div class="fixed inset-0 bg-zinc-500/75 dark:bg-zinc-900/80" @click="cerrarReformulacionModal()"></div>
+
+            <div class="relative mx-auto mt-16 max-w-md">
+                <div class="overflow-hidden rounded-lg bg-white shadow-xl dark:bg-zinc-800">
+                    <div class="px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                        <div class="sm:flex sm:items-start">
+                            <div class="rounded-full bg-yellow-100 p-2 dark:bg-yellow-900/30">
+                                <svg class="h-6 w-6 text-yellow-600 dark:text-yellow-300" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                                </svg>
+                            </div>
+
+                            <div class="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left">
+                                <h3 class="text-lg font-medium text-zinc-900 dark:text-zinc-100">
+                                    Confirmar regreso a reformulación
+                                </h3>
+
+                                <div class="mt-4 space-y-4 text-sm text-zinc-600 dark:text-zinc-400">
+                                    <p>
+                                        La actividad seleccionada volverá al estado <span class="font-semibold text-orange-700 dark:text-orange-300">REFORMULACION</span>.
+                                        Después de esto, los planificadores podrán editarla y volver a enviarla para revisión.
+                                    </p>
+
+                                    <div class="rounded-lg bg-zinc-50 p-4 dark:bg-zinc-800/50">
+                                        <p class="font-medium text-zinc-800 dark:text-zinc-100">Actividad</p>
+                                        <p class="mt-1" x-text="actividadNombre"></p>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-end gap-3 bg-zinc-100 px-6 py-4 dark:bg-zinc-700">
+                        <button
+                            type="button"
+                            @click="cerrarReformulacionModal()"
+                            class="inline-flex items-center px-4 py-2 bg-white dark:bg-zinc-800 border border-zinc-300 dark:border-zinc-600 rounded-md font-semibold text-xs text-zinc-700 dark:text-zinc-300 uppercase tracking-widest shadow-sm hover:bg-zinc-50 dark:hover:bg-zinc-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ease-in-out duration-150"
+                        >
+                            Cancelar
+                        </button>
+
+                        <form :action="reformulacionAction" method="POST" x-data="{ submitting: false }" @submit="submitting = true">
+                            @csrf
+                            <button
+                                type="submit"
+                                class="inline-flex items-center px-4 py-2 bg-yellow-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-yellow-700 focus:bg-yellow-700 active:bg-yellow-800 focus:outline-none focus:ring-2 focus:ring-yellow-500 focus:ring-offset-2 transition ease-in-out duration-150 disabled:opacity-60 disabled:cursor-not-allowed"
+                                :disabled="submitting"
+                            >
+                                <span x-show="!submitting">Sí, enviar a reformulación</span>
+                                <span x-show="submitting" class="inline-flex items-center gap-2">
+                                    <svg class="h-4 w-4 animate-spin" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+                                    </svg>
+                                    Procesando...
+                                </span>
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
 </div>

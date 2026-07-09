@@ -8,6 +8,7 @@ use App\Models\Actividad\Actividad;
 use App\Models\Poa\PoaDepto;
 use App\Models\Tareas\Tarea;
 use App\Models\Presupuestos\Presupuesto;
+use Illuminate\Support\Facades\DB;
 use Livewire\Attributes\Layout;
 
 #[Layout('layouts.app')]
@@ -24,6 +25,9 @@ class ActividadesRevision extends Component
     public $buscarActividad = '';
     public $poaYear = '';
     public $perPage = 10;
+    public $showReformulacionModal = false;
+    public $actividadAReformularId = null;
+    public $actividadAReformularNombre = '';
     
 
     public function mount($departamentoId, $poaYear = null)
@@ -55,6 +59,50 @@ class ActividadesRevision extends Component
     public function updatedPerPage()
     {
         $this->resetPage(self::PAGE_NAME);
+    }
+
+    public function abrirModalReformulacion($actividadId)
+    {
+        $actividad = Actividad::where('id', $actividadId)
+            ->where('idDeptartamento', $this->departamentoId)
+            ->whereIn('estado', self::ESTADOS_REVISION)
+            ->firstOrFail();
+
+        $this->actividadAReformularId = $actividad->id;
+        $this->actividadAReformularNombre = $actividad->nombre;
+        $this->showReformulacionModal = true;
+    }
+
+    public function cerrarModalReformulacion()
+    {
+        $this->showReformulacionModal = false;
+        $this->actividadAReformularId = null;
+        $this->actividadAReformularNombre = '';
+    }
+
+    public function regresarAReformulacion()
+    {
+        try {
+            DB::beginTransaction();
+
+            $actividad = Actividad::where('id', $this->actividadAReformularId)
+                ->where('idDeptartamento', $this->departamentoId)
+                ->whereIn('estado', self::ESTADOS_REVISION)
+                ->firstOrFail();
+
+            $actividad->update([
+                'estado' => 'REFORMULACION',
+            ]);
+
+            DB::commit();
+
+            $this->cerrarModalReformulacion();
+            $this->cargarResumen();
+            session()->flash('message', 'La actividad fue enviada nuevamente a reformulación.');
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            session()->flash('error', 'Error al regresar la actividad a reformulación: ' . $e->getMessage());
+        }
     }
 
     public function cargarResumen()
