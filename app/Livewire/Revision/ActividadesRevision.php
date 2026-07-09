@@ -25,9 +25,6 @@ class ActividadesRevision extends Component
     public $buscarActividad = '';
     public $poaYear = '';
     public $perPage = 10;
-    public $showReformulacionModal = false;
-    public $actividadAReformularId = null;
-    public $actividadAReformularNombre = '';
     
 
     public function mount($departamentoId, $poaYear = null)
@@ -61,50 +58,6 @@ class ActividadesRevision extends Component
         $this->resetPage(self::PAGE_NAME);
     }
 
-    public function abrirModalReformulacion($actividadId)
-    {
-        $actividad = Actividad::where('id', $actividadId)
-            ->where('idDeptartamento', $this->departamentoId)
-            ->whereIn('estado', self::ESTADOS_REVISION)
-            ->firstOrFail();
-
-        $this->actividadAReformularId = $actividad->id;
-        $this->actividadAReformularNombre = $actividad->nombre;
-        $this->showReformulacionModal = true;
-    }
-
-    public function cerrarModalReformulacion()
-    {
-        $this->showReformulacionModal = false;
-        $this->actividadAReformularId = null;
-        $this->actividadAReformularNombre = '';
-    }
-
-    public function regresarAReformulacion()
-    {
-        try {
-            DB::beginTransaction();
-
-            $actividad = Actividad::where('id', $this->actividadAReformularId)
-                ->where('idDeptartamento', $this->departamentoId)
-                ->whereIn('estado', self::ESTADOS_REVISION)
-                ->firstOrFail();
-
-            $actividad->update([
-                'estado' => 'REFORMULACION',
-            ]);
-
-            DB::commit();
-
-            $this->cerrarModalReformulacion();
-            $this->cargarResumen();
-            session()->flash('message', 'La actividad fue enviada nuevamente a reformulación.');
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            session()->flash('error', 'Error al regresar la actividad a reformulación: ' . $e->getMessage());
-        }
-    }
-
     public function cargarResumen()
     {
         $poaDepto = PoaDepto::where('idDepartamento', $this->departamentoId)
@@ -114,6 +67,11 @@ class ActividadesRevision extends Component
             ->first();
         $nombreDepartamento = $poaDepto?->departamento?->name ?? '-';
         $presupuesto = $planificado = $numActividades = $porcentaje = 0;
+        $fuentesResumen = collect([
+            ['identificador' => '11', 'monto' => 0, 'actividades' => 0],
+            ['identificador' => '12', 'monto' => 0, 'actividades' => 0],
+            ['identificador' => '12B', 'monto' => 0, 'actividades' => 0],
+        ])->keyBy('identificador');
 
         if ($poaDepto) {
             $presupuesto = $poaDepto->techoDeptos->sum('monto');
@@ -138,10 +96,30 @@ class ActividadesRevision extends Component
                     });
                 })
                 ->sum('total');
+
+            $fuentesPlanificadas = Presupuesto::query()
+                ->join('fuente', 'presupuestos.idfuente', '=', 'fuente.id')
+                ->join('tareas', 'presupuestos.idtarea', '=', 'tareas.id')
+                ->join('actividads', 'tareas.idActividad', '=', 'actividads.id')
+                ->whereIn('actividads.id', $actividades->pluck('id'))
+                ->whereIn('fuente.identificador', ['11', '12', '12B'])
+                ->groupBy('fuente.identificador')
+                ->selectRaw('fuente.identificador as identificador, COALESCE(SUM(presupuestos.total), 0) as monto, COUNT(DISTINCT actividads.id) as actividades')
+                ->get();
+
+            foreach ($fuentesPlanificadas as $fuentePlanificada) {
+                $fuentesResumen->put($fuentePlanificada->identificador, [
+                    'identificador' => $fuentePlanificada->identificador,
+                    'monto' => (float) $fuentePlanificada->monto,
+                    'actividades' => (int) $fuentePlanificada->actividades,
+                ]);
+            }
+
             $porcentaje = $presupuesto > 0 ? round(($planificado * 100) / $presupuesto, 1) : 0;
         }
 
         $this->resumen = compact('nombreDepartamento', 'presupuesto', 'planificado', 'numActividades', 'porcentaje');
+        $this->resumen['fuentes'] = $fuentesResumen->values()->all();
     }
 
   public function render()

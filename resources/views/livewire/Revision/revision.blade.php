@@ -58,6 +58,29 @@
 				</div>
 			</div>
 
+			<div class="mb-6 grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+				<div class="rounded-xl border border-indigo-100 dark:border-indigo-900/40 bg-indigo-50 dark:bg-indigo-900/20 p-4">
+					<p class="text-xs font-semibold uppercase tracking-wide text-indigo-600 dark:text-indigo-300">Departamentos</p>
+					<p class="mt-2 text-3xl font-bold text-indigo-900 dark:text-indigo-100">{{ number_format($resumen['departamentos'] ?? 0) }}</p>
+					<p class="mt-1 text-xs text-indigo-700 dark:text-indigo-300">Con actividades en el flujo de revisión.</p>
+				</div>
+				<div class="rounded-xl border border-blue-100 dark:border-blue-900/40 bg-blue-50 dark:bg-blue-900/20 p-4">
+					<p class="text-xs font-semibold uppercase tracking-wide text-blue-600 dark:text-blue-300">Actividades</p>
+					<p class="mt-2 text-3xl font-bold text-blue-900 dark:text-blue-100">{{ number_format($resumen['actividades'] ?? 0) }}</p>
+					<p class="mt-1 text-xs text-blue-700 dark:text-blue-300">Total consideradas para el POA seleccionado.</p>
+				</div>
+				<div class="rounded-xl border border-green-100 dark:border-green-900/40 bg-green-50 dark:bg-green-900/20 p-4">
+					<p class="text-xs font-semibold uppercase tracking-wide text-green-600 dark:text-green-300">Aprobadas</p>
+					<p class="mt-2 text-3xl font-bold text-green-900 dark:text-green-100">{{ number_format($resumen['aprobadas'] ?? 0) }}</p>
+					<p class="mt-1 text-xs text-green-700 dark:text-green-300">Actividades que ya tienen dictamen favorable.</p>
+				</div>
+				<div class="rounded-xl border border-amber-100 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-900/20 p-4">
+					<p class="text-xs font-semibold uppercase tracking-wide text-amber-600 dark:text-amber-300">Pendientes</p>
+					<p class="mt-2 text-3xl font-bold text-amber-900 dark:text-amber-100">{{ number_format($resumen['pendientes'] ?? 0) }}</p>
+					<p class="mt-1 text-xs text-amber-700 dark:text-amber-300">En revisión o en reformulación.</p>
+				</div>
+			</div>
+
 			<x-table
 				sort-field="{{ $sortField }}"
 				sort-direction="{{ $sortDirection }}"
@@ -92,9 +115,19 @@
 								</div>
 							</td>
 							<td class="px-6 py-4 whitespace-nowrap">
-								<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-300">
-									{{ $rev->actividades_count ?? 0 }} {{ ($rev->actividades_count ?? 0) === 1 ? 'actividad' : 'actividades' }}
-								</span>
+								<div class="space-y-2">
+									<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-800 dark:text-indigo-300">
+										{{ $rev->actividades_count ?? 0 }} {{ ($rev->actividades_count ?? 0) === 1 ? 'actividad' : 'actividades' }}
+									</span>
+									<div class="flex flex-wrap gap-2 text-xs">
+										<span class="px-2 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300">
+											{{ $rev->actividades_aprobadas_count ?? 0 }} aprobadas
+										</span>
+										<span class="px-2 py-1 rounded-full bg-amber-100 dark:bg-amber-900/30 text-amber-800 dark:text-amber-300">
+											{{ $rev->actividades_pendientes_count ?? 0 }} pendientes
+										</span>
+									</div>
+								</div>
 							</td>
 							<td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
 								<x-spinner-button x-spinner-button wire:click="verActividades({{ $rev->id }})" loadingTarget="verActividades({{ $rev->id }})" :loadingText="__('cargando...')" wire:click="verActividades({{ $rev->id }})"
@@ -133,7 +166,9 @@
 								</x-spinner-button>
 							</div>
 							<div class="text-zinc-600 dark:text-zinc-400 text-sm mb-1">
-								<span class="font-semibold">Cantidad de Actividades:</span> {{ $rev->actividades_count ?? 0 }}
+								<span class="font-semibold">Cantidad de Actividades:</span> {{ $rev->actividades_count ?? 0 }}<br>
+								<span class="font-semibold">Aprobadas:</span> {{ $rev->actividades_aprobadas_count ?? 0 }}<br>
+								<span class="font-semibold">Pendientes:</span> {{ $rev->actividades_pendientes_count ?? 0 }}
 							</div>
 						</div>
 					@empty

@@ -80,22 +80,32 @@ class Revisiones extends Component
 			]);
 		}
 
+		$aplicarFiltroPoa = function ($q) {
+			if ($this->poaYear) {
+				$q->whereHas('poa', function ($q2) {
+					$q2->where('anio', $this->poaYear);
+				});
+			}
+		};
+
 		$revisiones = Departamento::query()
-			->withCount(['actividades as actividades_count' => function($q) {
+			->withCount([
+				'actividades as actividades_count' => function ($q) use ($aplicarFiltroPoa) {
+					$q->whereIn('estado', self::ESTADOS_REVISION);
+					$aplicarFiltroPoa($q);
+				},
+				'actividades as actividades_aprobadas_count' => function ($q) use ($aplicarFiltroPoa) {
+					$q->where('estado', 'APROBADO');
+					$aplicarFiltroPoa($q);
+				},
+				'actividades as actividades_pendientes_count' => function ($q) use ($aplicarFiltroPoa) {
+					$q->whereIn('estado', ['REVISION', 'REFORMULACION']);
+					$aplicarFiltroPoa($q);
+				},
+			])
+			->whereHas('actividades', function($q) use ($aplicarFiltroPoa) {
 				$q->whereIn('estado', self::ESTADOS_REVISION);
-				if ($this->poaYear) {
-					$q->whereHas('poa', function($q2) {
-						$q2->where('anio', $this->poaYear);
-					});
-				}
-			}])
-			->whereHas('actividades', function($q) {
-				$q->whereIn('estado', self::ESTADOS_REVISION);
-				if ($this->poaYear) {
-					$q->whereHas('poa', function($q2) {
-						$q2->where('anio', $this->poaYear);
-					});
-				}
+				$aplicarFiltroPoa($q);
 			})
 			->when($this->search, function($q) {
 				$q->where('name', 'like', '%'.$this->search.'%');
@@ -108,9 +118,16 @@ class Revisiones extends Component
 			return $item;
 		});
 
+		$resumen = [
+			'departamentos' => $revisiones->total(),
+			'actividades' => (int) $revisiones->getCollection()->sum('actividades_count'),
+			'aprobadas' => (int) $revisiones->getCollection()->sum('actividades_aprobadas_count'),
+			'pendientes' => (int) $revisiones->getCollection()->sum('actividades_pendientes_count'),
+		];
+
 		return view('livewire.Revision.revision', [
 			'revisiones' => $revisiones,
-			//'poaYears' => $this->poaYears,
+			'resumen' => $resumen,
 			'poaYear' => $this->poaYear,
 		]);
 	}
