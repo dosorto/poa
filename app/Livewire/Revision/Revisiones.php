@@ -88,7 +88,7 @@ class Revisiones extends Component
 			}
 		};
 
-		$revisiones = Departamento::query()
+		$departamentosQuery = Departamento::query()
 			->withCount([
 				'actividades as actividades_count' => function ($q) use ($aplicarFiltroPoa) {
 					$q->whereIn('estado', self::ESTADOS_REVISION);
@@ -110,19 +110,33 @@ class Revisiones extends Component
 			->when($this->search, function($q) {
 				$q->where('name', 'like', '%'.$this->search.'%');
 			})
-			->orderBy($this->sortField, $this->sortDirection)
-			->paginate($this->perPage);
+			->orderBy($this->sortField, $this->sortDirection);
+
+		$revisiones = (clone $departamentosQuery)->paginate($this->perPage);
 
 		$revisiones->getCollection()->transform(function($item) {
 			$item->departamento = $item;
 			return $item;
 		});
 
+		$actividadesResumenQuery = Actividad::query()
+			->whereIn('estado', self::ESTADOS_REVISION)
+			->when($this->poaYear, function ($q) {
+				$q->whereHas('poa', function ($q2) {
+					$q2->where('anio', $this->poaYear);
+				});
+			})
+			->when($this->search, function ($q) {
+				$q->whereHas('departamento', function ($departamentoQuery) {
+					$departamentoQuery->where('name', 'like', '%' . $this->search . '%');
+				});
+			});
+
 		$resumen = [
-			'departamentos' => $revisiones->total(),
-			'actividades' => (int) $revisiones->getCollection()->sum('actividades_count'),
-			'aprobadas' => (int) $revisiones->getCollection()->sum('actividades_aprobadas_count'),
-			'pendientes' => (int) $revisiones->getCollection()->sum('actividades_pendientes_count'),
+			'departamentos' => (clone $departamentosQuery)->count(),
+			'actividades' => (clone $actividadesResumenQuery)->count(),
+			'aprobadas' => (clone $actividadesResumenQuery)->where('estado', 'APROBADO')->count(),
+			'pendientes' => (clone $actividadesResumenQuery)->whereIn('estado', ['REVISION', 'REFORMULACION'])->count(),
 		];
 
 		return view('livewire.Revision.revision', [
