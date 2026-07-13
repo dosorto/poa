@@ -254,7 +254,52 @@
           {{-- Paginación FUERA del x-table --}}
         @if($actividades->hasPages())
             <div class="mt-4 px-4">
-                {{ $actividades->links() }}
+                <nav class="flex flex-col sm:flex-row items-center justify-between gap-3" aria-label="Paginación de actividades">
+                    <div class="text-sm text-zinc-500 dark:text-zinc-400">
+                        Mostrando {{ $actividades->firstItem() }} a {{ $actividades->lastItem() }} de {{ $actividades->total() }} actividades
+                    </div>
+
+                    <div class="flex items-center gap-1">
+                        @if($actividades->onFirstPage())
+                            <span class="px-3 py-2 text-sm rounded-md border border-zinc-200 dark:border-zinc-700 text-zinc-400 dark:text-zinc-500 cursor-not-allowed">
+                                Anterior
+                            </span>
+                        @else
+                            <a href="{{ $actividades->previousPageUrl() }}"
+                               class="px-3 py-2 text-sm rounded-md border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800">
+                                Anterior
+                            </a>
+                        @endif
+
+                        @foreach($actividades->getUrlRange(1, $actividades->lastPage()) as $page => $url)
+                            @if($page === $actividades->currentPage())
+                                <span class="px-3 py-2 text-sm rounded-md bg-indigo-600 text-white font-semibold">
+                                    {{ $page }}
+                                </span>
+                            @elseif($page === 1 || $page === $actividades->lastPage() || abs($page - $actividades->currentPage()) <= 1)
+                                <a href="{{ $url }}"
+                                   class="px-3 py-2 text-sm rounded-md border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800">
+                                    {{ $page }}
+                                </a>
+                            @elseif($page === 2 && $actividades->currentPage() > 3)
+                                <span class="px-2 text-zinc-400">...</span>
+                            @elseif($page === $actividades->lastPage() - 1 && $actividades->currentPage() < $actividades->lastPage() - 2)
+                                <span class="px-2 text-zinc-400">...</span>
+                            @endif
+                        @endforeach
+
+                        @if($actividades->hasMorePages())
+                            <a href="{{ $actividades->nextPageUrl() }}"
+                               class="px-3 py-2 text-sm rounded-md border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-200 hover:bg-zinc-50 dark:hover:bg-zinc-800">
+                                Siguiente
+                            </a>
+                        @else
+                            <span class="px-3 py-2 text-sm rounded-md border border-zinc-200 dark:border-zinc-700 text-zinc-400 dark:text-zinc-500 cursor-not-allowed">
+                                Siguiente
+                            </span>
+                        @endif
+                    </div>
+                </nav>
             </div>
         @endif
 
