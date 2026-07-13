@@ -3,7 +3,6 @@
 namespace App\Livewire\Revision;
 
 use Livewire\Component;
-use Livewire\WithPagination;
 use App\Models\Actividad\Actividad;
 use App\Models\Poa\PoaDepto;
 use App\Models\Tareas\Tarea;
@@ -14,17 +13,13 @@ use Livewire\Attributes\Layout;
 #[Layout('layouts.app')]
 class ActividadesRevision extends Component
 {
-    use WithPagination;
-
     private const ESTADOS_REVISION = ['REVISION', 'REFORMULACION', 'APROBADO', 'RECHAZADO'];
-    private const PAGE_NAME = 'actividadesRevisionPage';
 
     public $departamentoId;
     public $resumen = [];
     public $poaYears = [];
     public $buscarActividad = '';
     public $poaYear = '';
-    public $perPage = 10;
     
 
     public function mount($departamentoId, $poaYear = null)
@@ -44,18 +39,11 @@ class ActividadesRevision extends Component
 
     public function updatingBuscarActividad()
     {
-        $this->resetPage(self::PAGE_NAME);
     }
 
     public function updatedPoaYear()
     {
-        $this->resetPage(self::PAGE_NAME);
         $this->cargarResumen();
-    }
-
-    public function updatedPerPage()
-    {
-        $this->resetPage(self::PAGE_NAME);
     }
 
     public function cargarResumen()
@@ -136,8 +124,7 @@ class ActividadesRevision extends Component
                 });
             })
             ->orderBy('nombre')
-            ->paginate($this->perPage, pageName: self::PAGE_NAME)
-            ->withQueryString();
+            ->get();
 
         return view('livewire.Revision.actividades-revision', [
             'actividades' => $actividades,
