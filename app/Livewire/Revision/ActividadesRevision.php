@@ -4,6 +4,7 @@ namespace App\Livewire\Revision;
 
 use Livewire\Component;
 use Livewire\WithPagination;
+use Livewire\WithoutUrlPagination;
 use App\Models\Actividad\Actividad;
 use App\Models\Poa\PoaDepto;
 use App\Models\Tareas\Tarea;
@@ -15,6 +16,7 @@ use Livewire\Attributes\Layout;
 class ActividadesRevision extends Component
 {
     use WithPagination;
+    use WithoutUrlPagination;
 
     private const ESTADOS_REVISION = ['REVISION', 'REFORMULACION', 'APROBADO', 'RECHAZADO'];
     private const PAGE_NAME = 'actividadesRevisionPage';
