@@ -650,6 +650,99 @@ return [
                 ])
                 ->setEndBlock('planificacion'),
 
+            RkRoute::makeGroup('inventario')
+                ->setParentId('auth_group')
+                ->setItems([
+                    RkRoute::make('inventario.dashboard')
+                        ->setParentId('inventario')
+                        ->setAccessPermission('acceso-inventario')
+                        ->setPermissions(['inventario.ver', 'acceso-inventario'])
+                        ->setUrlMethod('get')
+                        ->setUrl('inventario')
+                        ->setUrlController('App\Livewire\Inventario\Dashboard')
+                        ->setRoles(['super_admin', 'admin', 'direccion'])
+                        ->setItems([])
+                        ->setEndBlock('inventario.dashboard'),
+
+                    RkRoute::make('inventario.productos')
+                        ->setParentId('inventario')
+                        ->setAccessPermission('acceso-inventario')
+                        ->setPermissions(['inventario.productos.ver', 'acceso-inventario'])
+                        ->setUrlMethod('get')
+                        ->setUrl('inventario/productos')
+                        ->setUrlController('App\Livewire\Inventario\Productos')
+                        ->setRoles(['super_admin', 'admin', 'direccion'])
+                        ->setItems([])
+                        ->setEndBlock('inventario.productos'),
+
+                    RkRoute::make('inventario.bodegas')
+                        ->setParentId('inventario')
+                        ->setAccessPermission('acceso-inventario')
+                        ->setPermissions(['inventario.bodegas.ver', 'acceso-inventario'])
+                        ->setUrlMethod('get')
+                        ->setUrl('inventario/bodegas')
+                        ->setUrlController('App\Livewire\Inventario\Bodegas')
+                        ->setRoles(['super_admin', 'admin', 'direccion'])
+                        ->setItems([])
+                        ->setEndBlock('inventario.bodegas'),
+
+                    RkRoute::make('inventario.existencias')
+                        ->setParentId('inventario')
+                        ->setAccessPermission('acceso-inventario')
+                        ->setPermissions(['inventario.existencias.ver', 'acceso-inventario'])
+                        ->setUrlMethod('get')
+                        ->setUrl('inventario/existencias')
+                        ->setUrlController('App\Livewire\Inventario\Existencias')
+                        ->setRoles(['super_admin', 'admin', 'direccion'])
+                        ->setItems([])
+                        ->setEndBlock('inventario.existencias'),
+
+                    RkRoute::make('inventario.entradas')
+                        ->setParentId('inventario')
+                        ->setAccessPermission('acceso-inventario')
+                        ->setPermissions(['inventario.entradas.ver', 'acceso-inventario'])
+                        ->setUrlMethod('get')
+                        ->setUrl('inventario/entradas')
+                        ->setUrlController('App\Livewire\Inventario\Entradas')
+                        ->setRoles(['super_admin', 'admin', 'direccion'])
+                        ->setItems([])
+                        ->setEndBlock('inventario.entradas'),
+
+                    RkRoute::make('inventario.salidas')
+                        ->setParentId('inventario')
+                        ->setAccessPermission('acceso-inventario')
+                        ->setPermissions(['inventario.salidas.ver', 'acceso-inventario'])
+                        ->setUrlMethod('get')
+                        ->setUrl('inventario/salidas')
+                        ->setUrlController('App\Livewire\Inventario\Salidas')
+                        ->setRoles(['super_admin', 'admin', 'direccion'])
+                        ->setItems([])
+                        ->setEndBlock('inventario.salidas'),
+
+                    RkRoute::make('inventario.kardex')
+                        ->setParentId('inventario')
+                        ->setAccessPermission('acceso-inventario')
+                        ->setPermissions(['inventario.kardex.ver', 'acceso-inventario'])
+                        ->setUrlMethod('get')
+                        ->setUrl('inventario/kardex')
+                        ->setUrlController('App\Livewire\Inventario\Kardex')
+                        ->setRoles(['super_admin', 'admin', 'direccion'])
+                        ->setItems([])
+                        ->setEndBlock('inventario.kardex'),
+
+                    RkRoute::make('inventario.importacion-inicial')
+                        ->setParentId('inventario')
+                        ->setAccessPermission('acceso-inventario')
+                        ->setPermissions(['inventario.importar', 'acceso-inventario'])
+                        ->setUrlMethod('get')
+                        ->setUrl('inventario/importacion-inicial')
+                        ->setUrlController('App\Livewire\Inventario\ImportacionInicial')
+                        ->setRoles(['super_admin', 'admin'])
+                        ->setItems([])
+                        ->setEndBlock('inventario.importacion-inicial'),
+                ])
+                ->setEndBlock('inventario'),
+
             RkRoute::makeGroup('reportes')
                 ->setParentId('auth_group')
                 ->setItems([

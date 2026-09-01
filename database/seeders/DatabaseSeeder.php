@@ -73,5 +73,6 @@ class DatabaseSeeder extends Seeder
         $this->call(PlazosPermissionSeeder::class);
         $this->call(ConsolidadoPermissionsSeeder::class);
         $this->call(ReportesDireccionSeeder::class);
+        $this->call(InventarioPermissionsSeeder::class);
     }
 }

@@ -37,7 +37,11 @@
             <x-ui.separator class="my-4" separator="sm" :border="false" />
 
             @foreach ($headerItems as $item)
-                @if ($item->isGroup() && $item->items->isNotEmpty())
+                @if ($item->isGroup() && $item->id === 'inventario')
+                    <x-rk.default::navigation.item href="{{ $item->getUrl() }}" badge="{{ $item->getFinalBage() }}"
+                        icon="heroicon-o-{{ $item->getHeroIcon() }}" title="{{ $item->getLabel() }}"
+                        :active="$item->isActive() || request()->routeIs('inventario.*')" />
+                @elseif ($item->isGroup() && $item->items->isNotEmpty())
                     <x-rk.default::navigation.group-items :label="$item->getLabel()" :icon="$item->getIcon()" :active="$item->isActive() || ($parentActiveNode && $activeNode->id === $item->id)">
                         @foreach ($item->items as $child)
                             <x-rk.default::navigation.item href="{{ $child->getUrl() }}"

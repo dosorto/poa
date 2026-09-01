@@ -152,6 +152,76 @@ return [
         ])
         ->setEndBlock('planificacion'),
 
+    RkNavigation::makeGroup('inventario')
+        ->setLabel('Inventario')
+        ->setHeroIcon('archive-box')
+        ->setItems([
+            RkNavigation::make('inventario.dashboard')
+                ->setParentId('inventario')
+                ->setDescription('Resumen general de inventario')
+                ->setLabel('Dashboard')
+                ->setHeroIcon('chart-bar-square')
+                ->setItems([])
+                ->setEndBlock('inventario.dashboard'),
+
+            RkNavigation::make('inventario.productos')
+                ->setParentId('inventario')
+                ->setDescription('Gestiona productos de bodega')
+                ->setLabel('Productos')
+                ->setHeroIcon('cube')
+                ->setItems([])
+                ->setEndBlock('inventario.productos'),
+
+            RkNavigation::make('inventario.bodegas')
+                ->setParentId('inventario')
+                ->setDescription('Gestiona bodegas')
+                ->setLabel('Bodegas')
+                ->setHeroIcon('building-storefront')
+                ->setItems([])
+                ->setEndBlock('inventario.bodegas'),
+
+            RkNavigation::make('inventario.existencias')
+                ->setParentId('inventario')
+                ->setDescription('Consulta existencias actuales')
+                ->setLabel('Existencias')
+                ->setHeroIcon('squares-2x2')
+                ->setItems([])
+                ->setEndBlock('inventario.existencias'),
+
+            RkNavigation::make('inventario.entradas')
+                ->setParentId('inventario')
+                ->setDescription('Registra entradas a bodega')
+                ->setLabel('Entradas')
+                ->setHeroIcon('arrow-down-tray')
+                ->setItems([])
+                ->setEndBlock('inventario.entradas'),
+
+            RkNavigation::make('inventario.salidas')
+                ->setParentId('inventario')
+                ->setDescription('Registra salidas de bodega')
+                ->setLabel('Salidas')
+                ->setHeroIcon('arrow-up-tray')
+                ->setItems([])
+                ->setEndBlock('inventario.salidas'),
+
+            RkNavigation::make('inventario.kardex')
+                ->setParentId('inventario')
+                ->setDescription('Historial de movimientos')
+                ->setLabel('Kardex')
+                ->setHeroIcon('clipboard-document-list')
+                ->setItems([])
+                ->setEndBlock('inventario.kardex'),
+
+            RkNavigation::make('inventario.importacion-inicial')
+                ->setParentId('inventario')
+                ->setDescription('Carga inicial desde Excel')
+                ->setLabel('Importación inicial')
+                ->setHeroIcon('document-arrow-up')
+                ->setItems([])
+                ->setEndBlock('inventario.importacion-inicial'),
+        ])
+        ->setEndBlock('inventario'),
+
     RkNavigation::makeGroup('configuracion')
         ->setLabel('Configuración')
         ->setHeroIcon('cog-6-tooth')

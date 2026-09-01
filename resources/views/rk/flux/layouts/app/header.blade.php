@@ -123,7 +123,13 @@
 
         <flux:navlist variant="outline">
             @foreach ($headerItems as $item)
-                @if ($item->isGroup())
+                @if ($item->isGroup() && $item->id === 'inventario')
+                    <flux:navlist.item :href="$item->getUrl()" :icon="$item->heroIcon"
+                        class="cursor-pointer transition active:translate-y-px {{ request()->routeIs('inventario.*') ? 'bg-blue-600/10 text-blue-700 ring-1 ring-blue-600/20 dark:bg-blue-500/20 dark:text-blue-100 dark:ring-blue-400/30' : '' }}"
+                        :current="$item->isActive() || request()->routeIs('inventario.*')" wire:navigate>
+                        {{ $item->label }}
+                    </flux:navlist.item>
+                @elseif ($item->isGroup())
                     <flux:navlist.group :heading="$item->label" class="grid">
                         @foreach ($item->items as $child)
                             <x-rk.flux::components.simple-node :node="$child" />

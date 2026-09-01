@@ -1,0 +1,4 @@
+codigo_interno,codigo_barra,nombre,descripcion,unidad_medida_id,idobjeto,idCubs,codigo_lote,cantidad,fecha_vencimiento,ubicacion,stock_minimo
+INV-PRUEBA-CSV-001,750000000101,Papel bond carta 75g,Producto de prueba para bodega,1,,,LOTE-PB-CSV-001,10,,Estante A,2
+INV-PRUEBA-CSV-002,750000000102,Alcohol gel 500ml,Producto de prueba con vencimiento,1,,,LOTE-AG-CSV-001,5,2027-12-31,Estante B,1
+INV-PRUEBA-CSV-003,,Marcador permanente negro,Producto de prueba sin codigo de barra,1,,,SIN-LOTE,20,,Estante C,5
