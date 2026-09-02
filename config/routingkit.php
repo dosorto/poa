@@ -224,7 +224,7 @@ return [
     'development_users' => [
         'admin_general' => [
             'user' => [
-                'name' => "Acxel Aplicano",
+                'name' => "Henry Ramirez",
                 'email' => env('MAIL_ADMIN_ADDRESS') ?? 'admin@gmail.com',
                 'password' => env('MAIL_ADMIN_PASSWORD') ?? '12345678',
             ],

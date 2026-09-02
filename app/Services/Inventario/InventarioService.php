@@ -2,6 +2,8 @@
 
 namespace App\Services\Inventario;
 
+use App\Models\Actas\ActaEntrega;
+use App\Models\Actas\DetalleActaEntrega;
 use App\Models\Inventario\InventarioEntrada;
 use App\Models\Inventario\InventarioEntradaDetalle;
 use App\Models\Inventario\InventarioExistencia;
@@ -68,6 +70,8 @@ class InventarioService
             if ($salida->acta_entrega_id === null && $salida->tipo_salida === 'manual') {
                 $this->validarSalidaManual($salida);
             }
+
+            $this->validarSalidaDesdeActa($salida);
 
             foreach ($salida->detalles as $detalle) {
                 $this->descontarExistencia(
@@ -342,6 +346,93 @@ class InventarioService
             throw ValidationException::withMessages([
                 'salida_manual' => 'La salida manual requiere motivo, receptor o departamento, observacion y responsable.',
             ]);
+        }
+    }
+
+    private function validarSalidaDesdeActa(InventarioSalida $salida): void
+    {
+        $tieneDetalleActa = $salida->detalles->contains(fn (InventarioSalidaDetalle $detalle) => $detalle->detalle_acta_entrega_id !== null);
+
+        if ($salida->acta_entrega_id === null) {
+            if ($tieneDetalleActa) {
+                throw ValidationException::withMessages([
+                    'acta' => 'No se puede asociar un detalle de acta a una salida sin acta de entrega.',
+                ]);
+            }
+
+            return;
+        }
+
+        $acta = ActaEntrega::with('tipoActaEntrega')
+            ->lockForUpdate()
+            ->findOrFail($salida->acta_entrega_id);
+
+        if (mb_strtolower((string) $acta->tipoActaEntrega?->tipo) !== 'final') {
+            throw ValidationException::withMessages([
+                'acta' => 'Solo las actas finales pueden respaldar una salida de inventario.',
+            ]);
+        }
+
+        if ((int) $salida->requisicion_id !== (int) $acta->idRequisicion) {
+            throw ValidationException::withMessages([
+                'requisicion' => 'La requisición de la salida no corresponde al acta seleccionada.',
+            ]);
+        }
+
+        if (! $tieneDetalleActa) {
+            throw ValidationException::withMessages([
+                'detalles' => 'Las salidas respaldadas por acta deben indicar su detalle de acta.',
+            ]);
+        }
+
+        $detallesActa = DetalleActaEntrega::with('detalleRequisicion')
+            ->where('idActaEntrega', $acta->id)
+            ->whereIn('id', $salida->detalles->pluck('detalle_acta_entrega_id')->filter())
+            ->lockForUpdate()
+            ->get()
+            ->keyBy('id');
+
+        $cantidadNuevaPorDetalle = [];
+
+        foreach ($salida->detalles as $detalleSalida) {
+            $detalleActa = $detallesActa->get($detalleSalida->detalle_acta_entrega_id);
+
+            if (! $detalleActa || ! $detalleActa->detalleRequisicion) {
+                throw ValidationException::withMessages([
+                    'detalles' => 'Uno de los productos no corresponde a un detalle válido del acta.',
+                ]);
+            }
+
+            $recursoId = $detalleActa->detalleRequisicion->idRecurso;
+            $productoValido = InventarioProducto::whereKey($detalleSalida->producto_id)
+                ->whereHas('recursos', fn ($query) => $query->where('tareas_historicos.id', $recursoId))
+                ->exists();
+
+            if (! $productoValido) {
+                throw ValidationException::withMessages([
+                    'producto' => 'El producto seleccionado no está vinculado al recurso indicado en el acta.',
+                ]);
+            }
+
+            $cantidadNuevaPorDetalle[$detalleActa->id] = ($cantidadNuevaPorDetalle[$detalleActa->id] ?? 0) + (float) $detalleSalida->cantidad;
+        }
+
+        foreach ($cantidadNuevaPorDetalle as $detalleActaId => $cantidadNueva) {
+            $cantidadAnterior = InventarioSalidaDetalle::query()
+                ->join('inventario_salidas', 'inventario_salidas.id', '=', 'inventario_salida_detalles.salida_id')
+                ->where('inventario_salidas.estado', 'confirmado')
+                ->whereNull('inventario_salidas.deleted_at')
+                ->where('inventario_salida_detalles.detalle_acta_entrega_id', $detalleActaId)
+                ->where('inventario_salida_detalles.salida_id', '!=', $salida->id)
+                ->sum('inventario_salida_detalles.cantidad');
+
+            $cantidadAutorizada = (float) $detallesActa[$detalleActaId]->log_cant_ejecutada;
+
+            if (((float) $cantidadAnterior + $cantidadNueva) > $cantidadAutorizada) {
+                throw ValidationException::withMessages([
+                    'cantidad' => 'La cantidad a despachar supera la cantidad autorizada por el acta.',
+                ]);
+            }
         }
     }
 }

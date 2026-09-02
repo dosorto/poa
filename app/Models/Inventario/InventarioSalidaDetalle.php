@@ -2,6 +2,7 @@
 
 namespace App\Models\Inventario;
 
+use App\Models\Actas\DetalleActaEntrega;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -11,6 +12,7 @@ class InventarioSalidaDetalle extends Model
 
     protected $fillable = [
         'salida_id',
+        'detalle_acta_entrega_id',
         'producto_id',
         'lote_id',
         'cantidad',
@@ -23,6 +25,11 @@ class InventarioSalidaDetalle extends Model
     public function salida(): BelongsTo
     {
         return $this->belongsTo(InventarioSalida::class, 'salida_id');
+    }
+
+    public function detalleActaEntrega(): BelongsTo
+    {
+        return $this->belongsTo(DetalleActaEntrega::class, 'detalle_acta_entrega_id');
     }
 
     public function producto(): BelongsTo

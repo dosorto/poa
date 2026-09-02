@@ -37,6 +37,7 @@ class Salidas extends Component
     public string $fecha_salida = '';
     public ?string $observacion = null;
     public array $detalles = [];
+    public array $productosPorDetalleActa = [];
 
     protected function rules(): array
     {
@@ -55,6 +56,7 @@ class Salidas extends Component
             'detalles' => 'required|array|min:1',
             'detalles.*.producto_id' => 'required|exists:inventario_productos,id',
             'detalles.*.lote_id' => 'nullable|exists:inventario_lotes,id',
+            'detalles.*.detalle_acta_entrega_id' => 'nullable|exists:detalle_acta_entrega,id',
             'detalles.*.cantidad' => 'required|numeric|min:0.01',
         ];
     }
@@ -83,16 +85,42 @@ class Salidas extends Component
         $this->fecha_salida = $salida->fecha_salida?->format('Y-m-d') ?? now()->toDateString();
         $this->detalles = $salida->detalles->map(fn ($detalle) => [
             'id' => $detalle->id,
+            'detalle_acta_entrega_id' => $detalle->detalle_acta_entrega_id,
             'producto_id' => $detalle->producto_id,
             'lote_id' => $detalle->lote_id,
             'cantidad' => $detalle->cantidad,
         ])->toArray();
+
+        if ($this->acta_entrega_id) {
+            $this->prepararContextoActa($this->acta_entrega_id, false);
+        }
+
         $this->showModal = true;
     }
 
     public function addDetalle(): void
     {
+        if ($this->acta_entrega_id) {
+            session()->flash('error', 'Agregue otro lote desde una línea del acta; no se permiten productos ajenos al acta.');
+            return;
+        }
+
         $this->detalles[] = $this->emptyDetalle();
+    }
+
+    public function agregarLoteActa(int $index): void
+    {
+        $detalle = $this->detalles[$index] ?? null;
+
+        if (! $this->acta_entrega_id || ! $detalle || empty($detalle['detalle_acta_entrega_id'])) {
+            return;
+        }
+
+        $nuevoDetalle = $detalle;
+        unset($nuevoDetalle['id']);
+        $nuevoDetalle['lote_id'] = null;
+        $nuevoDetalle['cantidad'] = 0;
+        $this->detalles[] = $nuevoDetalle;
     }
 
     public function removeDetalle(int $index): void
@@ -104,6 +132,10 @@ class Salidas extends Component
     public function save(): void
     {
         $this->validate();
+
+        if ($this->acta_entrega_id) {
+            $this->prepararContextoActa($this->acta_entrega_id, false);
+        }
 
         $salida = InventarioSalida::updateOrCreate(['id' => $this->salidaId], [
             'numero_salida' => $this->numero_salida,
@@ -126,6 +158,7 @@ class Salidas extends Component
         foreach ($this->detalles as $detalle) {
             InventarioSalidaDetalle::create([
                 'salida_id' => $salida->id,
+                'detalle_acta_entrega_id' => $detalle['detalle_acta_entrega_id'] ?? null,
                 'producto_id' => $detalle['producto_id'],
                 'lote_id' => $detalle['lote_id'] ?: null,
                 'cantidad' => $detalle['cantidad'],
@@ -156,14 +189,75 @@ class Salidas extends Component
 
     private function resetForm(): void
     {
-        $this->reset(['salidaId', 'numero_salida', 'bodega_id', 'acta_entrega_id', 'requisicion_id', 'tipo_salida', 'motivo', 'departamento_id', 'empleado_recibe_id', 'responsable_entrega_id', 'fecha_salida', 'observacion', 'detalles']);
+        $this->reset(['salidaId', 'numero_salida', 'bodega_id', 'acta_entrega_id', 'requisicion_id', 'tipo_salida', 'motivo', 'departamento_id', 'empleado_recibe_id', 'responsable_entrega_id', 'fecha_salida', 'observacion', 'detalles', 'productosPorDetalleActa']);
         $this->tipo_salida = 'manual';
         $this->resetValidation();
     }
 
     private function emptyDetalle(): array
     {
-        return ['producto_id' => null, 'lote_id' => null, 'cantidad' => 1];
+        return ['detalle_acta_entrega_id' => null, 'producto_id' => null, 'lote_id' => null, 'cantidad' => 1];
+    }
+
+    public function updatedActaEntregaId($actaId): void
+    {
+        if (! $actaId) {
+            $this->productosPorDetalleActa = [];
+            return;
+        }
+
+        $this->prepararContextoActa((int) $actaId);
+    }
+
+    private function prepararContextoActa(int $actaId, bool $cargarDetalles = true): void
+    {
+        $acta = ActaEntrega::with([
+            'tipoActaEntrega',
+            'requisicion.departamento',
+            'detalles.detalleRequisicion.recurso',
+        ])->findOrFail($actaId);
+
+        if (mb_strtolower((string) $acta->tipoActaEntrega?->tipo) !== 'final') {
+            $this->addError('acta_entrega_id', 'Solo se permiten actas finales para salidas de bodega.');
+            return;
+        }
+
+        $this->requisicion_id = $acta->idRequisicion;
+        $this->departamento_id = $acta->requisicion?->idDepartamento;
+        $this->tipo_salida = 'entrega';
+        $this->productosPorDetalleActa = [];
+
+        foreach ($acta->detalles as $detalleActa) {
+            $recursoId = $detalleActa->detalleRequisicion?->idRecurso;
+            $productos = $recursoId
+                ? InventarioProducto::where('activo', true)
+                    ->whereHas('recursos', fn ($query) => $query->where('tareas_historicos.id', $recursoId))
+                    ->orderBy('nombre')
+                    ->get(['id', 'codigo_interno', 'nombre'])
+                : collect();
+
+            $this->productosPorDetalleActa[$detalleActa->id] = $productos->map(fn (InventarioProducto $producto) => [
+                'id' => $producto->id,
+                'nombre' => $producto->codigo_interno . ' - ' . $producto->nombre,
+            ])->all();
+        }
+
+        if (! $cargarDetalles) {
+            return;
+        }
+
+        $this->detalles = $acta->detalles->map(function ($detalleActa) {
+            $productos = $this->productosPorDetalleActa[$detalleActa->id] ?? [];
+
+            return [
+                'detalle_acta_entrega_id' => $detalleActa->id,
+                'producto_id' => count($productos) === 1 ? $productos[0]['id'] : null,
+                'lote_id' => null,
+                'cantidad' => $detalleActa->log_cant_ejecutada,
+                'cantidad_autorizada' => $detalleActa->log_cant_ejecutada,
+                'recurso' => $detalleActa->detalleRequisicion?->recurso?->nombre ?? 'Recurso no disponible',
+            ];
+        })->values()->all();
     }
 
     public function render()
@@ -179,9 +273,12 @@ class Salidas extends Component
             'bodegas' => InventarioBodega::where('activo', true)->orderBy('nombre')->get(),
             'productos' => InventarioProducto::where('activo', true)->orderBy('nombre')->get(),
             'existencias' => InventarioExistencia::with('lote')->where('cantidad_disponible', '>', 0)->get(),
-            'actas' => ActaEntrega::latest()->limit(100)->get(['id', 'correlativo']),
+            'actas' => ActaEntrega::whereHas('tipoActaEntrega', fn ($query) => $query->whereRaw('LOWER(tipo) = ?', ['final']))
+                ->latest()
+                ->limit(100)
+                ->get(['id', 'correlativo']),
             'requisiciones' => Requisicion::latest()->limit(100)->get(['id', 'correlativo']),
-            'departamentos' => Departamento::orderBy('nombre')->get(['id', 'nombre']),
+            'departamentos' => Departamento::orderBy('name')->get(['id', 'name']),
             'empleados' => Empleado::orderBy('nombre')->get(['id', 'nombre', 'apellido']),
         ]);
     }

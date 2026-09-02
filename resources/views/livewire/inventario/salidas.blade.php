@@ -62,7 +62,7 @@
                         <option value="dano">Dano</option>
                     </select>
                     <select wire:model="acta_entrega_id" class="border rounded px-3 py-2 dark:bg-zinc-800 dark:border-zinc-700">
-                        <option value="">Acta opcional</option>
+                        <option value="">Sin acta / salida manual</option>
                         @foreach ($actas as $acta) <option value="{{ $acta->id }}">{{ $acta->correlativo }}</option> @endforeach
                     </select>
                     <select wire:model="requisicion_id" class="border rounded px-3 py-2 dark:bg-zinc-800 dark:border-zinc-700">
@@ -72,7 +72,7 @@
                     <input wire:model="motivo" class="border rounded px-3 py-2 dark:bg-zinc-800 dark:border-zinc-700" placeholder="Motivo">
                     <select wire:model="departamento_id" class="border rounded px-3 py-2 dark:bg-zinc-800 dark:border-zinc-700">
                         <option value="">Departamento</option>
-                        @foreach ($departamentos as $departamento) <option value="{{ $departamento->id }}">{{ $departamento->nombre }}</option> @endforeach
+                        @foreach ($departamentos as $departamento) <option value="{{ $departamento->id }}">{{ $departamento->name }}</option> @endforeach
                     </select>
                     <select wire:model="empleado_recibe_id" class="border rounded px-3 py-2 dark:bg-zinc-800 dark:border-zinc-700">
                         <option value="">Empleado recibe</option>
@@ -82,15 +82,35 @@
                 </div>
                 <div class="mt-5 space-y-3">
                     <div class="flex justify-between items-center">
-                        <h4 class="font-medium">Detalle</h4>
-                        <button wire:click="addDetalle" class="cursor-pointer px-3 py-1 border rounded transition active:translate-y-px">Agregar producto</button>
+                        <div>
+                            <h4 class="font-medium">Detalle</h4>
+                            @if ($acta_entrega_id)
+                                <p class="text-xs text-zinc-500 mt-1">Los productos se limitan a los recursos autorizados por el acta final.</p>
+                            @endif
+                        </div>
+                        @unless ($acta_entrega_id)
+                            <button wire:click="addDetalle" class="cursor-pointer px-3 py-1 border rounded transition active:translate-y-px">Agregar producto</button>
+                        @endunless
                     </div>
                     @foreach ($detalles as $index => $detalle)
                         <div class="grid grid-cols-1 md:grid-cols-5 gap-2 border rounded p-3 dark:border-zinc-700">
-                            <select wire:model.live="detalles.{{ $index }}.producto_id" class="border rounded px-3 py-2 dark:bg-zinc-800 dark:border-zinc-700 md:col-span-2">
-                                <option value="">Producto</option>
-                                @foreach ($productos as $producto) <option value="{{ $producto->id }}">{{ $producto->codigo_interno }} - {{ $producto->nombre }}</option> @endforeach
-                            </select>
+                            @if ($acta_entrega_id)
+                                <div class="md:col-span-2">
+                                    <p class="text-sm font-medium text-zinc-800 dark:text-zinc-200">{{ $detalle['recurso'] ?? 'Recurso del acta' }}</p>
+                                    <p class="text-xs text-zinc-500">Autorizado: {{ $detalle['cantidad_autorizada'] ?? '-' }}</p>
+                                    <select wire:model.live="detalles.{{ $index }}.producto_id" class="w-full mt-1 border rounded px-3 py-2 dark:bg-zinc-800 dark:border-zinc-700">
+                                        <option value="">Seleccione producto vinculado</option>
+                                        @foreach (($productosPorDetalleActa[$detalle['detalle_acta_entrega_id'] ?? 0] ?? []) as $producto)
+                                            <option value="{{ $producto['id'] }}">{{ $producto['nombre'] }}</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                            @else
+                                <select wire:model.live="detalles.{{ $index }}.producto_id" class="border rounded px-3 py-2 dark:bg-zinc-800 dark:border-zinc-700 md:col-span-2">
+                                    <option value="">Producto</option>
+                                    @foreach ($productos as $producto) <option value="{{ $producto->id }}">{{ $producto->codigo_interno }} - {{ $producto->nombre }}</option> @endforeach
+                                </select>
+                            @endif
                             <select wire:model="detalles.{{ $index }}.lote_id" class="border rounded px-3 py-2 dark:bg-zinc-800 dark:border-zinc-700">
                                 <option value="">Lote disponible</option>
                                 @foreach ($existencias->where('producto_id', $detalle['producto_id'] ?? null)->where('bodega_id', $bodega_id) as $existencia)
@@ -98,7 +118,12 @@
                                 @endforeach
                             </select>
                             <input wire:model="detalles.{{ $index }}.cantidad" type="number" step="0.01" class="border rounded px-3 py-2 dark:bg-zinc-800 dark:border-zinc-700" placeholder="Cantidad">
-                            <button wire:click="removeDetalle({{ $index }})" class="cursor-pointer text-red-600 text-left transition active:translate-y-px">Quitar</button>
+                            <div class="flex flex-col gap-1">
+                                @if ($acta_entrega_id)
+                                    <button wire:click="agregarLoteActa({{ $index }})" class="cursor-pointer text-blue-600 text-left transition active:translate-y-px">Otro lote</button>
+                                @endif
+                                <button wire:click="removeDetalle({{ $index }})" class="cursor-pointer text-red-600 text-left transition active:translate-y-px">Quitar</button>
+                            </div>
                         </div>
                     @endforeach
                 </div>

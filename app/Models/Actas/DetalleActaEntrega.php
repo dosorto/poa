@@ -5,10 +5,12 @@ namespace App\Models\Actas;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Models\Requisicion\Requisicion;
 use App\Models\Requisicion\DetalleRequisicion;
 use App\Models\EjecucionPresupuestaria\EjecucionPresupuestaria;
 use App\Models\EjecucionPresupuestaria\DetalleEjecucionPresupuestaria;
+use App\Models\Inventario\InventarioSalidaDetalle;
 use App\Models\User;
 
 class DetalleActaEntrega extends Model
@@ -65,5 +67,10 @@ class DetalleActaEntrega extends Model
     public function createdBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
+    }
+
+    public function salidasInventario(): HasMany
+    {
+        return $this->hasMany(InventarioSalidaDetalle::class, 'detalle_acta_entrega_id');
     }
 }
