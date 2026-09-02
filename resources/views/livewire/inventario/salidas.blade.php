@@ -45,14 +45,16 @@
         <div class="fixed inset-0 bg-black/40 flex items-center justify-center z-50 overflow-y-auto">
             <div class="bg-white dark:bg-zinc-900 rounded-lg shadow p-6 w-full max-w-5xl my-8">
                 <h3 class="font-semibold mb-4">Salida en borrador</h3>
+                @php
+                    $bodegaSeleccionada = $bodegas->firstWhere('id', $bodega_id) ?? $bodegas->first();
+                @endphp
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <input wire:model="numero_salida" class="border rounded px-3 py-2 dark:bg-zinc-800 dark:border-zinc-700" placeholder="Numero de salida">
-                    <select wire:model="bodega_id" class="border rounded px-3 py-2 dark:bg-zinc-800 dark:border-zinc-700">
-                        <option value="">Bodega</option>
-                        @foreach ($bodegas as $bodega) <option value="{{ $bodega->id }}">{{ $bodega->nombre }}</option> @endforeach
-                    </select>
-                    <input wire:model="fecha_salida" type="date" class="border rounded px-3 py-2 dark:bg-zinc-800 dark:border-zinc-700">
-                    <select wire:model="tipo_salida" class="border rounded px-3 py-2 dark:bg-zinc-800 dark:border-zinc-700">
+                    <input wire:model.live="numero_salida" class="border rounded px-3 py-2 dark:bg-zinc-800 dark:border-zinc-700" placeholder="Numero de salida">
+                    <div class="border rounded px-3 py-2 text-sm text-zinc-700 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-200">
+                        {{ $bodegaSeleccionada?->nombre ?? 'No hay bodega activa' }}
+                    </div>
+                    <input wire:model.live="fecha_salida" type="date" class="border rounded px-3 py-2 dark:bg-zinc-800 dark:border-zinc-700">
+                    <select wire:model.live="tipo_salida" class="border rounded px-3 py-2 dark:bg-zinc-800 dark:border-zinc-700">
                         <option value="manual">Manual</option>
                         <option value="entrega">Entrega</option>
                         <option value="consumo_interno">Consumo interno</option>
@@ -61,24 +63,24 @@
                         <option value="vencimiento">Vencimiento</option>
                         <option value="dano">Dano</option>
                     </select>
-                    <select wire:model="acta_entrega_id" class="border rounded px-3 py-2 dark:bg-zinc-800 dark:border-zinc-700">
+                    <select wire:model.live="acta_entrega_id" class="border rounded px-3 py-2 dark:bg-zinc-800 dark:border-zinc-700">
                         <option value="">Sin acta / salida manual</option>
                         @foreach ($actas as $acta) <option value="{{ $acta->id }}">{{ $acta->correlativo }}</option> @endforeach
                     </select>
-                    <select wire:model="requisicion_id" class="border rounded px-3 py-2 dark:bg-zinc-800 dark:border-zinc-700">
+                    <select wire:model.live="requisicion_id" class="border rounded px-3 py-2 dark:bg-zinc-800 dark:border-zinc-700">
                         <option value="">Requisicion opcional</option>
                         @foreach ($requisiciones as $requisicion) <option value="{{ $requisicion->id }}">{{ $requisicion->correlativo }}</option> @endforeach
                     </select>
-                    <input wire:model="motivo" class="border rounded px-3 py-2 dark:bg-zinc-800 dark:border-zinc-700" placeholder="Motivo">
-                    <select wire:model="departamento_id" class="border rounded px-3 py-2 dark:bg-zinc-800 dark:border-zinc-700">
+                    <input wire:model.live="motivo" class="border rounded px-3 py-2 dark:bg-zinc-800 dark:border-zinc-700" placeholder="Motivo">
+                    <select wire:model.live="departamento_id" class="border rounded px-3 py-2 dark:bg-zinc-800 dark:border-zinc-700">
                         <option value="">Departamento</option>
                         @foreach ($departamentos as $departamento) <option value="{{ $departamento->id }}">{{ $departamento->name }}</option> @endforeach
                     </select>
-                    <select wire:model="empleado_recibe_id" class="border rounded px-3 py-2 dark:bg-zinc-800 dark:border-zinc-700">
+                    <select wire:model.live="empleado_recibe_id" class="border rounded px-3 py-2 dark:bg-zinc-800 dark:border-zinc-700">
                         <option value="">Empleado recibe</option>
                         @foreach ($empleados as $empleado) <option value="{{ $empleado->id }}">{{ $empleado->nombre }} {{ $empleado->apellido }}</option> @endforeach
                     </select>
-                    <textarea wire:model="observacion" class="border rounded px-3 py-2 dark:bg-zinc-800 dark:border-zinc-700 md:col-span-3" placeholder="Observacion"></textarea>
+                    <textarea wire:model.live="observacion" class="border rounded px-3 py-2 dark:bg-zinc-800 dark:border-zinc-700 md:col-span-3" placeholder="Observacion"></textarea>
                 </div>
                 <div class="mt-5 space-y-3">
                     <div class="flex justify-between items-center">
@@ -93,7 +95,7 @@
                         @endunless
                     </div>
                     @foreach ($detalles as $index => $detalle)
-                        <div class="grid grid-cols-1 md:grid-cols-5 gap-2 border rounded p-3 dark:border-zinc-700">
+                        <div wire:key="salida-detalle-{{ $index }}-{{ $detalle['detalle_acta_entrega_id'] ?? 'manual' }}" class="grid grid-cols-1 md:grid-cols-5 gap-2 border rounded p-3 dark:border-zinc-700">
                             @if ($acta_entrega_id)
                                 <div class="md:col-span-2">
                                     <p class="text-sm font-medium text-zinc-800 dark:text-zinc-200">{{ $detalle['recurso'] ?? 'Recurso del acta' }}</p>
@@ -111,13 +113,13 @@
                                     @foreach ($productos as $producto) <option value="{{ $producto->id }}">{{ $producto->codigo_interno }} - {{ $producto->nombre }}</option> @endforeach
                                 </select>
                             @endif
-                            <select wire:model="detalles.{{ $index }}.lote_id" class="border rounded px-3 py-2 dark:bg-zinc-800 dark:border-zinc-700">
+                            <select wire:model.live="detalles.{{ $index }}.lote_id" class="border rounded px-3 py-2 dark:bg-zinc-800 dark:border-zinc-700">
                                 <option value="">Lote disponible</option>
                                 @foreach ($existencias->where('producto_id', $detalle['producto_id'] ?? null)->where('bodega_id', $bodega_id) as $existencia)
                                     <option value="{{ $existencia->lote_id }}">{{ $existencia->lote?->codigo_lote }} / disp. {{ $existencia->cantidad_disponible }}</option>
                                 @endforeach
                             </select>
-                            <input wire:model="detalles.{{ $index }}.cantidad" type="number" step="0.01" class="border rounded px-3 py-2 dark:bg-zinc-800 dark:border-zinc-700" placeholder="Cantidad">
+                            <input wire:model.live="detalles.{{ $index }}.cantidad" type="number" step="0.01" class="border rounded px-3 py-2 dark:bg-zinc-800 dark:border-zinc-700" placeholder="Cantidad">
                             <div class="flex flex-col gap-1">
                                 @if ($acta_entrega_id)
                                     <button wire:click="agregarLoteActa({{ $index }})" class="cursor-pointer text-blue-600 text-left transition active:translate-y-px">Otro lote</button>

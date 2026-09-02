@@ -65,6 +65,7 @@ class Salidas extends Component
     {
         $this->resetForm();
         $this->numero_salida = 'SAL-' . now()->format('YmdHis');
+        $this->bodega_id = $this->defaultBodegaId();
         $this->fecha_salida = now()->toDateString();
         $this->responsable_entrega_id = Auth::id();
         $this->detalles = [$this->emptyDetalle()];
@@ -131,6 +132,8 @@ class Salidas extends Component
 
     public function save(): void
     {
+        $this->bodega_id ??= $this->defaultBodegaId();
+
         $this->validate();
 
         if ($this->acta_entrega_id) {
@@ -197,6 +200,11 @@ class Salidas extends Component
     private function emptyDetalle(): array
     {
         return ['detalle_acta_entrega_id' => null, 'producto_id' => null, 'lote_id' => null, 'cantidad' => 1];
+    }
+
+    private function defaultBodegaId(): ?int
+    {
+        return InventarioBodega::where('activo', true)->orderBy('id')->value('id');
     }
 
     public function updatedActaEntregaId($actaId): void

@@ -26,7 +26,11 @@ class ActaEntregaController extends Controller
             'tipoActaEntrega', 'ejecucionPresupuestaria',
             'detalles.detalleRequisicion.presupuesto.unidadMedida',
             'detalles.detalleEjecucionPresupuestaria'
-        ])->where('idRequisicion', $requisicionId)->firstOrFail();
+        ])
+            ->where('idRequisicion', $requisicionId)
+            ->whereHas('tipoActaEntrega', fn ($query) => $query->whereRaw('LOWER(tipo) = ?', ['final']))
+            ->latest('id')
+            ->firstOrFail();
 
         return [
             'acta' => $actaEntrega,

@@ -92,7 +92,11 @@ class Productos extends Component
     {
         $this->validate();
 
-        InventarioProducto::updateOrCreate(['id' => $this->productoId], [
+        $recursoAnteriorId = $this->productoId
+            ? InventarioProducto::whereKey($this->productoId)->value('recurso_id')
+            : null;
+
+        $producto = InventarioProducto::updateOrCreate(['id' => $this->productoId], [
             'recurso_id' => $this->recurso_id,
             'idCubs' => $this->idCubs ?: null,
             'idobjeto' => $this->idobjeto ?: null,
@@ -108,6 +112,14 @@ class Productos extends Component
             'maneja_vencimiento' => $this->maneja_vencimiento,
             'activo' => $this->activo,
         ]);
+
+        if ($recursoAnteriorId && $recursoAnteriorId !== $this->recurso_id) {
+            $producto->recursos()->detach($recursoAnteriorId);
+        }
+
+        if ($this->recurso_id) {
+            $producto->recursos()->syncWithoutDetaching([$this->recurso_id]);
+        }
 
         session()->flash('message', 'Producto guardado correctamente.');
         $this->closeModal();

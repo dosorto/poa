@@ -564,22 +564,24 @@ class EntregaRecursos extends Component
     protected function crearActaEntrega($requisicion, $ejecucionPresupuestaria)
     {
         try {
-            // Verificar si ya existe un acta
-            $actaExistente = ActaEntrega::where('idRequisicion', $requisicion->id)->first();
-            
+            // Verificar si ya existe un acta final. Una acta intermedia no debe bloquear la final.
+            $tipoActaFinal = TipoActaEntrega::where('tipo', 'Final')->first();
+
+            if (!$tipoActaFinal) {
+                throw new \Exception('No se encontró el tipo de acta "Final"');
+            }
+
+            $actaExistente = ActaEntrega::where('idRequisicion', $requisicion->id)
+                ->where('idTipoActaEntrega', $tipoActaFinal->id)
+                ->latest('id')
+                ->first();
+
             if ($actaExistente) {
-                \Log::info('Ya existe un acta de entrega para esta requisición', [
+                \Log::info('Ya existe un acta final para esta requisición', [
                     'requisicion_id' => $requisicion->id,
                     'acta_id' => $actaExistente->id
                 ]);
                 return $actaExistente;
-            }
-
-            // Obtener el tipo de acta "Final"
-            $tipoActaFinal = TipoActaEntrega::where('tipo', 'Final')->first();
-            
-            if (!$tipoActaFinal) {
-                throw new \Exception('No se encontró el tipo de acta "Final"');
             }
 
             // Generar correlativo para el acta

@@ -74,5 +74,6 @@ class DatabaseSeeder extends Seeder
         $this->call(ConsolidadoPermissionsSeeder::class);
         $this->call(ReportesDireccionSeeder::class);
         $this->call(InventarioPermissionsSeeder::class);
+        $this->call(RecursosAProductosInventarioSeeder::class);
     }
 }
