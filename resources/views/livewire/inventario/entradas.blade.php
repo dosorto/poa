@@ -28,6 +28,7 @@
                                     @can('inventario.entradas.crear') <button wire:click="edit({{ $entrada->id }})" class="cursor-pointer text-blue-600 transition active:translate-y-px">Editar</button> @endcan
                                     @can('inventario.entradas.confirmar') <button wire:click="confirmar({{ $entrada->id }})" class="cursor-pointer text-green-700 transition active:translate-y-px">Confirmar</button> @endcan
                                 @elseif ($entrada->estado === 'confirmado')
+                                    @can('inventario.entradas.ver') <a href="{{ route('inventario.entradas.acta-recepcion', $entrada) }}" target="_blank" class="cursor-pointer text-blue-600 transition active:translate-y-px">Acta</a> @endcan
                                     @can('inventario.ajustes.crear') <button wire:click="anular({{ $entrada->id }})" class="cursor-pointer text-red-700 transition active:translate-y-px">Anular</button> @endcan
                                 @endif
                             </td>
@@ -60,10 +61,9 @@
                                 </label>
                                 <label class="block">
                                     <span class="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Bodega destino</span>
-                                    <select wire:model="bodega_id" class="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white">
-                                        <option value="">Seleccionar bodega</option>
-                                        @foreach ($bodegas as $bodega) <option value="{{ $bodega->id }}">{{ $bodega->nombre }}</option> @endforeach
-                                    </select>
+                                    <div class="flex h-10 w-full items-center rounded-md border border-zinc-300 bg-zinc-50 px-3 text-sm text-zinc-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200">
+                                        {{ ($bodegas->firstWhere('id', $bodega_id) ?? $bodegas->first())?->nombre ?? 'No hay bodega activa' }}
+                                    </div>
                                 </label>
                                 <label class="block">
                                     <span class="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Fecha de entrada</span>

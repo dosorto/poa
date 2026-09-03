@@ -62,6 +62,14 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     Route::get('/configuracion/procesoscompras', ProcesCompras::class)
         ->name('configuracion.procesoscompras')
         ->middleware('can:configuracion.procesoscompras.ver');
+
+    Route::get('/inventario/entradas/{entrada}/acta-recepcion', [\App\Http\Controllers\InventarioEntradaActaController::class, 'show'])
+        ->name('inventario.entradas.acta-recepcion')
+        ->middleware('can:inventario.entradas.ver');
+
+    Route::get('/inventario/entradas/{entrada}/acta-recepcion/download', [\App\Http\Controllers\InventarioEntradaActaController::class, 'download'])
+        ->name('inventario.entradas.acta-recepcion.download')
+        ->middleware('can:inventario.entradas.ver');
 });
 
 

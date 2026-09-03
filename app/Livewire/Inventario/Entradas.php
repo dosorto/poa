@@ -36,9 +36,9 @@ class Entradas extends Component
     {
         return [
             'numero_entrada' => 'required|string|max:255|unique:inventario_entradas,numero_entrada,' . $this->entradaId,
-            'numero_factura' => 'nullable|string|max:255',
-            'proveedor' => 'nullable|string|max:255',
-            'fecha_factura' => 'nullable|date',
+            'numero_factura' => 'required|string|max:255',
+            'proveedor' => 'required|string|max:255',
+            'fecha_factura' => 'required|date',
             'orden_compra_referencia' => 'nullable|string|max:255',
             'requisicion_id' => 'nullable|exists:requisicion,id',
             'bodega_id' => 'required|exists:inventario_bodegas,id',
@@ -58,6 +58,7 @@ class Entradas extends Component
         $this->resetForm();
         $this->numero_entrada = 'ENT-' . now()->format('YmdHis');
         $this->fecha_entrada = now()->toDateString();
+        $this->bodega_id = $this->defaultBodegaId();
         $this->detalles = [$this->emptyDetalle()];
         $this->showModal = true;
     }
@@ -99,6 +100,8 @@ class Entradas extends Component
 
     public function save(): void
     {
+        $this->bodega_id ??= $this->defaultBodegaId();
+
         $this->validate();
 
         $entrada = InventarioEntrada::updateOrCreate(['id' => $this->entradaId], [
@@ -160,6 +163,11 @@ class Entradas extends Component
     private function emptyDetalle(): array
     {
         return ['producto_id' => null, 'codigo_lote' => null, 'cantidad' => 1, 'costo_unitario' => null, 'fecha_vencimiento' => null];
+    }
+
+    private function defaultBodegaId(): ?int
+    {
+        return InventarioBodega::where('activo', true)->orderBy('id')->value('id');
     }
 
     public function render()
