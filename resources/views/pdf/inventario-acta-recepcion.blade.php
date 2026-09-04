@@ -4,10 +4,11 @@
     <meta charset="UTF-8">
     <title>Acta de Recepcion</title>
     <style>
-        @page { margin: 1.6cm 1.5cm; }
+        @page { margin: 1.6cm 1.5cm 2.2cm; }
         body { font-family: Arial, sans-serif; font-size: 10pt; color: #111; }
-        .header { text-align: center; margin-bottom: 18px; position: relative; }
-        .logo { position: absolute; left: 0; top: 0; width: 72px; }
+        .header { text-align: center; margin-bottom: 18px; padding-top: 75px; position: relative; }
+        .logo { position: absolute; left: 0; top: -20px; width: 145px; }
+        .watermark { position: fixed; bottom: 20px; right: -1.5cm; width: 55%; }
         .title { font-size: 12pt; font-weight: bold; margin: 0; }
         .subtitle { font-size: 11pt; font-weight: bold; margin: 4px 0; }
         .meta { margin: 18px 0; line-height: 1.65; }
@@ -21,15 +22,20 @@
         .total-label { font-weight: bold; text-align: center; }
         .signature { margin-top: 70px; text-align: center; }
         .signature-line { border-top: 1px solid #111; display: inline-block; min-width: 260px; padding-top: 5px; }
+        .footer { position: fixed; bottom: -6px; left: 0; width: 100%; text-align: center; font-size: 10pt; line-height: 1.2; }
+        .footer-motto { white-space: nowrap; }
         .small { font-size: 8pt; }
     </style>
 </head>
 <body>
-    <div class="header">
+    <img class="watermark" src="{{ $marcaAgua }}" alt="">
+
+    <div class="content">
+        <div class="header">
         <img class="logo" src="{{ public_path('Logo/logounah.png') }}" alt="UNAH">
         <p class="title">Universidad Nacional Autonoma de Honduras</p>
         <p class="subtitle">Acta de recepcion No. {{ $entrada->numero_entrada }}</p>
-    </div>
+        </div>
 
     <div class="meta">
         <div><span class="label">Fecha:</span> {{ optional($entrada->fecha_entrada)->format('d/m/Y') }}</div>
@@ -83,11 +89,29 @@
         <p class="intro"><span class="label">Observacion:</span> {{ $entrada->observacion }}</p>
     @endif
 
+    @php
+        $administrador = $entrada->requisicion?->departamento?->unidadEjecutora?->administrador
+            ?? $entrada->usuario?->empleado?->unidadEjecutora?->administrador;
+        $empleadoAdministrador = $administrador?->empleado;
+        $nombreAdministrador = trim(($empleadoAdministrador?->nombre ?? '') . ' ' . ($empleadoAdministrador?->apellido ?? ''));
+        $responsableActa = $nombreAdministrador !== ''
+            ? $nombreAdministrador
+            : ($administrador?->name
+                ?? trim(($entrada->usuario?->empleado?->nombre ?? '') . ' ' . ($entrada->usuario?->empleado?->apellido ?? ''))
+                ?: ($entrada->usuario?->name ?? 'Responsable'));
+    @endphp
+
     <div class="signature">
         <span class="signature-line">
-            {{ $entrada->usuario?->empleado?->nombre ?? $entrada->usuario?->name ?? 'Responsable' }}<br>
+            {{ $responsableActa }}<br>
             Administrador
         </span>
+    </div>
+    </div>
+
+    <div class="footer">
+        <span class="footer-motto">La Educación es la Primera Necesidad de la República.</span><br>
+        Universidad Nacional Autónoma de Honduras | CIUDAD UNIVERSITARIA | Tegucigalpa M.D.C. Honduras C.A.
     </div>
 </body>
 </html>

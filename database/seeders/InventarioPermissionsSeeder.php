@@ -30,7 +30,6 @@ class InventarioPermissionsSeeder extends Seeder
             'inventario.salidas.confirmar',
             'inventario.ajustes.crear',
             'inventario.kardex.ver',
-            'inventario.importar',
         ])->map(fn ($permission) => Permission::firstOrCreate([
             'name' => $permission,
             'guard_name' => 'web',

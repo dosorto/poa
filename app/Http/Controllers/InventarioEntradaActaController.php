@@ -30,14 +30,15 @@ class InventarioEntradaActaController extends Controller
         $entrada->load([
             'bodega',
             'detalles.producto.unidadMedida',
-            'requisicion.departamento',
-            'usuario.empleado',
+            'requisicion.departamento.unidadEjecutora.administrador.empleado',
+            'usuario.empleado.unidadEjecutora.administrador.empleado',
         ]);
 
         return [
             'entrada' => $entrada,
             'detalles' => $entrada->detalles,
             'total' => $entrada->detalles->sum(fn ($detalle) => (float) ($detalle->total ?? 0)),
+            'marcaAgua' => 'data:image/png;base64,' . base64_encode(file_get_contents(public_path('Logo/LucemAspico-watermark-visible.png'))),
         ];
     }
 }

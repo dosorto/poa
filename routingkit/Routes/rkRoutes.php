@@ -730,16 +730,6 @@ return [
                         ->setItems([])
                         ->setEndBlock('inventario.kardex'),
 
-                    RkRoute::make('inventario.importacion-inicial')
-                        ->setParentId('inventario')
-                        ->setAccessPermission('acceso-inventario')
-                        ->setPermissions(['inventario.importar', 'acceso-inventario'])
-                        ->setUrlMethod('get')
-                        ->setUrl('inventario/importacion-inicial')
-                        ->setUrlController('App\Livewire\Inventario\ImportacionInicial')
-                        ->setRoles(['super_admin', 'admin'])
-                        ->setItems([])
-                        ->setEndBlock('inventario.importacion-inicial'),
                 ])
                 ->setEndBlock('inventario'),
 

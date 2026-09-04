@@ -255,14 +255,6 @@ return [
                 'icono' => '',
                 'breadcrumb' => true,
             ],
-            [
-                'titulo' => 'Importacion inicial',
-                'route' => 'inventario.importacion-inicial',
-                'routes' => ['inventario.importacion-inicial'],
-                'permisos' => ['inventario.importar'],
-                'icono' => '',
-                'breadcrumb' => true,
-            ],
         ],
     ],
 
