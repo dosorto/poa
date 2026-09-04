@@ -65,6 +65,19 @@ class Productos extends Component
         $this->showModal = true;
     }
 
+    public function updated($property, $value): void
+    {
+        if ($property !== 'recurso_id') {
+            return;
+        }
+
+        if (! $value) {
+            return;
+        }
+
+        $this->cargarDatosDelRecurso((int) $value);
+    }
+
     public function edit(int $id): void
     {
         $producto = InventarioProducto::findOrFail($id);
@@ -90,6 +103,7 @@ class Productos extends Component
 
     public function save(): void
     {
+        $this->generarCodigoInternoSiFalta();
         $this->validate();
 
         $recursoAnteriorId = $this->productoId
@@ -131,6 +145,42 @@ class Productos extends Component
         $producto->update(['activo' => ! $producto->activo]);
     }
 
+    public function searchRecursosInventario($search = ''): array
+    {
+        $recursos = TareaHistorico::query()
+            ->select('id', 'nombre')
+            ->when($search, function ($query) use ($search) {
+                $query->where('nombre', 'like', '%' . $search . '%');
+            })
+            ->orderBy('nombre')
+            ->orderBy('id')
+            ->limit(80)
+            ->get()
+            ->unique(fn ($recurso) => $this->normalizarNombreRecurso($recurso->nombre))
+            ->map(fn ($recurso) => [
+                'id' => (string) $recurso->id,
+                'text' => $recurso->nombre,
+            ])
+            ->values();
+
+        if ($this->recurso_id) {
+            $selectedId = (string) $this->recurso_id;
+
+            if (! $recursos->contains(fn ($option) => (string) $option['id'] === $selectedId)) {
+                $recursoSeleccionado = TareaHistorico::find($this->recurso_id);
+
+                if ($recursoSeleccionado) {
+                    $recursos->prepend([
+                        'id' => $selectedId,
+                        'text' => $recursoSeleccionado->nombre,
+                    ]);
+                }
+            }
+        }
+
+        return $recursos->toArray();
+    }
+
     public function closeModal(): void
     {
         $this->showModal = false;
@@ -159,6 +209,67 @@ class Productos extends Component
         $this->resetValidation();
     }
 
+    private function cargarDatosDelRecurso(int $recursoId): void
+    {
+        $recurso = TareaHistorico::with([
+                'detallesTecnicos' => fn ($query) => $query->where('estado', true)->latest(),
+            ])
+            ->find($recursoId);
+
+        if (! $recurso) {
+            return;
+        }
+
+        $productoRelacionado = InventarioProducto::where(function ($query) use ($recursoId) {
+                $query->where('recurso_id', $recursoId)
+                    ->orWhereHas('recursos', fn ($recursos) => $recursos->where('tareas_historicos.id', $recursoId));
+            })
+            ->when($this->productoId, fn ($query) => $query->where('id', '!=', $this->productoId))
+            ->latest()
+            ->first();
+
+        if ($productoRelacionado) {
+            $this->nombre = $productoRelacionado->nombre;
+            $this->descripcion = $productoRelacionado->descripcion;
+            $this->marca = $productoRelacionado->marca;
+            $this->presentacion = $productoRelacionado->presentacion;
+            $this->unidad_medida_id = $productoRelacionado->unidad_medida_id;
+            $this->idCubs = $productoRelacionado->idCubs ?: $recurso->idCubs;
+            $this->idobjeto = $productoRelacionado->idobjeto ?: $recurso->idobjeto;
+
+            return;
+        }
+
+        $detallesTecnicos = $recurso->detallesTecnicos->pluck('nombre')->filter();
+        $detalleNombre = $detallesTecnicos->first();
+
+        $this->nombre = $detalleNombre ?: $recurso->nombre;
+        $this->descripcion = $detallesTecnicos->isNotEmpty()
+            ? $detallesTecnicos->implode("\n")
+            : $recurso->nombre;
+        $this->marca = null;
+        $this->presentacion = null;
+        $this->unidad_medida_id = $recurso->idunidad;
+        $this->idCubs = $recurso->idCubs;
+        $this->idobjeto = $recurso->idobjeto;
+    }
+
+    private function generarCodigoInternoSiFalta(): void
+    {
+        if (filled($this->codigo_interno)) {
+            return;
+        }
+
+        $siguienteId = ((int) InventarioProducto::withTrashed()->max('id')) + 1;
+
+        do {
+            $codigo = 'INV-' . str_pad((string) $siguienteId, 6, '0', STR_PAD_LEFT);
+            $siguienteId++;
+        } while (InventarioProducto::withTrashed()->where('codigo_interno', $codigo)->exists());
+
+        $this->codigo_interno = $codigo;
+    }
+
     public function render()
     {
         $search = '%' . $this->search . '%';
@@ -172,10 +283,15 @@ class Productos extends Component
                 })
                 ->latest()
                 ->paginate(10),
-            'recursos' => TareaHistorico::orderBy('nombre')->limit(200)->get(['id', 'nombre']),
+            'recursos' => $this->searchRecursosInventario(),
             'unidades' => UnidadMedida::orderBy('nombre')->get(['id', 'nombre']),
             'objetos' => ObjetoGasto::orderBy('identificador')->get(['identificador', 'nombre']),
-            'cubs' => Cub::orderBy('IDUNSPSC')->limit(200)->get(['IDUNSPSC', 'descripcion_esp']),
+            'cubs' => Cub::orderBy('IDUNSPSC')->get(['IDUNSPSC', 'descripcion_esp']),
         ]);
+    }
+
+    private function normalizarNombreRecurso(?string $nombre): string
+    {
+        return preg_replace('/\s+/', ' ', mb_strtoupper(trim((string) $nombre))) ?: '';
     }
 }
