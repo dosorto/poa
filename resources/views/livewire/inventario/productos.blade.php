@@ -49,20 +49,30 @@
                 <div class="max-h-[72vh] overflow-y-auto px-6 py-5">
                     <div class="space-y-6">
                         <section>
-                            <h4 class="mb-3 text-sm font-semibold text-zinc-900 dark:text-white">Datos principales</h4>
                             <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                <label class="block">
-                                    <span class="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Codigo interno</span>
-                                    <input wire:model="codigo_interno" class="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white">
-                                </label>
+                                <div>
+                                    <x-searchable-select
+                                        wire:model="recurso_id"
+                                        wire:key="inventario-recurso-select-{{ $productoId ?: 'nuevo' }}-{{ $recurso_id ?: 'empty' }}"
+                                        label="Recurso POA opcional"
+                                        placeholder="Buscar recurso..."
+                                        defaultText="Seleccione un recurso"
+                                        clearText="Sin recurso asociado"
+                                        searchAction="searchRecursosInventario"
+                                        :options="$recursos"
+                                        :error="$errors->first('recurso_id')"
+                                    />
+                                </div>
                                 <label class="block">
                                     <span class="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Codigo de barra</span>
                                     <input wire:model="codigo_barra" class="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white">
                                 </label>
-                                <label class="block md:col-span-2">
-                                    <span class="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Nombre</span>
-                                    <input wire:model="nombre" class="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white">
-                                </label>
+                            </div>
+                        </section>
+
+                        <section>
+                            <h4 class="mb-3 text-sm font-semibold text-zinc-900 dark:text-white">Datos principales</h4>
+                            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
                                 <label class="block md:col-span-2">
                                     <span class="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Descripcion</span>
                                     <textarea wire:model="descripcion" rows="3" class="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"></textarea>
@@ -91,13 +101,6 @@
                                 <label class="block">
                                     <span class="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Stock minimo</span>
                                     <input wire:model="stock_minimo" type="number" step="0.01" class="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white">
-                                </label>
-                                <label class="block">
-                                    <span class="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Recurso POA opcional</span>
-                                    <select wire:model="recurso_id" class="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white">
-                                        <option value="">Sin recurso asociado</option>
-                                        @foreach ($recursos as $recurso) <option value="{{ $recurso->id }}">{{ str($recurso->nombre)->limit(80) }}</option> @endforeach
-                                    </select>
                                 </label>
                                 <label class="block">
                                     <span class="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Objeto de gasto opcional</span>
