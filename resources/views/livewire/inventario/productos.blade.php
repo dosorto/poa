@@ -71,21 +71,10 @@
                         </section>
 
                         <section>
-                            <h4 class="mb-3 text-sm font-semibold text-zinc-900 dark:text-white">Datos principales</h4>
-                            <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
-                                <label class="block md:col-span-2">
-                                    <span class="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Descripcion</span>
-                                    <textarea wire:model="descripcion" rows="3" class="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"></textarea>
-                                </label>
-                                <label class="block">
-                                    <span class="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Marca</span>
-                                    <input wire:model="marca" class="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white">
-                                </label>
-                                <label class="block">
-                                    <span class="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Presentacion</span>
-                                    <input wire:model="presentacion" class="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white">
-                                </label>
-                            </div>
+                            <label class="block">
+                                <span class="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Detalle tecnico</span>
+                                <textarea wire:model="descripcion" rows="4" class="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white"></textarea>
+                            </label>
                         </section>
 
                         <section>
@@ -102,20 +91,32 @@
                                     <span class="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Stock minimo</span>
                                     <input wire:model="stock_minimo" type="number" step="0.01" class="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white">
                                 </label>
-                                <label class="block">
-                                    <span class="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Objeto de gasto opcional</span>
-                                    <select wire:model="idobjeto" class="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white">
-                                        <option value="">Sin objeto asociado</option>
-                                        @foreach ($objetos as $objeto) <option value="{{ $objeto->identificador }}">{{ $objeto->identificador }} - {{ $objeto->nombre }}</option> @endforeach
-                                    </select>
-                                </label>
-                                <label class="block md:col-span-2">
-                                    <span class="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">CUBS opcional</span>
-                                    <select wire:model="idCubs" class="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white">
-                                        <option value="">Sin CUBS asociado</option>
-                                        @foreach ($cubs as $cub) <option value="{{ $cub->IDUNSPSC }}">{{ $cub->IDUNSPSC }} - {{ $cub->descripcion_esp }}</option> @endforeach
-                                    </select>
-                                </label>
+                                <div>
+                                    <x-searchable-select
+                                        wire:model="idobjeto"
+                                        wire:key="inventario-objeto-select-{{ $productoId ?: 'nuevo' }}-{{ $idobjeto ?: 'empty' }}"
+                                        label="Objeto de gasto opcional"
+                                        placeholder="Buscar objeto..."
+                                        defaultText="Seleccione un objeto"
+                                        clearText="Sin objeto asociado"
+                                        searchAction="searchObjetosGastoInventario"
+                                        :options="$objetos"
+                                        :error="$errors->first('idobjeto')"
+                                    />
+                                </div>
+                                <div class="md:col-span-2">
+                                    <x-searchable-select
+                                        wire:model="idCubs"
+                                        wire:key="inventario-cubs-select-{{ $productoId ?: 'nuevo' }}-{{ $idCubs ?: 'empty' }}"
+                                        label="CUBS opcional"
+                                        placeholder="Buscar CUBS..."
+                                        defaultText="Seleccione un CUBS"
+                                        clearText="Sin CUBS asociado"
+                                        searchAction="searchCubsInventario"
+                                        :options="$cubs"
+                                        :error="$errors->first('idCubs')"
+                                    />
+                                </div>
                             </div>
                         </section>
 

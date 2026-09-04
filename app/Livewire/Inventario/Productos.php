@@ -181,6 +181,80 @@ class Productos extends Component
         return $recursos->toArray();
     }
 
+    public function searchObjetosGastoInventario($search = ''): array
+    {
+        $objetos = ObjetoGasto::query()
+            ->select('identificador', 'nombre')
+            ->when($search, function ($query) use ($search) {
+                $query->where(function ($subQuery) use ($search) {
+                    $subQuery->where('identificador', 'like', '%' . $search . '%')
+                        ->orWhere('nombre', 'like', '%' . $search . '%');
+                });
+            })
+            ->orderBy('identificador')
+            ->limit(50)
+            ->get()
+            ->map(fn ($objeto) => [
+                'id' => (string) $objeto->identificador,
+                'text' => $objeto->identificador . ' - ' . $objeto->nombre,
+            ])
+            ->values();
+
+        if ($this->idobjeto) {
+            $selectedId = (string) $this->idobjeto;
+
+            if (! $objetos->contains(fn ($option) => (string) $option['id'] === $selectedId)) {
+                $objetoSeleccionado = ObjetoGasto::where('identificador', $this->idobjeto)->first();
+
+                if ($objetoSeleccionado) {
+                    $objetos->prepend([
+                        'id' => $selectedId,
+                        'text' => $objetoSeleccionado->identificador . ' - ' . $objetoSeleccionado->nombre,
+                    ]);
+                }
+            }
+        }
+
+        return $objetos->toArray();
+    }
+
+    public function searchCubsInventario($search = ''): array
+    {
+        $cubs = Cub::query()
+            ->select('IDUNSPSC', 'descripcion_esp')
+            ->when($search, function ($query) use ($search) {
+                $query->where(function ($subQuery) use ($search) {
+                    $subQuery->where('IDUNSPSC', 'like', '%' . $search . '%')
+                        ->orWhere('descripcion_esp', 'like', '%' . $search . '%');
+                });
+            })
+            ->orderBy('IDUNSPSC')
+            ->limit(50)
+            ->get()
+            ->map(fn ($cub) => [
+                'id' => (string) $cub->IDUNSPSC,
+                'text' => $cub->IDUNSPSC . ' - ' . $cub->descripcion_esp,
+            ])
+            ->values();
+
+        if ($this->idCubs) {
+            $selectedId = (string) $this->idCubs;
+
+            if (! $cubs->contains(fn ($option) => (string) $option['id'] === $selectedId)) {
+                $cubSeleccionado = Cub::where('IDUNSPSC', $this->idCubs)->first();
+
+                if ($cubSeleccionado) {
+                    $cubs->prepend([
+                        'id' => $selectedId,
+                        'text' => $cubSeleccionado->IDUNSPSC . ' - ' . $cubSeleccionado->descripcion_esp,
+                    ]);
+                }
+            }
+        }
+
+        return $cubs->toArray();
+    }
+
     public function closeModal(): void
     {
         $this->showModal = false;
@@ -220,6 +294,12 @@ class Productos extends Component
             return;
         }
 
+        $detallesTecnicos = $recurso->detallesTecnicos->pluck('nombre')->filter();
+        $detalleNombre = $detallesTecnicos->first();
+        $detalleTecnico = $detallesTecnicos->isNotEmpty()
+            ? $detallesTecnicos->implode("\n")
+            : null;
+
         $productoRelacionado = InventarioProducto::where(function ($query) use ($recursoId) {
                 $query->where('recurso_id', $recursoId)
                     ->orWhereHas('recursos', fn ($recursos) => $recursos->where('tareas_historicos.id', $recursoId));
@@ -230,7 +310,7 @@ class Productos extends Component
 
         if ($productoRelacionado) {
             $this->nombre = $productoRelacionado->nombre;
-            $this->descripcion = $productoRelacionado->descripcion;
+            $this->descripcion = $detalleTecnico ?: $productoRelacionado->descripcion;
             $this->marca = $productoRelacionado->marca;
             $this->presentacion = $productoRelacionado->presentacion;
             $this->unidad_medida_id = $productoRelacionado->unidad_medida_id;
@@ -240,13 +320,8 @@ class Productos extends Component
             return;
         }
 
-        $detallesTecnicos = $recurso->detallesTecnicos->pluck('nombre')->filter();
-        $detalleNombre = $detallesTecnicos->first();
-
         $this->nombre = $detalleNombre ?: $recurso->nombre;
-        $this->descripcion = $detallesTecnicos->isNotEmpty()
-            ? $detallesTecnicos->implode("\n")
-            : $recurso->nombre;
+        $this->descripcion = $detalleTecnico ?: $recurso->nombre;
         $this->marca = null;
         $this->presentacion = null;
         $this->unidad_medida_id = $recurso->idunidad;
@@ -285,8 +360,8 @@ class Productos extends Component
                 ->paginate(10),
             'recursos' => $this->searchRecursosInventario(),
             'unidades' => UnidadMedida::orderBy('nombre')->get(['id', 'nombre']),
-            'objetos' => ObjetoGasto::orderBy('identificador')->get(['identificador', 'nombre']),
-            'cubs' => Cub::orderBy('IDUNSPSC')->get(['IDUNSPSC', 'descripcion_esp']),
+            'objetos' => $this->searchObjetosGastoInventario(),
+            'cubs' => $this->searchCubsInventario(),
         ]);
     }
 
