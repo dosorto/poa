@@ -212,13 +212,6 @@ return [
                 ->setItems([])
                 ->setEndBlock('inventario.kardex'),
 
-            RkNavigation::make('inventario.importacion-inicial')
-                ->setParentId('inventario')
-                ->setDescription('Carga inicial desde Excel')
-                ->setLabel('Importación inicial')
-                ->setHeroIcon('document-arrow-up')
-                ->setItems([])
-                ->setEndBlock('inventario.importacion-inicial'),
         ])
         ->setEndBlock('inventario'),
 

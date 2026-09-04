@@ -2,12 +2,10 @@
 
 namespace Tests\Feature;
 
-use App\Imports\InventarioInicialImport;
 use App\Models\Inventario\InventarioBodega;
 use App\Models\Inventario\InventarioEntrada;
 use App\Models\Inventario\InventarioEntradaDetalle;
 use App\Models\Inventario\InventarioExistencia;
-use App\Models\Inventario\InventarioImportacion;
 use App\Models\Inventario\InventarioProducto;
 use App\Models\Inventario\InventarioSalida;
 use App\Models\Inventario\InventarioSalidaDetalle;
@@ -155,31 +153,6 @@ class InventarioServiceTest extends TestCase
         $this->assertSame('L-PRONTO', $sugeridos[0]['codigo_lote']);
     }
 
-    public function test_carga_inicial_crea_producto_existencia_y_kardex(): void
-    {
-        [$user, $bodega] = $this->baseInventarioSinProducto();
-        $importacion = InventarioImportacion::create([
-            'archivo' => 'inventario.xlsx',
-            'usuario_id' => $user->id,
-            'fecha' => now(),
-            'estado' => 'procesando',
-        ]);
-
-        $import = new InventarioInicialImport($bodega->id, $user->id, $importacion->id);
-        $import->model([
-            'codigo_interno' => 'P-001',
-            'codigo_barra' => 'B-001',
-            'nombre' => 'Producto inicial',
-            'unidad_medida_id' => 1,
-            'codigo_lote' => 'L-INI',
-            'cantidad' => 3,
-        ]);
-
-        $this->assertSame(1, $import->importados);
-        $this->assertDatabaseHas('inventario_productos', ['codigo_interno' => 'P-001']);
-        $this->assertDatabaseHas('inventario_kardex', ['tipo_movimiento' => 'saldo_inicial', 'saldo_nuevo' => 3]);
-    }
-
     public function test_anulacion_genera_movimiento_reverso(): void
     {
         [$user, $bodega, $producto] = $this->baseInventario();
@@ -264,7 +237,6 @@ class InventarioServiceTest extends TestCase
             'inventario_entradas',
             'inventario_existencias',
             'inventario_lotes',
-            'inventario_importaciones',
             'inventario_productos',
             'inventario_bodegas',
             'unidadmedidas',
