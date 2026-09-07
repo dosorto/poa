@@ -24,6 +24,7 @@
         .signature-line { border-top: 1px solid #111; display: inline-block; min-width: 260px; padding-top: 5px; }
         .footer { position: fixed; bottom: -6px; left: 0; width: 100%; text-align: center; font-size: 10pt; line-height: 1.2; }
         .footer-motto { white-space: nowrap; }
+        .footer-line { margin: 0 auto 2px; width: 100%; overflow: hidden; white-space: nowrap; }
         .small { font-size: 8pt; }
     </style>
 </head>
@@ -110,7 +111,8 @@
     </div>
 
     <div class="footer">
-        <span class="footer-motto">La Educación es la Primera Necesidad de la República.</span><br>
+        <span class="footer-motto">"La Educación es la Primera Necesidad de la República"</span><br>
+        <div class="footer-line">----------------------------------------------------------------------------------------------------------------------------------------------------------</div>
         Universidad Nacional Autónoma de Honduras | CIUDAD UNIVERSITARIA | Tegucigalpa M.D.C. Honduras C.A.
     </div>
 </body>
