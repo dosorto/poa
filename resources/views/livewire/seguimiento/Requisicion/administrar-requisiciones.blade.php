@@ -340,6 +340,65 @@
             </div>
         </div>
 
+        <div class="mt-8 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
+            <div class="mb-4">
+                <h3 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Historial de entregas</h3>
+                <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Entregas de inventario generadas desde actas de requisición.</p>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="min-w-full text-sm">
+                    <thead>
+                        <tr class="border-b text-left text-xs uppercase text-zinc-500 dark:border-zinc-700">
+                            <th class="py-3 pr-4">Salida</th>
+                            <th class="py-3 pr-4">Requisición</th>
+                            <th class="py-3 pr-4">Acta</th>
+                            <th class="py-3 pr-4">Bodega</th>
+                            <th class="py-3 pr-4">Recibe</th>
+                            <th class="py-3 pr-4">Fecha</th>
+                            <th class="py-3 text-right">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @forelse ($historialEntregas as $entrega)
+                            @php
+                                $tipoActaEntrega = strtolower((string) $entrega->actaEntrega?->tipoActaEntrega?->tipo);
+                                $rutaActa = $tipoActaEntrega === 'final' ? 'acta-entrega-pdf' : 'acta-entrega-intermedia-pdf';
+                                $rutaActaDownload = $rutaActa . '-download';
+                                $tituloActa = $tipoActaEntrega === 'final' ? 'Acta de Entrega Final' : 'Acta de Entrega Intermedia';
+                            @endphp
+                            <tr class="border-b dark:border-zinc-700">
+                                <td class="py-3 pr-4 font-medium text-zinc-900 dark:text-zinc-100">{{ $entrega->numero_salida }}</td>
+                                <td class="py-3 pr-4">{{ $entrega->requisicion?->correlativo ?? 'Sin requisición' }}</td>
+                                <td class="py-3 pr-4">{{ $entrega->actaEntrega?->correlativo ?? 'Sin acta' }}</td>
+                                <td class="py-3 pr-4">{{ $entrega->bodega?->nombre ?? 'Sin bodega' }}</td>
+                                <td class="py-3 pr-4">{{ trim(($entrega->empleadoRecibe?->nombre ?? '') . ' ' . ($entrega->empleadoRecibe?->apellido ?? '')) ?: 'No indicado' }}</td>
+                                <td class="py-3 pr-4">{{ $entrega->fecha_salida?->format('Y-m-d') }}</td>
+                                <td class="py-3 text-right">
+                                    @if ($entrega->actaEntrega)
+                                        <button
+                                            wire:click="abrirPdfModal(
+                                                '{{ route($rutaActa, $entrega->actaEntrega->idRequisicion) }}',
+                                                '{{ route($rutaActaDownload, $entrega->actaEntrega->idRequisicion) }}',
+                                                '{{ $tituloActa }}'
+                                            )"
+                                            class="rounded px-3 py-1.5 text-sm font-semibold text-blue-600 hover:bg-blue-50 dark:hover:bg-zinc-800"
+                                        >
+                                            Ver acta
+                                        </button>
+                                    @endif
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="7" class="py-8 text-center text-zinc-500">Sin entregas generadas.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         @if ($showPdfModal)
             <x-dialog-modal wire:model="showPdfModal" maxWidth="4xl">
                 <x-slot name="title">

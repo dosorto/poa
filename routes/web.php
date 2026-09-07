@@ -75,6 +75,14 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
         ->name('inventario.salidas.create')
         ->middleware('can:inventario.salidas.crear');
 
+    Route::get('/inventario/salidas/crear/acta/{acta}', \App\Livewire\Inventario\SalidaForm::class)
+        ->name('inventario.salidas.create.acta')
+        ->middleware('can:inventario.salidas.crear');
+
+    Route::get('/inventario/salidas/{salida}/acta', \App\Livewire\Inventario\SalidaForm::class)
+        ->name('inventario.salidas.acta')
+        ->middleware('can:inventario.salidas.ver');
+
     Route::get('/inventario/salidas/{salida}/editar', \App\Livewire\Inventario\SalidaForm::class)
         ->name('inventario.salidas.edit')
         ->middleware('can:inventario.salidas.crear');

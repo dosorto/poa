@@ -13,6 +13,7 @@ use App\Models\EjecucionPresupuestaria\EjecucionPresupuestaria;
 use App\Models\EjecucionPresupuestaria\EjecucionPresupuestariaLog;
 use App\Models\EjecucionPresupuestaria\EstadoEjecucionPresupuestaria;
 use App\Models\Actas\ActaEntrega;
+use App\Models\Inventario\InventarioSalida;
 use App\Services\RequisicionCorreoService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -579,6 +580,16 @@ class AdministrarRequisiciones extends Component
 
         return view('livewire.seguimiento.Requisicion.administrar-requisiciones', [
             'requisiciones' => $requisiciones,
+            'historialEntregas' => InventarioSalida::with([
+                'bodega',
+                'actaEntrega.tipoActaEntrega',
+                'requisicion:id,correlativo',
+                'empleadoRecibe:id,nombre,apellido',
+            ])
+                ->where('estado', 'confirmado')
+                ->latest()
+                ->limit(10)
+                ->get(),
             'anios' => $anios,
             'departamentos' => $departamentos,
             'estados' => $estados,

@@ -12,6 +12,7 @@ use App\Models\EjecucionPresupuestaria\EstadoEjecucionPresupuestaria;
 use App\Models\Actas\ActaEntrega;
 use App\Models\Actas\DetalleActaEntrega;
 use App\Models\Actas\TipoActaEntrega;
+use App\Services\ActaIntermediaService;
 use App\Services\RequisicionCorreoService;
 use Livewire\Attributes\Layout;
 use Livewire\WithFileUploads;
@@ -49,6 +50,11 @@ class EntregaRecursos extends Component
     public $pdfUrl = '';
     public $pdfDownloadUrl = '';
     public $pdfTitle = '';
+    public bool $showAdvertenciaModal = false;
+    public string $advertenciaTitulo = '';
+    public string $advertenciaMensaje = '';
+    public bool $showPendientesFinalModal = false;
+    public string $observacionEntregaFinalPendiente = '';
 
     public $successMessage = ''; // Success message
     public $errorMessage = ''; // Error message
@@ -144,6 +150,7 @@ class EntregaRecursos extends Component
                 'monto_requerido' => ($detalle->cantidad ?? 0) * ($presupuesto->costounitario ?? 0),
                 'entregado' => $totalEjecutado,
                 'monto_ejecutado' => $montoTotalEjecutado,
+                'entrega_bloqueada' => (float) $totalEjecutado >= (float) ($detalle->cantidad ?? 0),
             ];
         })->toArray();
     }
@@ -159,6 +166,11 @@ class EntregaRecursos extends Component
         $recurso = collect($this->recursosParaEntregar)->firstWhere('id', $detalleRecursoId);
         
         if ($recurso) {
+            if ((float) ($recurso['entregado'] ?? 0) >= (float) ($recurso['cantidad'] ?? 0)) {
+                $this->errorMessage = 'Este recurso ya fue entregado completamente.';
+                return;
+            }
+
             $this->recursoSeleccionado = $recurso;
             
             // Obtener la última ejecución para prellenar el formulario
@@ -209,6 +221,12 @@ class EntregaRecursos extends Component
             // Validar que no se ejecute más de lo requerido
             $totalEjecutadoAnterior = DetalleEjecucionPresupuestaria::where('idDetalleRequisicion', $this->detalleRecursoId)
                 ->sum('cant_ejecutada');
+
+            if ((float) $totalEjecutadoAnterior >= (float) $detalleRequisicion->cantidad) {
+                DB::rollBack();
+                $this->addError('cantidadEjecutada', 'Este recurso ya fue entregado completamente.');
+                return;
+            }
             
             $totalNuevo = $totalEjecutadoAnterior + $this->cantidadEjecutada;
             
@@ -462,13 +480,144 @@ class EntregaRecursos extends Component
         $this->showConfirmFinalizarModal = false;
     }
 
+    public function iniciarEntregaIntermedia()
+    {
+        app(ActaIntermediaService::class)->crearPendientes(Auth::id());
+
+        $acta = $this->actaPorTipo('Intermedia');
+
+        if (! $acta) {
+            $this->errorMessage = 'No se pudo generar el acta intermedia. Registre primero ejecución en al menos un recurso.';
+            return null;
+        }
+
+        return redirect()->route('inventario.salidas.create.acta', $acta);
+    }
+
+    public function iniciarEntregaFinal()
+    {
+        if ($this->tieneRecursosPendientes()) {
+            $this->observacionEntregaFinalPendiente = '';
+            $this->showPendientesFinalModal = true;
+            return null;
+        }
+
+        $acta = $this->actaPorTipo('Final');
+
+        if (! $acta) {
+            $acta = $this->prepararActaFinalParaSalida();
+        }
+
+        if (! $acta) {
+            $this->errorMessage = $this->errorMessage ?: 'No se pudo generar el acta final para cargar la salida.';
+            return null;
+        }
+
+        return redirect()->route('inventario.salidas.create.acta', $acta);
+    }
+
+    public function continuarEntregaFinalConPendientes()
+    {
+        $this->validate([
+            'observacionEntregaFinalPendiente' => 'required|string|min:5|max:1000',
+        ], [
+            'observacionEntregaFinalPendiente.required' => 'Debe escribir una observación para finalizar con recursos pendientes.',
+            'observacionEntregaFinalPendiente.min' => 'La observación debe explicar por qué no se entregan todos los recursos.',
+        ]);
+
+        if ($this->tieneRecursosPendientes() && ! $this->registrarObservacionEntregaFinalPendiente()) {
+            return null;
+        }
+
+        $acta = $this->actaPorTipo('Final') ?: $this->prepararActaFinalParaSalida();
+
+        if (! $acta) {
+            $this->showPendientesFinalModal = false;
+            $this->errorMessage = $this->errorMessage ?: 'No se pudo generar el acta final para cargar la salida.';
+            return null;
+        }
+
+        $this->showPendientesFinalModal = false;
+
+        return redirect()->route('inventario.salidas.create.acta', $acta);
+    }
+
+    private function prepararActaFinalParaSalida(): ?ActaEntrega
+    {
+        $requisicion = Requisicion::findOrFail($this->requisicionId);
+        $ejecucionPresupuestaria = EjecucionPresupuestaria::where('idRequisicion', $requisicion->id)->first();
+
+        if (! $ejecucionPresupuestaria) {
+            $this->mostrarAdvertencia(
+                'Sin ejecución presupuestaria',
+                'No se encontró ejecución presupuestaria para esta requisición. Registre primero la ejecución de los recursos.'
+            );
+
+            return null;
+        }
+
+        return $this->crearActaEntrega($requisicion, $ejecucionPresupuestaria);
+    }
+
+    private function registrarObservacionEntregaFinalPendiente(): bool
+    {
+        $ejecucionPresupuestaria = EjecucionPresupuestaria::where('idRequisicion', $this->requisicionId)->first();
+
+        if (! $ejecucionPresupuestaria) {
+            $this->mostrarAdvertencia(
+                'Sin ejecución presupuestaria',
+                'No se encontró ejecución presupuestaria para esta requisición. Registre primero la ejecución de los recursos.'
+            );
+
+            return false;
+        }
+
+        $observacionActual = trim((string) $ejecucionPresupuestaria->observacion);
+        $observacionCierre = 'Cierre con recursos pendientes: ' . trim($this->observacionEntregaFinalPendiente);
+
+        $ejecucionPresupuestaria->update([
+            'observacion' => trim($observacionActual . "\n" . $observacionCierre),
+            'updated_by' => Auth::id(),
+        ]);
+
+        EjecucionPresupuestariaLog::create([
+            'observacion' => $observacionCierre,
+            'log' => 'Observación registrada para entrega final con recursos pendientes',
+            'idEjecucionPresupuestaria' => $ejecucionPresupuestaria->id,
+            'created_by' => Auth::id(),
+        ]);
+
+        return true;
+    }
+
+    private function tieneRecursosPendientes(): bool
+    {
+        return collect($this->recursosParaEntregar)->contains(function ($recurso) {
+            return (float) ($recurso['entregado'] ?? 0) < (float) ($recurso['cantidad'] ?? 0);
+        });
+    }
+
+    public function mostrarAdvertencia(string $titulo, string $mensaje): void
+    {
+        $this->advertenciaTitulo = $titulo;
+        $this->advertenciaMensaje = $mensaje;
+        $this->showAdvertenciaModal = true;
+    }
+
+    public function cerrarAdvertencia(): void
+    {
+        $this->showAdvertenciaModal = false;
+        $this->advertenciaTitulo = '';
+        $this->advertenciaMensaje = '';
+    }
+
     public function confirmarFinalizarRequisicion()
     {
         $this->finalizarRequisicion();
         $this->showConfirmFinalizarModal = false;
     }
 
-    public function finalizarRequisicion()
+    public function finalizarRequisicion(): ?ActaEntrega
     {
         $actaEntrega = null;
 
@@ -479,9 +628,15 @@ class EntregaRecursos extends Component
 
             // Verificar que el estado actual no sea "Finalizado"
             if ($requisicion->estado->estado === 'Finalizado') {
-                DB::rollBack();
-                session()->flash('error', 'Esta requisición ya está finalizada.');
-                return;
+                $actaEntrega = $this->actaPorTipo('Final');
+                $ejecucionPresupuestaria = EjecucionPresupuestaria::where('idRequisicion', $requisicion->id)->first();
+
+                if (! $actaEntrega && $ejecucionPresupuestaria) {
+                    $actaEntrega = $this->crearActaEntrega($requisicion, $ejecucionPresupuestaria);
+                }
+
+                DB::commit();
+                return $actaEntrega;
             }
 
             // Buscar el estado "Finalizado"
@@ -549,6 +704,7 @@ class EntregaRecursos extends Component
             $this->mount($this->requisicionId);
 
             $this->successMessage = 'Requisición finalizada correctamente. Se ha generado el acta de entrega.'; // Set success message
+            return $actaEntrega;
 
         } catch (\Exception $e) {
             DB::rollBack();
@@ -558,7 +714,16 @@ class EntregaRecursos extends Component
                 'trace' => $e->getTraceAsString()
             ]);
             $this->errorMessage = 'Error al finalizar la requisición: ' . $e->getMessage(); // Set error message
+            return null;
         }
+    }
+
+    private function actaPorTipo(string $tipo): ?ActaEntrega
+    {
+        return ActaEntrega::where('idRequisicion', $this->requisicionId)
+            ->whereHas('tipoActaEntrega', fn ($query) => $query->whereRaw('LOWER(tipo) = ?', [mb_strtolower($tipo)]))
+            ->latest('id')
+            ->first();
     }
 
     protected function crearActaEntrega($requisicion, $ejecucionPresupuestaria)

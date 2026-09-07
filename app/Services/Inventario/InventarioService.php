@@ -367,9 +367,11 @@ class InventarioService
             ->lockForUpdate()
             ->findOrFail($salida->acta_entrega_id);
 
-        if (mb_strtolower((string) $acta->tipoActaEntrega?->tipo) !== 'intermedia') {
+        $tipoActa = mb_strtolower((string) $acta->tipoActaEntrega?->tipo);
+
+        if (! in_array($tipoActa, ['intermedia', 'final'], true)) {
             throw ValidationException::withMessages([
-                'acta' => 'Solo las actas intermedias pueden respaldar una salida de inventario.',
+                'acta' => 'Solo las actas intermedias o finales pueden respaldar una salida de inventario.',
             ]);
         }
 
