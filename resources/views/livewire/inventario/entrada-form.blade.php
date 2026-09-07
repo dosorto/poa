@@ -7,7 +7,16 @@
 
         <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
             <label><span class="mb-1 block text-sm font-medium">Número de entrada</span><input wire:model="numero_entrada" class="h-10 w-full rounded-md border px-3 dark:border-zinc-700 dark:bg-zinc-800"></label>
-            <div><span class="mb-1 block text-sm font-medium">Bodega destino</span><div class="flex h-10 items-center rounded-md border bg-zinc-50 px-3 text-sm dark:border-zinc-700 dark:bg-zinc-800">{{ ($bodegas->firstWhere('id', $bodega_id) ?? $bodegas->first())?->nombre ?? 'No hay bodega activa' }}</div></div>
+            <label>
+                <span class="mb-1 block text-sm font-medium">Bodega destino</span>
+                <select wire:model="bodega_id" class="h-10 w-full rounded-md border px-3 dark:border-zinc-700 dark:bg-zinc-800">
+                    <option value="">Seleccione una bodega</option>
+                    @foreach($bodegas as $bodega)
+                        <option value="{{ $bodega->id }}">{{ $bodega->nombre }}</option>
+                    @endforeach
+                </select>
+                @error('bodega_id')<p class="mt-1 text-xs text-red-500">{{ $message }}</p>@enderror
+            </label>
             <label><span class="mb-1 block text-sm font-medium">Fecha de entrada</span><input wire:model="fecha_entrada" type="date" class="h-10 w-full rounded-md border px-3 dark:border-zinc-700 dark:bg-zinc-800"></label>
             <label><span class="mb-1 block text-sm font-medium">Factura</span><input wire:model="numero_factura" class="h-10 w-full rounded-md border px-3 dark:border-zinc-700 dark:bg-zinc-800"></label>
             <label><span class="mb-1 block text-sm font-medium">Proveedor</span><input wire:model="proveedor" class="h-10 w-full rounded-md border px-3 dark:border-zinc-700 dark:bg-zinc-800"></label>

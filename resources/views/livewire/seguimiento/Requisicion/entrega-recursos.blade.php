@@ -558,6 +558,80 @@
                                 @endif
                             </td>
                         </tr>
+                        <tr class="bg-zinc-50/70 dark:bg-zinc-900/70">
+                            <td colspan="8" class="px-4 py-4">
+                                <div class="rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-700 dark:bg-zinc-900">
+                                    <div class="mb-3 flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+                                        <div>
+                                            <h3 class="text-sm font-semibold text-zinc-800 dark:text-zinc-100">Historial de ejecuciones</h3>
+                                            <p class="text-xs text-zinc-500 dark:text-zinc-400">Control detallado de entregas registradas para este recurso.</p>
+                                        </div>
+                                        <span class="w-fit rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                                            {{ count($recurso['historial_ejecuciones'] ?? []) }} registros
+                                        </span>
+                                    </div>
+
+                                    @if (!empty($recurso['historial_ejecuciones']))
+                                        <div class="overflow-x-auto">
+                                            <table class="min-w-full divide-y divide-zinc-200 text-xs dark:divide-zinc-700">
+                                                <thead class="text-zinc-600 dark:text-zinc-300">
+                                                    <tr>
+                                                        <th class="px-3 py-2 text-left font-semibold">Fecha</th>
+                                                        <th class="px-3 py-2 text-left font-semibold">Factura</th>
+                                                        <th class="px-3 py-2 text-right font-semibold">Cantidad</th>
+                                                        <th class="px-3 py-2 text-right font-semibold">Costo unit.</th>
+                                                        <th class="px-3 py-2 text-right font-semibold">Total</th>
+                                                        <th class="px-3 py-2 text-left font-semibold">Observación</th>
+                                                        <th class="px-3 py-2 text-left font-semibold">Registrado por</th>
+                                                        <th class="px-3 py-2 text-center font-semibold">Acta</th>
+                                                    </tr>
+                                                </thead>
+                                                <tbody class="divide-y divide-zinc-100 dark:divide-zinc-800">
+                                                    @foreach ($recurso['historial_ejecuciones'] as $ejecucion)
+                                                        <tr
+                                                            wire:key="historial-ejecucion-{{ $ejecucion['id'] }}"
+                                                            wire:click="abrirActaIntermediaEjecucion({{ $ejecucion['id'] }})"
+                                                            wire:keydown.enter="abrirActaIntermediaEjecucion({{ $ejecucion['id'] }})"
+                                                            tabindex="0"
+                                                            role="button"
+                                                            title="Ver acta intermedia de esta ejecución"
+                                                            class="cursor-pointer text-zinc-700 transition hover:bg-indigo-50 focus:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-indigo-500 dark:text-zinc-300 dark:hover:bg-indigo-950/30 dark:focus:bg-indigo-950/30"
+                                                        >
+                                                            <td class="px-3 py-2 whitespace-nowrap">{{ $ejecucion['fecha_ejecucion'] }}</td>
+                                                            <td class="px-3 py-2 whitespace-nowrap">{{ $ejecucion['factura'] }}</td>
+                                                            <td class="px-3 py-2 text-right font-semibold">{{ number_format($ejecucion['cantidad'], 2) }}</td>
+                                                            <td class="px-3 py-2 text-right font-semibold">L {{ number_format($ejecucion['monto_unitario'], 2) }}</td>
+                                                            <td class="px-3 py-2 text-right font-semibold text-indigo-600 dark:text-indigo-400">L {{ number_format($ejecucion['monto_total'], 2) }}</td>
+                                                            <td class="px-3 py-2 min-w-48">{{ $ejecucion['observacion'] }}</td>
+                                                            <td class="px-3 py-2 whitespace-nowrap">
+                                                                <div>{{ $ejecucion['registrado_por'] }}</div>
+                                                                <div class="text-[11px] text-zinc-500 dark:text-zinc-400">{{ $ejecucion['registrado_el'] }}</div>
+                                                            </td>
+                                                            <td class="px-3 py-2 text-center">
+                                                                <button
+                                                                    wire:click.stop="abrirActaIntermediaEjecucion({{ $ejecucion['id'] }})"
+                                                                    wire:loading.attr="disabled"
+                                                                    wire:target="abrirActaIntermediaEjecucion({{ $ejecucion['id'] }})"
+                                                                    class="inline-flex items-center gap-1 rounded-md bg-indigo-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-60">
+                                                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                                                    </svg>
+                                                                    Ver acta
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    @endforeach
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    @else
+                                        <div class="rounded-md border border-dashed border-zinc-300 p-4 text-center text-sm text-zinc-500 dark:border-zinc-700 dark:text-zinc-400">
+                                            Todavía no hay ejecuciones registradas para este recurso.
+                                        </div>
+                                    @endif
+                                </div>
+                            </td>
+                        </tr>
                     @endforeach
                 </tbody>
             </table>
@@ -601,12 +675,7 @@
                         </p>
                     </iframe>
                 </x-slot>
-                <x-slot name="footer">
-                    <x-spinner-button wire:click="cerrarPdfModal" loadingTarget="cerrarPdfModal"
-                        class="bg-zinc-400 hover:bg-zinc-500 text-white font-semibold px-6 py-2 rounded transition dark:bg-zinc-600 dark:hover:bg-zinc-700">
-                        Cerrar
-                    </x-spinner-button>
-                </x-slot>
+                <x-slot name="footer"></x-slot>
             </x-dialog-modal>
         @endif
     @endcan
