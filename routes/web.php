@@ -70,6 +70,22 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     Route::get('/inventario/entradas/{entrada}/acta-recepcion/download', [\App\Http\Controllers\InventarioEntradaActaController::class, 'download'])
         ->name('inventario.entradas.acta-recepcion.download')
         ->middleware('can:inventario.entradas.ver');
+
+    Route::get('/inventario/salidas/crear', \App\Livewire\Inventario\SalidaForm::class)
+        ->name('inventario.salidas.create')
+        ->middleware('can:inventario.salidas.crear');
+
+    Route::get('/inventario/salidas/{salida}/editar', \App\Livewire\Inventario\SalidaForm::class)
+        ->name('inventario.salidas.edit')
+        ->middleware('can:inventario.salidas.crear');
+
+    Route::get('/inventario/entradas/crear', \App\Livewire\Inventario\EntradaForm::class)
+        ->name('inventario.entradas.create')
+        ->middleware('can:inventario.entradas.crear');
+
+    Route::get('/inventario/entradas/{entrada}/editar', \App\Livewire\Inventario\EntradaForm::class)
+        ->name('inventario.entradas.edit')
+        ->middleware('can:inventario.entradas.crear');
 });
 
 

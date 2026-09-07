@@ -234,7 +234,7 @@ return [
             [
                 'titulo' => 'Entradas',
                 'route' => 'inventario.entradas',
-                'routes' => ['inventario.entradas'],
+                'routes' => ['inventario.entradas', 'inventario.entradas.create', 'inventario.entradas.edit'],
                 'permisos' => ['inventario.entradas.ver'],
                 'icono' => '',
                 'breadcrumb' => true,
@@ -242,7 +242,7 @@ return [
             [
                 'titulo' => 'Salidas',
                 'route' => 'inventario.salidas',
-                'routes' => ['inventario.salidas'],
+                'routes' => ['inventario.salidas', 'inventario.salidas.create', 'inventario.salidas.edit'],
                 'permisos' => ['inventario.salidas.ver'],
                 'icono' => '',
                 'breadcrumb' => true,
