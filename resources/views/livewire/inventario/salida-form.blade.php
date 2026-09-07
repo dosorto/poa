@@ -150,7 +150,7 @@
                     @endif
                 </div>
                 @if ($actaPdfUrl)
-                    <iframe src="{{ $actaPdfUrl }}" class="h-[70vh] w-full rounded-lg border border-zinc-200 dark:border-zinc-700" type="application/pdf">
+                    <iframe src="{{ $actaPdfUrl }}" class="h-[70vh] w-full rounded-lg border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-950" type="application/pdf">
                         <p class="p-6 text-center text-zinc-500">Tu navegador no puede mostrar el PDF.</p>
                     </iframe>
                 @else
@@ -186,23 +186,23 @@
             </x-slot>
         </x-dialog-modal>
 
-        <x-dialog-modal wire:model="showGuardarModal" max-width="md">
-            <x-slot name="title">Generar entrega</x-slot>
+        <x-dialog-modal wire:model="showFinalizarModal" max-width="md">
+            <x-slot name="title">Finalizar entrega</x-slot>
             <x-slot name="content">
                 <div class="space-y-3">
-                    <p class="font-medium text-zinc-900 dark:text-zinc-100">¿Está seguro de generar esta entrega?</p>
+                    <p class="font-medium text-zinc-900 dark:text-zinc-100">¿Está seguro de finalizar esta entrega?</p>
                     <p class="text-sm text-zinc-500 dark:text-zinc-400">
-                        @if (empty($detalles) && $actaSeleccionada && strtolower((string) $actaSeleccionada->tipoActaEntrega?->tipo) === 'final')
-                            No hay productos pendientes para despachar. Se cerrará la requisición sin movimiento de inventario.
+                        @if ($actaSeleccionada && strtolower((string) $actaSeleccionada->tipoActaEntrega?->tipo) === 'final')
+                            Se cerrará la requisición como finalizada.
                         @else
-                            Se descontarán las existencias seleccionadas y quedará registrada en el historial de entregas.
+                            La entrega quedará terminada y volverá al listado de salidas.
                         @endif
                     </p>
                 </div>
             </x-slot>
             <x-slot name="footer">
-                <x-secondary-button wire:click="cerrarConfirmacionGuardar">Cancelar</x-secondary-button>
-                <x-spinner-button wire:click="save" class="ml-2" loadingTarget="save" :loadingText="__('Generando...')">Generar entrega</x-spinner-button>
+                <x-secondary-button wire:click="cerrarConfirmacionFinalizar">Cancelar</x-secondary-button>
+                <x-spinner-button wire:click="finalizarFlujo" class="ml-2" loadingTarget="finalizarFlujo" :loadingText="__('Finalizando...')">Finalizar</x-spinner-button>
             </x-slot>
         </x-dialog-modal>
 
@@ -230,10 +230,10 @@
                 <button type="button" wire:click="siguientePaso" class="cursor-pointer px-4 py-2 bg-blue-600 text-white rounded">Siguiente</button>
             @elseif ($paso === 2)
                 <button type="button" wire:click="pasoAnterior" class="cursor-pointer px-4 py-2 border rounded">Atrás</button>
-                <button type="button" wire:click="abrirConfirmacionGuardar" class="cursor-pointer px-4 py-2 bg-blue-600 text-white rounded">Generar entrega</button>
+                <button type="button" wire:click="save" class="cursor-pointer px-4 py-2 bg-blue-600 text-white rounded">Generar entrega</button>
             @else
                 <button type="button" wire:click="pasoAnterior" class="cursor-pointer px-4 py-2 border rounded">Atrás</button>
-                <a href="{{ route('inventario.salidas') }}" class="px-4 py-2 bg-blue-600 text-white rounded">Finalizar</a>
+                <button type="button" wire:click="abrirConfirmacionFinalizar" class="cursor-pointer px-4 py-2 bg-blue-600 text-white rounded">Finalizar</button>
             @endif
         </div>
     </div>

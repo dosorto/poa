@@ -46,6 +46,7 @@ class SalidaForm extends Component
     public bool $actaBloqueada = false;
     public bool $showProductoModal = false;
     public bool $showGuardarModal = false;
+    public bool $showFinalizarModal = false;
     public bool $showAdvertenciaModal = false;
     public string $advertenciaTitulo = '';
     public string $advertenciaMensaje = '';
@@ -172,6 +173,33 @@ class SalidaForm extends Component
     public function cerrarConfirmacionGuardar(): void
     {
         $this->showGuardarModal = false;
+    }
+
+    public function abrirConfirmacionFinalizar(): void
+    {
+        $this->showFinalizarModal = true;
+    }
+
+    public function cerrarConfirmacionFinalizar(): void
+    {
+        $this->showFinalizarModal = false;
+    }
+
+    public function finalizarFlujo()
+    {
+        if ($this->esActaFinal()) {
+            try {
+                DB::transaction(fn () => $this->cerrarRequisicionPorEntregaFinal());
+            } catch (\Throwable $e) {
+                $this->showFinalizarModal = false;
+                $this->mostrarAdvertencia('No se puede finalizar', $e->getMessage());
+                return null;
+            }
+        }
+
+        $this->showFinalizarModal = false;
+
+        return redirect()->route('inventario.salidas');
     }
 
     public function mostrarAdvertencia(string $titulo, string $mensaje): void
@@ -313,10 +341,6 @@ class SalidaForm extends Component
                     : tap($salida, function (InventarioSalida $salida) {
                         $salida->forceFill(['estado' => 'confirmado'])->save();
                     })->refresh();
-
-                if ($this->esActaFinal()) {
-                    $this->cerrarRequisicionPorEntregaFinal();
-                }
 
                 return $salida;
             });
