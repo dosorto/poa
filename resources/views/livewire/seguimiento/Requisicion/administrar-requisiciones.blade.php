@@ -338,8 +338,18 @@
                         <h3 class="text-sm font-semibold text-zinc-800 dark:text-zinc-100">
                             {{ $pdfTitle }}
                         </h3>
-                        <div class="flex items-center gap-3">
-                            <a href="{{ $pdfDownloadUrl }}"
+                        <div
+                            x-data="{
+                                pdfUrl: @js($pdfUrl),
+                                downloadUrl: @js($pdfDownloadUrl),
+                                dark: document.documentElement.classList.contains('dark') || localStorage.getItem('darkMode') === 'true' || localStorage.getItem('color-theme') === 'dark',
+                                themed(url) {
+                                    return url + (url.includes('?') ? '&' : '?') + 'theme=' + (this.dark ? 'dark' : 'light');
+                                }
+                            }"
+                            class="flex items-center gap-3"
+                        >
+                            <a x-bind:href="themed(downloadUrl)"
                                 class="flex items-center gap-1.5 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-lg transition">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none"
                                     viewBox="0 0 24 24" stroke="currentColor">
@@ -360,7 +370,16 @@
                     </div>
                 </x-slot>
                 <x-slot name="content">
-                    <iframe src="{{ $pdfUrl }}"
+                    <div
+                        x-data="{
+                            pdfUrl: @js($pdfUrl),
+                            dark: document.documentElement.classList.contains('dark') || localStorage.getItem('darkMode') === 'true' || localStorage.getItem('color-theme') === 'dark',
+                            themed(url) {
+                                return url + (url.includes('?') ? '&' : '?') + 'theme=' + (this.dark ? 'dark' : 'light');
+                            }
+                        }"
+                    >
+                    <iframe x-bind:src="themed(pdfUrl)"
                         class="w-full h-[70vh] rounded-lg border border-zinc-200 dark:border-zinc-700"
                         type="application/pdf">
                         <p class="text-center p-6 text-zinc-500">
@@ -368,6 +387,7 @@
                             <a href="{{ $pdfDownloadUrl }}" class="text-blue-600 underline">Descárgalo aquí.</a>
                         </p>
                     </iframe>
+                    </div>
                 </x-slot>
                 <x-slot name="footer"></x-slot>
             </x-dialog-modal>

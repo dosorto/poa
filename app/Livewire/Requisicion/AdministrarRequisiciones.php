@@ -514,7 +514,8 @@ class AdministrarRequisiciones extends Component
 
     public function abrirPdfModal($url, $downloadUrl, $titulo = 'Vista previa PDF')
     {
-        $this->pdfUrl = $url;
+        $separator = str_contains($url, '?') ? '&' : '?';
+        $this->pdfUrl = $url . $separator . 'v=' . now()->timestamp;
         $this->pdfDownloadUrl = $downloadUrl;
         $this->pdfTitle = $titulo;
         $this->showPdfModal = true;
