@@ -19,18 +19,20 @@
 
     $totalActividadesEstado = max(array_sum(array_column($actividadesPorEstado, 'total')), 1);
     $totalRequisicionesEstado = max(array_sum(array_column($requisicionesPorEstado, 'total')), 1);
+    $departamentoActual = collect($departamentos)->firstWhere('id', (int) $departamentoSeleccionado);
+    $planificadoPendiente = max(($finanzas['planificado'] ?? 0) - ($finanzas['ejecutado'] ?? 0), 0);
 @endphp
 
 <div class="mx-auto mt-4 mb-8 space-y-6">
     <div class="overflow-hidden rounded-lg bg-zinc-950 text-white shadow">
-        <div class="grid gap-6 p-6 lg:grid-cols-[1fr_360px]">
+        <div class="grid gap-6 p-6 lg:grid-cols-[1fr_420px]">
             <div class="flex flex-col justify-between gap-8">
                 <div>
                     <div class="inline-flex items-center rounded-full bg-white/10 px-3 py-1 text-xs font-medium text-white/80 ring-1 ring-white/15">
                         Dirección
                     </div>
                     <h1 class="mt-4 text-2xl font-bold sm:text-3xl">
-                        Reportes ejecutivos
+                        {{ $departamentoActual ? (($departamentoActual['siglas'] ? $departamentoActual['siglas'] . ' - ' : '') . $departamentoActual['nombre']) : 'Reportes ejecutivos' }}
                     </h1>
                     <p class="mt-2 max-w-3xl text-sm leading-6 text-zinc-300">
                         Vista consolidada de planificación, requisiciones, seguimiento y ejecución presupuestaria para toma de decisiones.
@@ -39,16 +41,25 @@
 
                 <div class="grid gap-3 sm:grid-cols-3">
                     <div class="rounded-lg bg-white/10 p-4 ring-1 ring-white/15">
-                        <p class="text-xs font-medium uppercase tracking-wide text-zinc-300">Avance planificación</p>
+                        <p class="text-xs font-medium uppercase tracking-wide text-zinc-300">Planificación</p>
                         <p class="mt-2 text-3xl font-semibold">{{ $resumen['avancePlanificacion'] ?? 0 }}%</p>
+                        <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
+                            <div class="h-full rounded-full bg-emerald-400" style="width: {{ min($resumen['avancePlanificacion'] ?? 0, 100) }}%"></div>
+                        </div>
                     </div>
                     <div class="rounded-lg bg-white/10 p-4 ring-1 ring-white/15">
                         <p class="text-xs font-medium uppercase tracking-wide text-zinc-300">Entrega recursos</p>
                         <p class="mt-2 text-3xl font-semibold">{{ $resumen['entrega'] ?? 0 }}%</p>
+                        <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
+                            <div class="h-full rounded-full bg-blue-400" style="width: {{ min($resumen['entrega'] ?? 0, 100) }}%"></div>
+                        </div>
                     </div>
                     <div class="rounded-lg bg-white/10 p-4 ring-1 ring-white/15">
                         <p class="text-xs font-medium uppercase tracking-wide text-zinc-300">Ejecución</p>
                         <p class="mt-2 text-3xl font-semibold">{{ $resumen['ejecucion'] ?? 0 }}%</p>
+                        <div class="mt-3 h-1.5 overflow-hidden rounded-full bg-white/10">
+                            <div class="h-full rounded-full bg-amber-400" style="width: {{ min($resumen['ejecucion'] ?? 0, 100) }}%"></div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -97,32 +108,109 @@
         </div>
     @else
         <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
-            <div class="rounded-lg bg-white p-5 shadow dark:bg-zinc-900">
-                <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">Actividades</p>
-                <div class="mt-3 flex items-end justify-between gap-4">
-                    <p class="text-3xl font-bold text-zinc-900 dark:text-zinc-100">{{ number_format($resumen['actividades'] ?? 0) }}</p>
-                    <span class="rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:ring-emerald-800">
-                        {{ number_format($resumen['actividadesAprobadas'] ?? 0) }} aprobadas
-                    </span>
+            <div class="overflow-hidden rounded-lg bg-white shadow ring-1 ring-zinc-200/70 dark:bg-zinc-900 dark:ring-zinc-800">
+                <div class="h-1 bg-indigo-500"></div>
+                <div class="p-5">
+                    <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">Asignado</p>
+                    <p class="mt-3 text-2xl font-bold text-zinc-900 dark:text-zinc-100">L {{ number_format($finanzas['asignado'] ?? 0, 2) }}</p>
+                    <p class="mt-2 text-xs text-zinc-500 dark:text-zinc-400">Presupuesto total del filtro actual.</p>
                 </div>
             </div>
 
-            <div class="rounded-lg bg-white p-5 shadow dark:bg-zinc-900">
-                <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">Requisiciones</p>
-                <p class="mt-3 text-3xl font-bold text-zinc-900 dark:text-zinc-100">{{ number_format($resumen['requisiciones'] ?? 0) }}</p>
-                <p class="mt-2 text-xs text-zinc-500 dark:text-zinc-400">Presentadas, en revisión, compra, recibidas y demás estados.</p>
+            <div class="overflow-hidden rounded-lg bg-white shadow ring-1 ring-zinc-200/70 dark:bg-zinc-900 dark:ring-zinc-800">
+                <div class="h-1 bg-blue-500"></div>
+                <div class="p-5">
+                    <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">Planificado</p>
+                    <div class="mt-3 flex items-baseline gap-2">
+                        <p class="text-2xl font-bold text-zinc-900 dark:text-zinc-100">L {{ number_format($finanzas['planificado'] ?? 0, 2) }}</p>
+                        <span class="text-sm font-semibold text-blue-600">{{ $finanzas['porcentajePlanificado'] ?? 0 }}%</span>
+                    </div>
+                    <div class="mt-4 h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+                        <div class="h-full rounded-full bg-blue-500" style="width: {{ min($finanzas['porcentajePlanificado'] ?? 0, 100) }}%"></div>
+                    </div>
+                </div>
             </div>
 
-            <div class="rounded-lg bg-white p-5 shadow dark:bg-zinc-900">
-                <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">Recursos entregados</p>
-                <p class="mt-3 text-3xl font-bold text-zinc-900 dark:text-zinc-100">{{ number_format($seguimiento['entregados'] ?? 0) }}</p>
-                <p class="mt-2 text-xs text-zinc-500 dark:text-zinc-400">{{ number_format($seguimiento['pendientes'] ?? 0) }} pendientes de entrega.</p>
+            <div class="overflow-hidden rounded-lg bg-white shadow ring-1 ring-zinc-200/70 dark:bg-zinc-900 dark:ring-zinc-800">
+                <div class="h-1 bg-emerald-500"></div>
+                <div class="p-5">
+                    <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">Ejecutado</p>
+                    <div class="mt-3 flex items-baseline gap-2">
+                        <p class="text-2xl font-bold text-zinc-900 dark:text-zinc-100">L {{ number_format($finanzas['ejecutado'] ?? 0, 2) }}</p>
+                        <span class="text-sm font-semibold text-emerald-600">{{ $finanzas['porcentajeEjecutado'] ?? 0 }}%</span>
+                    </div>
+                    <div class="mt-4 h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
+                        <div class="h-full rounded-full bg-emerald-500" style="width: {{ min($finanzas['porcentajeEjecutado'] ?? 0, 100) }}%"></div>
+                    </div>
+                </div>
             </div>
 
-            <div class="rounded-lg bg-white p-5 shadow dark:bg-zinc-900">
-                <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">Ejecutado</p>
-                <p class="mt-3 text-2xl font-bold text-zinc-900 dark:text-zinc-100">L {{ number_format($finanzas['ejecutado'] ?? 0, 2) }}</p>
-                <p class="mt-2 text-xs text-zinc-500 dark:text-zinc-400">De L {{ number_format($finanzas['planificado'] ?? 0, 2) }} planificados.</p>
+            <div class="overflow-hidden rounded-lg bg-white shadow ring-1 ring-zinc-200/70 dark:bg-zinc-900 dark:ring-zinc-800">
+                <div class="h-1 bg-amber-500"></div>
+                <div class="p-5">
+                    <p class="text-sm font-medium text-zinc-500 dark:text-zinc-400">Disponible</p>
+                    <p class="mt-3 text-2xl font-bold text-zinc-900 dark:text-zinc-100">L {{ number_format($finanzas['disponible'] ?? 0, 2) }}</p>
+                    <p class="mt-2 text-xs text-zinc-500 dark:text-zinc-400">{{ number_format($resumen['requisiciones'] ?? 0) }} requisiciones registradas.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid gap-6 xl:grid-cols-2">
+            <div class="rounded-lg bg-white p-6 shadow ring-1 ring-zinc-200/70 dark:bg-zinc-900 dark:ring-zinc-800">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <h2 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Distribución del presupuesto</h2>
+                        <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Planificado pendiente, ejecutado y disponible.</p>
+                    </div>
+                    <span class="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700 ring-1 ring-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:ring-blue-800">
+                        L {{ number_format($finanzas['asignado'] ?? 0, 2) }}
+                    </span>
+                </div>
+                <div class="mt-5 grid gap-5 lg:grid-cols-[1fr_220px]">
+                    <div class="h-72" wire:ignore>
+                        <canvas id="direccionPresupuestoChart"></canvas>
+                    </div>
+                    <div class="space-y-3">
+                        <div class="rounded-md bg-blue-50 p-3 ring-1 ring-blue-100 dark:bg-blue-900/20 dark:ring-blue-800">
+                            <p class="text-xs font-medium text-blue-700 dark:text-blue-300">Planificado sin ejecutar</p>
+                            <p class="mt-1 text-lg font-semibold text-blue-950 dark:text-blue-100">L {{ number_format($planificadoPendiente, 2) }}</p>
+                        </div>
+                        <div class="rounded-md bg-emerald-50 p-3 ring-1 ring-emerald-100 dark:bg-emerald-900/20 dark:ring-emerald-800">
+                            <p class="text-xs font-medium text-emerald-700 dark:text-emerald-300">Ejecutado</p>
+                            <p class="mt-1 text-lg font-semibold text-emerald-950 dark:text-emerald-100">L {{ number_format($finanzas['ejecutado'] ?? 0, 2) }}</p>
+                        </div>
+                        <div class="rounded-md bg-amber-50 p-3 ring-1 ring-amber-100 dark:bg-amber-900/20 dark:ring-amber-800">
+                            <p class="text-xs font-medium text-amber-700 dark:text-amber-300">Disponible</p>
+                            <p class="mt-1 text-lg font-semibold text-amber-950 dark:text-amber-100">L {{ number_format($finanzas['disponible'] ?? 0, 2) }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="rounded-lg bg-white p-6 shadow ring-1 ring-zinc-200/70 dark:bg-zinc-900 dark:ring-zinc-800">
+                <div class="flex items-start justify-between gap-4">
+                    <div>
+                        <h2 class="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Actividad institucional</h2>
+                        <p class="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Estados de planificación y requisiciones.</p>
+                    </div>
+                    <span class="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-900/20 dark:text-emerald-300 dark:ring-emerald-800">
+                        {{ number_format($resumen['actividades'] ?? 0) }} actividades
+                    </span>
+                </div>
+                <div class="mt-5 grid gap-5 lg:grid-cols-2">
+                    <div>
+                        <p class="mb-3 text-sm font-medium text-zinc-700 dark:text-zinc-300">Actividades</p>
+                        <div class="h-64" wire:ignore>
+                            <canvas id="direccionActividadesChart"></canvas>
+                        </div>
+                    </div>
+                    <div>
+                        <p class="mb-3 text-sm font-medium text-zinc-700 dark:text-zinc-300">Requisiciones</p>
+                        <div class="h-64" wire:ignore>
+                            <canvas id="direccionRequisicionesChart"></canvas>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -141,14 +229,26 @@
                         <button
                             type="button"
                             wire:click="seleccionarEstadoActividad(@js($estado['estado']))"
-                            class="block w-full rounded-md p-2 text-left transition hover:bg-zinc-50 dark:hover:bg-zinc-800 {{ $estadoActividadSeleccionado === $estado['estado'] ? 'bg-zinc-50 ring-1 ring-zinc-200 dark:bg-zinc-800 dark:ring-zinc-700' : '' }}"
+                            title="Ver detalle de {{ $estado['label'] }}"
+                            class="group block w-full cursor-pointer rounded-lg border border-transparent p-3 text-left transition hover:-translate-y-0.5 hover:border-indigo-200 hover:bg-indigo-50/40 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:hover:border-indigo-900 dark:hover:bg-indigo-950/20 {{ $estadoActividadSeleccionado === $estado['estado'] ? 'border-indigo-200 bg-indigo-50/60 ring-1 ring-indigo-200 dark:border-indigo-900 dark:bg-indigo-950/30 dark:ring-indigo-900' : '' }}"
                         >
                             <div class="mb-1 flex items-center justify-between text-sm">
-                                <span class="font-medium text-zinc-700 dark:text-zinc-300">{{ $estado['label'] }}</span>
-                                <span class="text-zinc-500 dark:text-zinc-400">{{ number_format($estado['total']) }}</span>
+                                <span class="flex items-center gap-2 font-medium text-zinc-700 dark:text-zinc-300">
+                                    <span class="h-2.5 w-2.5 rounded-full {{ $barClasses[$estado['color']] ?? $barClasses['zinc'] }}"></span>
+                                    {{ $estado['label'] }}
+                                </span>
+                                <span class="flex items-center gap-2 text-zinc-500 dark:text-zinc-400">
+                                    <span>{{ number_format($estado['total']) }}</span>
+                                    <span class="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600 transition group-hover:bg-indigo-100 group-hover:text-indigo-700 dark:bg-zinc-800 dark:text-zinc-300 dark:group-hover:bg-indigo-900/40 dark:group-hover:text-indigo-200">
+                                        Ver detalle
+                                        <svg class="h-3 w-3 transition group-hover:translate-x-0.5" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                                        </svg>
+                                    </span>
+                                </span>
                             </div>
                             <div class="h-3 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
-                                <div class="h-full {{ $barClasses[$estado['color']] ?? $barClasses['zinc'] }}" style="width: {{ $width }}%"></div>
+                                <div class="h-full {{ $barClasses[$estado['color']] ?? $barClasses['zinc'] }} transition-all group-hover:brightness-110" style="width: {{ $width }}%"></div>
                             </div>
                         </button>
                     @endforeach
@@ -202,14 +302,26 @@
                         <button
                             type="button"
                             wire:click="seleccionarEstadoRequisicion(@js($estado['estado']))"
-                            class="block w-full rounded-md p-2 text-left transition hover:bg-zinc-50 dark:hover:bg-zinc-800 {{ $estadoRequisicionSeleccionado === $estado['estado'] ? 'bg-zinc-50 ring-1 ring-zinc-200 dark:bg-zinc-800 dark:ring-zinc-700' : '' }}"
+                            title="Ver detalle de requisiciones en {{ $estado['estado'] }}"
+                            class="group block w-full cursor-pointer rounded-lg border border-transparent p-3 text-left transition hover:-translate-y-0.5 hover:border-indigo-200 hover:bg-indigo-50/40 hover:shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:hover:border-indigo-900 dark:hover:bg-indigo-950/20 {{ $estadoRequisicionSeleccionado === $estado['estado'] ? 'border-indigo-200 bg-indigo-50/60 ring-1 ring-indigo-200 dark:border-indigo-900 dark:bg-indigo-950/30 dark:ring-indigo-900' : '' }}"
                         >
                             <div class="mb-1 flex items-center justify-between text-sm">
-                                <span class="font-medium text-zinc-700 dark:text-zinc-300">{{ $estado['estado'] }}</span>
-                                <span class="text-zinc-500 dark:text-zinc-400">{{ number_format($estado['total']) }}</span>
+                                <span class="flex items-center gap-2 font-medium text-zinc-700 dark:text-zinc-300">
+                                    <span class="h-2.5 w-2.5 rounded-full {{ $barClasses[$estado['color']] ?? $barClasses['zinc'] }}"></span>
+                                    {{ $estado['estado'] }}
+                                </span>
+                                <span class="flex items-center gap-2 text-zinc-500 dark:text-zinc-400">
+                                    <span>{{ number_format($estado['total']) }}</span>
+                                    <span class="inline-flex items-center gap-1 rounded-full bg-zinc-100 px-2 py-0.5 text-[11px] font-medium text-zinc-600 transition group-hover:bg-indigo-100 group-hover:text-indigo-700 dark:bg-zinc-800 dark:text-zinc-300 dark:group-hover:bg-indigo-900/40 dark:group-hover:text-indigo-200">
+                                        Ver detalle
+                                        <svg class="h-3 w-3 transition group-hover:translate-x-0.5" viewBox="0 0 20 20" fill="currentColor">
+                                            <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                                        </svg>
+                                    </span>
+                                </span>
                             </div>
                             <div class="h-3 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800">
-                                <div class="h-full {{ $barClasses[$estado['color']] ?? $barClasses['zinc'] }}" style="width: {{ $width }}%"></div>
+                                <div class="h-full {{ $barClasses[$estado['color']] ?? $barClasses['zinc'] }} transition-all group-hover:brightness-110" style="width: {{ $width }}%"></div>
                             </div>
                         </button>
                     @empty
@@ -573,4 +685,139 @@
             </div>
         </div>
     @endif
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js" data-navigate-once></script>
+    <script>
+        window.direccionCharts = window.direccionCharts || {};
+
+        function renderDireccionCharts() {
+            if (typeof Chart === 'undefined') {
+                return;
+            }
+
+            Object.values(window.direccionCharts).forEach(chart => {
+                if (chart) chart.destroy();
+            });
+
+            window.direccionCharts = {};
+
+            const isDarkMode = document.documentElement.classList.contains('dark');
+            const textColor = isDarkMode ? 'rgb(212, 212, 216)' : 'rgb(63, 63, 70)';
+            const borderColor = isDarkMode ? 'rgb(24, 24, 27)' : 'rgb(255, 255, 255)';
+            const finanzas = @this.finanzas || {};
+            const actividades = @this.actividadesPorEstado || [];
+            const requisiciones = @this.requisicionesPorEstado || [];
+
+            const palette = {
+                blue: 'rgb(59, 130, 246)',
+                amber: 'rgb(245, 158, 11)',
+                violet: 'rgb(139, 92, 246)',
+                emerald: 'rgb(16, 185, 129)',
+                rose: 'rgb(244, 63, 94)',
+                zinc: 'rgb(113, 113, 122)',
+            };
+
+            const chartText = {
+                color: textColor,
+                font: { family: 'Inter, system-ui, sans-serif' }
+            };
+
+            function nonEmpty(values) {
+                return values.some(value => Number(value) > 0);
+            }
+
+            const presupuestoCanvas = document.getElementById('direccionPresupuestoChart');
+            if (presupuestoCanvas) {
+                const data = [
+                    Math.max((Number(finanzas.planificado) || 0) - (Number(finanzas.ejecutado) || 0), 0),
+                    Number(finanzas.ejecutado) || 0,
+                    Math.max(Number(finanzas.disponible) || 0, 0),
+                ];
+
+                window.direccionCharts.presupuesto = new Chart(presupuestoCanvas, {
+                    type: 'doughnut',
+                    data: {
+                        labels: nonEmpty(data) ? ['Planificado sin ejecutar', 'Ejecutado', 'Disponible'] : ['Sin presupuesto'],
+                        datasets: [{
+                            data: nonEmpty(data) ? data : [1],
+                            backgroundColor: nonEmpty(data) ? [palette.blue, palette.emerald, palette.amber] : [palette.zinc],
+                            borderColor,
+                            borderWidth: 2,
+                        }],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '62%',
+                        plugins: {
+                            legend: { position: 'bottom', labels: chartText },
+                            tooltip: {
+                                callbacks: {
+                                    label(context) {
+                                        if (!nonEmpty(data)) return 'Sin presupuesto';
+                                        return `${context.label}: L ${Number(context.parsed).toLocaleString('es-HN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+
+            const actividadesCanvas = document.getElementById('direccionActividadesChart');
+            if (actividadesCanvas) {
+                const data = actividades.map(item => Number(item.total) || 0);
+                window.direccionCharts.actividades = new Chart(actividadesCanvas, {
+                    type: 'pie',
+                    data: {
+                        labels: nonEmpty(data) ? actividades.map(item => item.label) : ['Sin actividades'],
+                        datasets: [{
+                            data: nonEmpty(data) ? data : [1],
+                            backgroundColor: nonEmpty(data) ? actividades.map(item => palette[item.color] || palette.zinc) : [palette.zinc],
+                            borderColor,
+                            borderWidth: 2,
+                        }],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: { position: 'bottom', labels: chartText },
+                        }
+                    }
+                });
+            }
+
+            const requisicionesCanvas = document.getElementById('direccionRequisicionesChart');
+            if (requisicionesCanvas) {
+                const data = requisiciones.map(item => Number(item.total) || 0);
+                window.direccionCharts.requisiciones = new Chart(requisicionesCanvas, {
+                    type: 'doughnut',
+                    data: {
+                        labels: nonEmpty(data) ? requisiciones.map(item => item.estado) : ['Sin requisiciones'],
+                        datasets: [{
+                            data: nonEmpty(data) ? data : [1],
+                            backgroundColor: nonEmpty(data) ? requisiciones.map(item => palette[item.color] || palette.zinc) : [palette.zinc],
+                            borderColor,
+                            borderWidth: 2,
+                        }],
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        cutout: '58%',
+                        plugins: {
+                            legend: { position: 'bottom', labels: chartText },
+                        }
+                    }
+                });
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', renderDireccionCharts);
+        document.addEventListener('livewire:navigated', renderDireccionCharts);
+        document.addEventListener('livewire:init', () => {
+            Livewire.on('direccion-charts-update', () => setTimeout(renderDireccionCharts, 50));
+        });
+    </script>
 </div>

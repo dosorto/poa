@@ -78,11 +78,13 @@ class ReportesDireccion extends Component
     public function updatedAnioSeleccionado(): void
     {
         $this->cargarDatos();
+        $this->dispatch('direccion-charts-update');
     }
 
     public function updatedDepartamentoSeleccionado(): void
     {
         $this->cargarDatos();
+        $this->dispatch('direccion-charts-update');
     }
 
     public function cargarDatos(): void
