@@ -56,48 +56,34 @@
                     <p class="mt-1 text-sm text-zinc-500">Seleccione un acta y agregue los productos que saldrán de bodega.</p>
                 </div>
             @else
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-zinc-200 dark:divide-zinc-700">
-                        <thead class="bg-zinc-50 dark:bg-zinc-700"><tr>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-zinc-500 uppercase">Recurso</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-zinc-500 uppercase">Producto</th>
-                            <th class="px-4 py-3 text-left text-xs font-medium text-zinc-500 uppercase">Lote</th>
-                            <th class="px-4 py-3 text-center text-xs font-medium text-zinc-500 uppercase">Cantidad</th>
-                            <th class="px-4 py-3 text-center text-xs font-medium text-zinc-500 uppercase">Acciones</th>
-                        </tr></thead>
-                        <tbody class="bg-white dark:bg-zinc-800 divide-y divide-zinc-200 dark:divide-zinc-700">
+                <div class="overflow-x-auto rounded-lg border dark:border-zinc-700">
+                    <table class="min-w-full divide-y dark:divide-zinc-700">
+                        <thead class="bg-zinc-100 dark:bg-zinc-700">
+                            <tr>
+                                <th class="px-4 py-3 text-left text-xs uppercase">Recurso</th>
+                                <th class="px-4 py-3 text-left text-xs uppercase">Producto</th>
+                                <th class="px-4 py-3 text-left text-xs uppercase">Lote</th>
+                                <th class="px-4 py-3 text-center text-xs uppercase">Cantidad</th>
+                                <th class="px-4 py-3 text-center text-xs uppercase">Máximo</th>
+                                <th class="px-4 py-3 text-center text-xs uppercase">Acciones</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y dark:divide-zinc-700">
                             @foreach ($detalles as $index => $detalle)
                                 @php
                                     $detalleActa = collect($detallesActaDisponibles)->firstWhere('id', (int) $detalle['detalle_acta_entrega_id']);
                                     $productoDetalle = collect($productosPorDetalleActa[$detalle['detalle_acta_entrega_id']] ?? [])->firstWhere('id', (int) $detalle['producto_id']);
                                     $existenciaDetalle = $existencias->first(fn ($item) => (int) $item->producto_id === (int) $detalle['producto_id'] && (int) $item->lote_id === (int) $detalle['lote_id'] && (int) $item->bodega_id === (int) $bodega_id);
                                 @endphp
-                                <tr wire:key="salida-producto-{{ $index }}" class="hover:bg-zinc-50 dark:hover:bg-zinc-700/50">
+                                <tr wire:key="salida-producto-{{ $index }}">
                                     <td class="px-4 py-3 text-sm font-medium">{{ $detalleActa['recurso'] ?? $detalle['recurso'] ?? 'Recurso' }}</td>
-                                    <td class="min-w-72 px-4 py-3 text-sm">
-                                        <x-searchable-select
-                                            wire:model.live="detalles.{{ $index }}.producto_id"
-                                            wire:key="salida-producto-auto-{{ $detalle['detalle_acta_entrega_id'] }}-{{ $index }}-{{ $detalle['producto_id'] ?: 'empty' }}"
-                                            placeholder="Buscar producto..."
-                                            defaultText="Seleccione un producto"
-                                            :options="$productosPorDetalleActa[$detalle['detalle_acta_entrega_id']] ?? []"
-                                            :error="$errors->first('detalles.' . $index . '.producto_id')"
-                                        />
+                                    <td class="px-4 py-3 text-sm font-medium">{{ $productoDetalle['text'] ?? $detalle['producto_nombre'] ?? 'Producto no disponible' }}</td>
+                                    <td class="px-4 py-3 text-sm">{{ $existenciaDetalle?->lote?->codigo_lote ?? 'Sin lote' }}</td>
+                                    <td class="px-4 py-3 text-center text-sm">{{ number_format((float) $detalle['cantidad'], 2) }}</td>
+                                    <td class="px-4 py-3 text-center text-sm">{{ number_format((float) ($detalleActa['cantidad_autorizada'] ?? $detalle['cantidad_autorizada'] ?? 0), 2, ',', '.') }}</td>
+                                    <td class="px-4 py-3 text-center">
+                                        <button wire:click="removeDetalle({{ $index }})" class="cursor-pointer font-semibold text-red-600">Quitar</button>
                                     </td>
-                                    <td class="min-w-56 px-4 py-3 text-sm">
-                                        <select wire:model.live="detalles.{{ $index }}.lote_id" class="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm dark:border-zinc-600 dark:bg-zinc-900">
-                                            <option value="">Seleccione lote</option>
-                                            @foreach ($existencias->where('producto_id', $detalle['producto_id'] ?? null)->where('bodega_id', $bodega_id) as $existencia)
-                                                <option value="{{ $existencia->lote_id }}">{{ $existencia->lote?->codigo_lote }} / disponible {{ $existencia->cantidad_disponible }}</option>
-                                            @endforeach
-                                        </select>
-                                        @error('detalles.' . $index . '.lote_id') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
-                                    </td>
-                                    <td class="min-w-32 px-4 py-3 text-sm text-center">
-                                        <input wire:model="detalles.{{ $index }}.cantidad" type="number" min="0.01" step="0.01" class="w-full rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-center dark:border-zinc-600 dark:bg-zinc-900">
-                                        <p class="mt-1 text-xs text-zinc-500">Máximo: {{ number_format((float) ($detalleActa['cantidad_autorizada'] ?? 0), 2, ',', '.') }}</p>
-                                    </td>
-                                    <td class="px-4 py-3 text-center"><button type="button" wire:click="removeDetalle({{ $index }})" class="text-red-600 hover:text-red-800 cursor-pointer">Quitar</button></td>
                                 </tr>
                             @endforeach
                         </tbody>
