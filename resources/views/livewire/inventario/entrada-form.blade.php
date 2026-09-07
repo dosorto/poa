@@ -10,8 +10,8 @@
             <label>
                 <span class="mb-1 block text-sm font-medium">Bodega destino</span>
                 <select wire:model="bodega_id" class="h-10 w-full rounded-md border px-3 dark:border-zinc-700 dark:bg-zinc-800">
-                    <option value="">Seleccione bodega</option>
-                    @foreach ($bodegas as $bodega)
+                    <option value="">Seleccione una bodega</option>
+                    @foreach($bodegas as $bodega)
                         <option value="{{ $bodega->id }}">{{ $bodega->nombre }}</option>
                     @endforeach
                 </select>

@@ -85,7 +85,13 @@ class EntregaRecursos extends Component
     public function mount($requisicionId)
     {
         $this->requisicionId = $requisicionId;
-        $this->requisicion = Requisicion::with(['departamento', 'estado', 'creador.empleado', 'detalleRequisiciones.presupuesto'])->findOrFail($this->requisicionId);
+        $this->requisicion = Requisicion::with([
+            'departamento',
+            'estado',
+            'creador.empleado',
+            'detalleRequisiciones.presupuesto',
+            'detalleRequisiciones.ejecuciones.createdBy',
+        ])->findOrFail($this->requisicionId);
         
         $empleado = $this->requisicion->creador && $this->requisicion->creador->empleado ? $this->requisicion->creador->empleado : null;
         $empleadoNombreCompleto = $empleado ? trim($empleado->nombres . ' ' . $empleado->apellidos) : ($this->requisicion->creador->name ?? '-');
@@ -109,9 +115,7 @@ class EntregaRecursos extends Component
             $presupuesto = $detalle->presupuesto;
             
             // Obtener todas las ejecuciones de este detalle
-            $ejecuciones = DetalleEjecucionPresupuestaria::where('idDetalleRequisicion', $detalle->id)
-                ->orderBy('created_at', 'desc')
-                ->get();
+            $ejecuciones = $detalle->ejecuciones->sortByDesc('created_at')->values();
             
             // Calcular totales
             $totalEjecutado = $ejecuciones->sum('cant_ejecutada');
@@ -151,6 +155,20 @@ class EntregaRecursos extends Component
                 'entregado' => $totalEjecutado,
                 'monto_ejecutado' => $montoTotalEjecutado,
                 'entrega_bloqueada' => (float) $totalEjecutado >= (float) ($detalle->cantidad ?? 0),
+                'historial_ejecuciones' => $ejecuciones->map(function ($ejecucion) {
+                    return [
+                        'id' => $ejecucion->id,
+                        'observacion' => $ejecucion->observacion ?: '-',
+                        'factura' => $ejecucion->referenciaActaEntrega ?: '-',
+                        'ruta_archivo_factura' => $ejecucion->ruta_archivo_factura,
+                        'cantidad' => (float) $ejecucion->cant_ejecutada,
+                        'monto_unitario' => (float) $ejecucion->monto_unitario_ejecutado,
+                        'monto_total' => (float) $ejecucion->monto_total_ejecutado,
+                        'fecha_ejecucion' => $ejecucion->fechaEjecucion?->format('Y-m-d') ?? '-',
+                        'registrado_por' => $ejecucion->createdBy?->name ?? '-',
+                        'registrado_el' => $ejecucion->created_at?->format('Y-m-d H:i') ?? '-',
+                    ];
+                })->toArray(),
             ];
         })->toArray();
     }
@@ -818,6 +836,21 @@ class EntregaRecursos extends Component
         $this->pdfDownloadUrl = $downloadUrl;
         $this->pdfTitle = $titulo;
         $this->showPdfModal = true;
+    }
+
+    public function abrirActaIntermediaEjecucion(int $detalleEjecucionId): void
+    {
+        $detalleEjecucion = DetalleEjecucionPresupuestaria::where('id', $detalleEjecucionId)
+            ->whereHas('detalleRequisicion', fn ($query) => $query->where('idRequisicion', $this->requisicionId))
+            ->firstOrFail();
+
+        $query = '?detalle_ejecucion_id=' . $detalleEjecucion->id;
+
+        $this->abrirPdfModal(
+            '/acta-entrega-intermedia/' . $this->requisicionId . '/descargar' . $query,
+            '/acta-entrega-intermedia/' . $this->requisicionId . '/descargar/download' . $query,
+            'Acta Intermedia - Ejecución #' . $detalleEjecucion->id
+        );
     }
 
     public function cerrarPdfModal()

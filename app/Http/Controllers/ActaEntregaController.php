@@ -59,12 +59,23 @@ class ActaEntregaController extends Controller
         return $pdf->download('Acta-Entrega-'.$data['acta']->correlativo.'.pdf');
     }
 
-    public function descargarIntermediaPdf($requisicionId)
+    public function descargarIntermediaPdf(Request $request, $requisicionId)
     {
         $requisicion = \App\Models\Requisicion\Requisicion::with([
             'departamento.unidadEjecutora.directorDecano.empleado',
             'creador.empleado',
         ])->findOrFail($requisicionId);
+
+        $detalleEjecucionId = $request->integer('detalle_ejecucion_id') ?: null;
+
+        if ($detalleEjecucionId) {
+            $data = $this->prepararDatosActaIntermediaFiltrada($requisicion, $detalleEjecucionId);
+            $pdf = Pdf::loadView('pdf.acta-entrega-intermedia', $data);
+
+            return response($pdf->output(), 200)
+                ->header('Content-Type', 'application/pdf')
+                ->header('Content-Disposition', 'inline; filename="acta-intermedia-ejecucion-' . $detalleEjecucionId . '-' . $requisicion->correlativo . '.pdf"');
+        }
 
         // Buscar o crear, pero SIEMPRE actualizar los detalles
         $actaEntrega = \App\Models\Actas\ActaEntrega::where('idRequisicion', $requisicionId)
@@ -132,12 +143,21 @@ class ActaEntregaController extends Controller
             ->header('Content-Disposition', 'inline; filename="acta-intermedia-' . $requisicion->correlativo . '.pdf"');
     }
     
-    public function descargarIntermediaPdfDownload($requisicionId)
+    public function descargarIntermediaPdfDownload(Request $request, $requisicionId)
     {
         $requisicion = \App\Models\Requisicion\Requisicion::with([
             'departamento.unidadEjecutora.directorDecano.empleado',
             'creador.empleado',
         ])->findOrFail($requisicionId);
+
+        $detalleEjecucionId = $request->integer('detalle_ejecucion_id') ?: null;
+
+        if ($detalleEjecucionId) {
+            $data = $this->prepararDatosActaIntermediaFiltrada($requisicion, $detalleEjecucionId);
+            $pdf = Pdf::loadView('pdf.acta-entrega-intermedia', $data);
+
+            return $pdf->download('acta-entrega-intermedia-ejecucion-' . $detalleEjecucionId . '-' . $requisicion->correlativo . '.pdf');
+        }
 
         $actaEntrega = \App\Models\Actas\ActaEntrega::with([
             'detalles.detalleRequisicion.presupuesto'
@@ -165,5 +185,50 @@ class ActaEntregaController extends Controller
         $pdf = Pdf::loadView('pdf.acta-entrega-intermedia', $data);
 
         return $pdf->download('acta-entrega-intermedia-' . $requisicion->correlativo . '.pdf');
+    }
+
+    private function prepararDatosActaIntermediaFiltrada(Requisicion $requisicion, int $detalleEjecucionId): array
+    {
+        $detalleEjecucion = DetalleEjecucionPresupuestaria::with([
+            'detalleRequisicion.presupuesto.unidadMedida',
+        ])
+            ->whereKey($detalleEjecucionId)
+            ->whereHas('detalleRequisicion', fn ($query) => $query->where('idRequisicion', $requisicion->id))
+            ->firstOrFail();
+
+        $actaEntrega = ActaEntrega::where('idRequisicion', $requisicion->id)
+            ->where('idTipoActaEntrega', 2)
+            ->latest('id')
+            ->first();
+
+        if (! $actaEntrega) {
+            $actaEntrega = new ActaEntrega([
+                'correlativo' => 'ACT-PREVIA-' . str_pad((string) $detalleEjecucion->id, 6, '0', STR_PAD_LEFT) . '-' . now()->format('Y'),
+                'fecha_extendida' => now(),
+                'idTipoActaEntrega' => 2,
+                'idRequisicion' => $requisicion->id,
+                'idEjecucionPresupuestaria' => $detalleEjecucion->idEjecucion,
+            ]);
+        }
+
+        $detalleActa = new DetalleActaEntrega([
+            'log_cant_ejecutada' => $detalleEjecucion->cant_ejecutada,
+            'log_monto_unitario_ejecutado' => $detalleEjecucion->monto_unitario_ejecutado,
+            'log_fechaEjecucion' => $detalleEjecucion->fechaEjecucion,
+            'idActaEntrega' => $actaEntrega->id,
+            'idRequisicion' => $requisicion->id,
+            'idDetalleRequisicion' => $detalleEjecucion->idDetalleRequisicion,
+            'idEjecucionPresupuestaria' => $detalleEjecucion->idEjecucion,
+            'idDetalleEjecucionPresupuestaria' => $detalleEjecucion->id,
+        ]);
+        $detalleActa->setRelation('detalleRequisicion', $detalleEjecucion->detalleRequisicion);
+        $detalleActa->setRelation('detalleEjecucionPresupuestaria', $detalleEjecucion);
+
+        return [
+            'requisicion' => $requisicion,
+            'acta' => $actaEntrega,
+            'detalles' => collect([$detalleActa]),
+            'recursosGestionados' => collect([$detalleEjecucion->detalleRequisicion]),
+        ];
     }
 }
