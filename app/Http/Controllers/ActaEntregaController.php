@@ -13,7 +13,7 @@ use Barryvdh\DomPDF\Facade\Pdf;
 class ActaEntregaController extends Controller
 {
 
-    private function prepararDatosActa($requisicionId): array
+    private function prepararDatosActa($requisicionId, string $pdfTheme = 'light'): array
     {
         $requisicion = Requisicion::with([
             'departamento.unidadEjecutora.directorDecano.empleado',
@@ -36,12 +36,13 @@ class ActaEntregaController extends Controller
             'acta' => $actaEntrega,
             'requisicion' => $requisicion,
             'detalles' => $actaEntrega->detalles,
+            'pdfTheme' => $pdfTheme,
         ];
     }
 
-    public function descargarPdf($requisicionId)
+    public function descargarPdf(Request $request, $requisicionId)
     {
-        $data = $this->prepararDatosActa($requisicionId);
+        $data = $this->prepararDatosActa($requisicionId, $this->resolverTemaPdf($request));
         $pdf = Pdf::loadView('pdf.acta-entrega', $data);
         $pdf->setPaper('letter', 'portrait');
 
@@ -50,9 +51,9 @@ class ActaEntregaController extends Controller
             ->header('Content-Disposition', 'inline; filename="Acta-Entrega-'.$data['acta']->correlativo.'.pdf"');
     }
 
-    public function descargarPdfDownload($requisicionId)
+    public function descargarPdfDownload(Request $request, $requisicionId)
     {
-        $data = $this->prepararDatosActa($requisicionId);
+        $data = $this->prepararDatosActa($requisicionId, $this->resolverTemaPdf($request));
         $pdf = Pdf::loadView('pdf.acta-entrega', $data);
         $pdf->setPaper('letter', 'portrait');
 
@@ -69,7 +70,7 @@ class ActaEntregaController extends Controller
         $detalleEjecucionId = $request->integer('detalle_ejecucion_id') ?: null;
 
         if ($detalleEjecucionId) {
-            $data = $this->prepararDatosActaIntermediaFiltrada($requisicion, $detalleEjecucionId);
+            $data = $this->prepararDatosActaIntermediaFiltrada($requisicion, $detalleEjecucionId, $this->resolverTemaPdf($request));
             $pdf = Pdf::loadView('pdf.acta-entrega-intermedia', $data);
 
             return response($pdf->output(), 200)
@@ -134,6 +135,7 @@ class ActaEntregaController extends Controller
             'acta' => $actaEntrega,
             'detalles' => $actaEntrega->detalles,
             'recursosGestionados' => $requisicion->detalleRequisiciones()->where('entregado', '>', 0)->get(),
+            'pdfTheme' => $this->resolverTemaPdf($request),
         ];
 
         $pdf = Pdf::loadView('pdf.acta-entrega-intermedia', $data);
@@ -153,7 +155,7 @@ class ActaEntregaController extends Controller
         $detalleEjecucionId = $request->integer('detalle_ejecucion_id') ?: null;
 
         if ($detalleEjecucionId) {
-            $data = $this->prepararDatosActaIntermediaFiltrada($requisicion, $detalleEjecucionId);
+            $data = $this->prepararDatosActaIntermediaFiltrada($requisicion, $detalleEjecucionId, $this->resolverTemaPdf($request));
             $pdf = Pdf::loadView('pdf.acta-entrega-intermedia', $data);
 
             return $pdf->download('acta-entrega-intermedia-ejecucion-' . $detalleEjecucionId . '-' . $requisicion->correlativo . '.pdf');
@@ -180,6 +182,7 @@ class ActaEntregaController extends Controller
             'acta' => $actaEntrega,
             'detalles' => $detalles,
             'recursosGestionados' => $recursosGestionados,
+            'pdfTheme' => $this->resolverTemaPdf($request),
         ];
 
         $pdf = Pdf::loadView('pdf.acta-entrega-intermedia', $data);
@@ -187,7 +190,7 @@ class ActaEntregaController extends Controller
         return $pdf->download('acta-entrega-intermedia-' . $requisicion->correlativo . '.pdf');
     }
 
-    private function prepararDatosActaIntermediaFiltrada(Requisicion $requisicion, int $detalleEjecucionId): array
+    private function prepararDatosActaIntermediaFiltrada(Requisicion $requisicion, int $detalleEjecucionId, string $pdfTheme = 'light'): array
     {
         $detalleEjecucion = DetalleEjecucionPresupuestaria::with([
             'detalleRequisicion.presupuesto.unidadMedida',
@@ -229,6 +232,12 @@ class ActaEntregaController extends Controller
             'acta' => $actaEntrega,
             'detalles' => collect([$detalleActa]),
             'recursosGestionados' => collect([$detalleEjecucion->detalleRequisicion]),
+            'pdfTheme' => $pdfTheme,
         ];
+    }
+
+    private function resolverTemaPdf(Request $request): string
+    {
+        return $request->query('theme') === 'dark' ? 'dark' : 'light';
     }
 }

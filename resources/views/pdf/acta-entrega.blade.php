@@ -4,14 +4,38 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Acta de Entrega</title>
+    @php
+        $isDarkPdf = ($pdfTheme ?? 'light') === 'dark';
+        $pageBg = $isDarkPdf ? '#050505' : '#ffffff';
+        $textColor = $isDarkPdf ? '#f5f5f5' : '#111111';
+        $mutedColor = $isDarkPdf ? '#d4d4d8' : '#111111';
+        $borderColor = $isDarkPdf ? '#525252' : '#000000';
+        $headerBg = $isDarkPdf ? '#262626' : '#B8CCE4';
+        $footerColor = $isDarkPdf ? '#a3a3a3' : '#666666';
+    @endphp
     <style>
         @page {
             margin: 2cm 1.5cm;
+            background-color: {{ $pageBg }};
+        }
+        html {
+            background-color: {{ $pageBg }};
         }
         body {
             font-family: Arial, sans-serif;
             font-size: 10pt;
             line-height: 1.4;
+            color: {{ $textColor }};
+            background-color: {{ $pageBg }};
+        }
+        .page-background {
+            position: fixed;
+            top: -2cm;
+            right: -1.5cm;
+            bottom: -2cm;
+            left: -1.5cm;
+            background-color: {{ $pageBg }};
+            z-index: -1;
         }
         .logo-row {
             width: 100%;
@@ -79,6 +103,19 @@
             margin: 20px 0 15px 0;
             line-height: 1.6;
         }
+        .recipient-reference-table {
+            width: 100%;
+            margin: 0 0 14px 0;
+            border-collapse: collapse;
+            font-size: 10pt;
+        }
+        .recipient-reference-table td {
+            border: none;
+            padding: 0;
+            line-height: 1.15;
+            color: {{ $textColor }};
+            background-color: {{ $pageBg }};
+        }
         table {
             width: 100%;
             border-collapse: collapse;
@@ -86,12 +123,15 @@
             font-size: 9pt;
         }
         table th, table td {
-            border: 1px solid #000;
+            border: 1px solid {{ $borderColor }};
             padding: 8px 6px;
             text-align: left;
         }
+        table td {
+            background-color: {{ $pageBg }};
+        }
         table th {
-            background-color: #ffffff;
+            background-color: {{ $headerBg }};
             font-weight: bold;
             text-align: center;
         }
@@ -114,7 +154,7 @@
             vertical-align: top;
         }
         .signature-line {
-            border-top: 2px solid #000;
+            border-top: 2px solid {{ $borderColor }};
             margin-top: 60px;
             padding-top: 8px;
             font-size: 9pt;
@@ -127,11 +167,12 @@
             right: 0;
             text-align: center;
             font-size: 8pt;
-            color: #666;
+            color: {{ $footerColor }};
         }
     </style>
 </head>
 <body>
+    <div class="page-background"></div>
     @php
         $directorDecano = $requisicion->departamento?->unidadEjecutora?->directorDecano;
         $directorEmpleado = $directorDecano?->empleado;
@@ -151,22 +192,14 @@
     <p class="content-text" style="text-align:left; margin-bottom: 0;">
         El suscrito administrador del Centro Regional del Litoral Pacífico <strong>HACE CONSTAR</strong> que se entregó los suministros a:
     </p>
-    <p class="content-text" style="text-align:left; margin-top: 0; margin-bottom: 0;">
-        <strong>
-            @if($requisicion->creador->empleado)
-                {{ trim(($requisicion->creador->empleado->nombres ?? $requisicion->creador->empleado->nombre) . ' ' . ($requisicion->creador->empleado->apellidos ?? $requisicion->creador->empleado->apellido)) }}
-            @else
-                {{ $requisicion->creador->name }}
-            @endif
-        </strong>
-    </p>
-    <br>
-    <p class="content-text" style="text-align:left; margin-top: 0; margin-bottom: 0;">
-        Según requisición #{{ $requisicion->correlativo }}
-    </p>
-    <p class="content-text" style="text-align:left; margin-top: 0;">
-        Que a continuación se detallan:
-    </p>
+    <table class="recipient-reference-table">
+        <tr>
+            <td><strong>@if($requisicion->creador->empleado){{ trim(($requisicion->creador->empleado->nombres ?? $requisicion->creador->empleado->nombre) . ' ' . ($requisicion->creador->empleado->apellidos ?? $requisicion->creador->empleado->apellido)) }}@else{{ $requisicion->creador->name }}@endif</strong></td>
+        </tr>
+        <tr>
+            <td>Según requisición #{{ $requisicion->correlativo }}. Que a continuación se detallan:</td>
+        </tr>
+    </table>
 
     <table>
         <thead>
@@ -206,14 +239,14 @@
                     <td>
                         <strong>{{ $presupuesto->recurso ?? '-' }}</strong>
                         @if($presupuesto->detalle_tecnico)
-                            <br><small style="color: #050505; font-size: 8pt;">{{ $presupuesto->detalle_tecnico }}</small>
+                            <br><small style="color: {{ $mutedColor }}; font-size: 8pt;">{{ $presupuesto->detalle_tecnico }}</small>
                         @endif
                     </td>
                     <td class="text-right">L {{ number_format($montoUnitario, 2) }}</td>
                     <td class="text-center">{{ $factura }}</td>
                 </tr>
             @endforeach
-            <tr style="font-weight: bold; background-color: #ffffff;">
+            <tr style="font-weight: bold; background-color: {{ $headerBg }};">
                 <td colspan="4" class="text-right" style="font-size: 10pt;">TOTAL</td>
                 <td class="text-right" style="font-size: 10pt;">L {{ number_format($total, 2) }}</td>
                 <td></td>
