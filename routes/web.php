@@ -91,6 +91,10 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
         ->name('inventario.entradas.create')
         ->middleware('can:inventario.entradas.crear');
 
+    Route::get('/inventario/entradas/{entrada}/acta', \App\Livewire\Inventario\EntradaForm::class)
+        ->name('inventario.entradas.acta')
+        ->middleware('can:inventario.entradas.ver');
+
     Route::get('/inventario/entradas/{entrada}/editar', \App\Livewire\Inventario\EntradaForm::class)
         ->name('inventario.entradas.edit')
         ->middleware('can:inventario.entradas.crear');

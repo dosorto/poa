@@ -401,7 +401,11 @@
                             x-data="{
                                 pdfUrl: @js($pdfUrl),
                                 downloadUrl: @js($pdfDownloadUrl),
-                                dark: document.documentElement.classList.contains('dark') || localStorage.getItem('darkMode') === 'true' || localStorage.getItem('color-theme') === 'dark',
+                                dark: document.documentElement.classList.contains('dark'),
+                                init() {
+                                    new MutationObserver(() => this.dark = document.documentElement.classList.contains('dark'))
+                                        .observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+                                },
                                 themed(url) {
                                     return url + (url.includes('?') ? '&' : '?') + 'theme=' + (this.dark ? 'dark' : 'light');
                                 }
@@ -432,14 +436,20 @@
                     <div
                         x-data="{
                             pdfUrl: @js($pdfUrl),
-                            dark: document.documentElement.classList.contains('dark') || localStorage.getItem('darkMode') === 'true' || localStorage.getItem('color-theme') === 'dark',
+                            dark: document.documentElement.classList.contains('dark'),
+                            init() {
+                                new MutationObserver(() => this.dark = document.documentElement.classList.contains('dark'))
+                                    .observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+                            },
                             themed(url) {
                                 return url + (url.includes('?') ? '&' : '?') + 'theme=' + (this.dark ? 'dark' : 'light');
                             }
                         }"
+                        class="-mx-6 -my-4 flex justify-center overflow-auto bg-white dark:bg-zinc-950"
                     >
                     <iframe x-bind:src="themed(pdfUrl)"
-                        class="w-full h-[70vh] rounded-lg border border-zinc-200 dark:border-zinc-700"
+                        class="block h-[74vh] border-0 bg-white dark:bg-zinc-950"
+                        style="width: min(100%, calc(74vh * 8.5 / 11));"
                         type="application/pdf">
                         <p class="text-center p-6 text-zinc-500">
                             Tu navegador no puede mostrar el PDF.

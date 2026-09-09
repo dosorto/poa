@@ -5,8 +5,10 @@
         <div class="mb-4 flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
             <h2 class="text-xl font-semibold">Entradas de inventario</h2>
             <div class="flex gap-2">
-                <input wire:model.live="search" class="rounded border px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800" placeholder="Buscar entrada">
-                @can('inventario.entradas.crear')<a href="{{ route('inventario.entradas.create') }}" class="rounded bg-blue-600 px-4 py-2 text-white">Nueva</a>@endcan
+                <x-input wire:model.live="search" class="px-3 py-2" placeholder="Buscar entrada" />
+                @can('inventario.entradas.crear')
+                    <a href="{{ route('inventario.entradas.create') }}" class="inline-flex items-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white transition hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 active:bg-zinc-900 dark:bg-indigo-800 dark:border-indigo-700 dark:hover:bg-indigo-700 dark:focus:bg-indigo-900 dark:focus:ring-offset-indigo-800">Nueva</a>
+                @endcan
             </div>
         </div>
         <div class="overflow-x-auto">
@@ -21,7 +23,7 @@
                                     @can('inventario.entradas.crear')<a href="{{ route('inventario.entradas.edit', $entrada) }}" class="text-blue-600">Editar</a>@endcan
                                     @can('inventario.entradas.confirmar')<button wire:click="abrirConfirmacion({{ $entrada->id }})" class="cursor-pointer text-green-700">Confirmar</button>@endcan
                                 @elseif ($entrada->estado === 'confirmado')
-                                    @can('inventario.entradas.ver')<a href="{{ route('inventario.entradas.acta-recepcion', $entrada) }}" target="_blank" class="text-blue-600">Acta</a>@endcan
+                                    @can('inventario.entradas.ver')<a href="{{ route('inventario.entradas.acta', $entrada) }}" class="text-blue-600">Acta</a>@endcan
                                     @can('inventario.ajustes.crear')<button wire:click="anular({{ $entrada->id }})" class="cursor-pointer text-red-700">Anular</button>@endcan
                                 @endif
                             </td>
