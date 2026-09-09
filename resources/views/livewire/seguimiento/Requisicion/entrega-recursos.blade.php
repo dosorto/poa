@@ -74,6 +74,57 @@
             </x-slot>
         </x-dialog-modal>
 
+        <x-dialog-modal wire:model="showAdvertenciaModal" maxWidth="md">
+            <x-slot name="title">
+                {{ $advertenciaTitulo ?: 'Advertencia' }}
+            </x-slot>
+            <x-slot name="content">
+                <div class="flex gap-4">
+                    <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+                        </svg>
+                    </div>
+                    <p class="text-sm text-zinc-600 dark:text-zinc-300">{{ $advertenciaMensaje }}</p>
+                </div>
+            </x-slot>
+            <x-slot name="footer">
+                <x-secondary-button wire:click="cerrarAdvertencia">Entendido</x-secondary-button>
+            </x-slot>
+        </x-dialog-modal>
+
+        <x-dialog-modal wire:model="showPendientesFinalModal" maxWidth="md">
+            <x-slot name="title">
+                Entrega final con recursos pendientes
+            </x-slot>
+            <x-slot name="content">
+                <div class="space-y-4">
+                    <div class="flex gap-4">
+                        <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
+                            <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+                            </svg>
+                        </div>
+                        <p class="text-sm text-zinc-600 dark:text-zinc-300">
+                            Esta requisición tiene recursos pendientes. Puede generar la entrega final, pero debe registrar una observación explicando por qué no se entregan todos.
+                        </p>
+                    </div>
+
+                    <div>
+                        <label class="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Observación <span class="text-red-500">*</span></label>
+                        <textarea wire:model.live="observacionEntregaFinalPendiente" rows="4" class="w-full rounded border px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800" placeholder="Explique por qué no se entregan todos los recursos"></textarea>
+                        @error('observacionEntregaFinalPendiente') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
+                    </div>
+                </div>
+            </x-slot>
+            <x-slot name="footer">
+                <x-secondary-button wire:click="$set('showPendientesFinalModal', false)">Cancelar</x-secondary-button>
+                <x-spinner-button wire:click="continuarEntregaFinalConPendientes" class="ml-2" loadingTarget="continuarEntregaFinalConPendientes" :loadingText="__('Continuando...')">
+                    Continuar
+                </x-spinner-button>
+            </x-slot>
+        </x-dialog-modal>
+
         {{-- Modal para actualizar ejecución --}}
         <x-dialog-modal wire:model="showEjecucionModal" maxWidth="4xl">
             <x-slot name="title">
@@ -392,62 +443,44 @@
             <div class="mb-4 flex justify-between items-center">
                 <h2 class="text-lg font-semibold text-zinc-800 dark:text-zinc-100">Recursos de la Requisición</h2>
                 <div class="flex gap-2">
-                    {{-- Botón para generar acta de entrega final --}}
+                    {{-- Botón para cargar salida desde acta final --}}
                     @if (($requisicion->estado->estado ?? '') === 'Finalizado')
                         <button
-                            wire:click="abrirPdfModal(
-            '/acta-entrega/{{ $requisicionId }}/descargar',
-            '/acta-entrega/{{ $requisicionId }}/descargar/download',
-            'Acta de Entrega Final'
-        )"
+                            wire:click="iniciarEntregaFinal"
                             class="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium bg-green-600 text-white hover:bg-green-700 transition">
                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
-                            Ver Acta Final
+                            Entrega final
                         </button>
                     @endif
 
-                    {{-- Botón para generar acta intermedia --}}
+                    {{-- Botón para cargar salida desde acta intermedia --}}
                     @if (collect($recursosParaEntregar)->where('entregado', '>', 0)->count() > 0)
                         <button
-                            wire:click="abrirPdfModal(
-            '/acta-entrega-intermedia/{{ $requisicionId }}/descargar',
-            '/acta-entrega-intermedia/{{ $requisicionId }}/descargar/download',
-            'Acta de Entrega Intermedia'
-        )"
+                            wire:click="iniciarEntregaIntermedia"
                             class="inline-flex items-center gap-2 px-4 py-2 rounded-md text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700 transition">
                             <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                     d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                             </svg>
-                            Ver Acta Intermedia
+                            Entrega intermedia
                         </button>
                     @endif
 
-                    {{-- Botón para finalizar requisición --}}
+                    {{-- Botón para cargar salida desde acta final, finalizando la requisición si hace falta --}}
                     @if (($requisicion->estado->estado ?? '') !== 'Finalizado')
-                        <x-spinner-button wire:click="abrirModalFinalizar" loadingTarget="abrirModalFinalizar"
-                            :loadingText="__('Abriendo...')"
+                        <x-spinner-button wire:click="iniciarEntregaFinal" loadingTarget="iniciarEntregaFinal"
+                            :loadingText="__('Cargando...')"
                             class="inline-flex items-center px-4 py-2 rounded-md text-sm font-medium bg-indigo-600 text-white hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 transition ml-auto">
                             <svg class="w-5 h-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none"
                                 viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round"
                                     d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
                             </svg>
-                            {{ __('Finalizar Requisición') }}
+                            {{ __('Entrega final') }}
                         </x-spinner-button>
-                    @else
-                        <div
-                            class="inline-flex items-center px-4 py-2 rounded-md text-sm font-medium bg-zinc-400 text-white cursor-not-allowed ml-auto">
-                            <svg class="w-5 h-5 mr-2" xmlns="http://www.w3.org/2000/svg" fill="none"
-                                viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round"
-                                    d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
-                            </svg>
-                            {{ __('Requisición Finalizada') }}
-                        </div>
                     @endif
                 </div>
             </div>
@@ -531,6 +564,11 @@
                             </td>
                             <td class="px-4 py-2 align-top text-sm">
                                 @if (($requisicion->estado->estado ?? '') !== 'Finalizado')
+                                    @if ($recurso['entrega_bloqueada'] ?? false)
+                                        <span class="inline-flex items-center px-3 py-2 rounded-md text-sm font-medium bg-zinc-200 text-zinc-600 dark:bg-zinc-700 dark:text-zinc-300">
+                                            Completo
+                                        </span>
+                                    @else
                                         <button wire:click="abrirModalEjecucion({{ $recurso['id'] }})"
                                             wire:loading.attr="disabled"
                                             wire:target="abrirModalEjecucion({{ $recurso['id'] }})"
@@ -554,7 +592,8 @@
                                                 </svg>
                                                 Abriendo...
                                             </span>
-                                    </button>
+                                        </button>
+                                    @endif
                                 @endif
                             </td>
                         </tr>

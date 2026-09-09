@@ -33,6 +33,7 @@
                                         >Confirmar</button>
                                     @endcan
                                 @elseif ($salida->estado === 'confirmado')
+                                    @can('inventario.salidas.ver') <a href="{{ route('inventario.salidas.acta', $salida) }}" class="text-blue-600">Ver acta</a> @endcan
                                     @can('inventario.ajustes.crear') <button wire:click="anular({{ $salida->id }})" class="cursor-pointer text-red-700 transition active:translate-y-px">Anular</button> @endcan
                                 @endif
                             </td>
