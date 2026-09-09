@@ -4,8 +4,10 @@ namespace App\Livewire\Inventario;
 
 use App\Models\Actas\ActaEntrega;
 use App\Models\Actas\DetalleActaEntrega;
+use App\Models\Actas\TipoActaEntrega;
 use App\Models\Departamento\Departamento;
 use App\Models\Empleados\Empleado;
+use App\Models\EjecucionPresupuestaria\DetalleEjecucionPresupuestaria;
 use App\Models\Inventario\InventarioBodega;
 use App\Models\Inventario\InventarioExistencia;
 use App\Models\Inventario\InventarioProducto;
@@ -16,7 +18,6 @@ use App\Models\EjecucionPresupuestaria\EjecucionPresupuestariaLog;
 use App\Models\Requisicion\EstadoRequisicion;
 use App\Models\Requisicion\EstadoRequisicionLog;
 use App\Models\Requisicion\Requisicion;
-use App\Services\ActaIntermediaService;
 use App\Services\Inventario\InventarioService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -32,6 +33,7 @@ class SalidaForm extends Component
     public ?int $bodega_id = null;
     public ?int $acta_entrega_id = null;
     public ?int $requisicion_id = null;
+    public ?string $tipoActaPendiente = null;
     public string $tipo_salida = 'entrega';
     public ?string $motivo = null;
     public ?int $departamento_id = null;
@@ -57,10 +59,8 @@ class SalidaForm extends Component
         'cantidad' => 1,
     ];
 
-    public function mount(?InventarioSalida $salida = null, ?ActaEntrega $acta = null): void
+    public function mount(?InventarioSalida $salida = null, ?ActaEntrega $acta = null, ?Requisicion $requisicion = null): void
     {
-        app(ActaIntermediaService::class)->crearPendientes(Auth::id());
-
         if ($salida?->exists) {
             abort_unless(in_array($salida->estado, ['borrador', 'confirmado'], true), 404);
             $salida->load('detalles');
@@ -97,6 +97,15 @@ class SalidaForm extends Component
             $this->acta_entrega_id = $acta->id;
             $this->actaBloqueada = true;
             $this->prepararContextoActa($acta->id);
+            return;
+        }
+
+        if ($requisicion?->exists) {
+            $this->tipoActaPendiente = 'intermedia';
+            $this->requisicion_id = $requisicion->id;
+            $this->departamento_id = $requisicion->idDepartamento;
+            $this->actaBloqueada = true;
+            $this->prepararContextoIntermediaPendiente($requisicion->id);
         }
     }
 
@@ -105,7 +114,7 @@ class SalidaForm extends Component
         return [
             'numero_salida' => 'required|string|max:255|unique:inventario_salidas,numero_salida,' . $this->salidaId,
             'bodega_id' => 'required|exists:inventario_bodegas,id',
-            'acta_entrega_id' => 'required|exists:acta_entrega,id',
+            'acta_entrega_id' => ($this->tipoActaPendiente === 'intermedia' ? 'nullable' : 'required') . '|exists:acta_entrega,id',
             'requisicion_id' => 'required|exists:requisicion,id',
             'tipo_salida' => 'required|in:entrega',
             'motivo' => 'nullable|string',
@@ -117,15 +126,15 @@ class SalidaForm extends Component
             'detalles' => [$this->esActaFinal() ? 'nullable' : 'required', 'array', $this->esActaFinal() ? 'min:0' : 'min:1'],
             'detalles.*.producto_id' => 'required|exists:inventario_productos,id',
             'detalles.*.lote_id' => 'required|exists:inventario_lotes,id',
-            'detalles.*.detalle_acta_entrega_id' => 'nullable|exists:detalle_acta_entrega,id',
+            'detalles.*.detalle_acta_entrega_id' => $this->tipoActaPendiente === 'intermedia' ? 'required|integer' : 'nullable|exists:detalle_acta_entrega,id',
             'detalles.*.cantidad' => 'required|numeric|min:0.01',
         ];
     }
 
     public function openProductoModal(?int $detalleActaId = null): void
     {
-        if (! $this->acta_entrega_id) {
-            $this->addError('acta_entrega_id', 'Seleccione primero un acta de entrega.');
+        if (! $this->acta_entrega_id && $this->tipoActaPendiente !== 'intermedia') {
+            $this->addError('acta_entrega_id', 'Seleccione primero el acta de entrega.');
             return;
         }
 
@@ -141,7 +150,7 @@ class SalidaForm extends Component
 
     public function siguientePaso(): void
     {
-        if (! $this->acta_entrega_id) {
+        if (! $this->acta_entrega_id && $this->tipoActaPendiente !== 'intermedia') {
             $this->addError('acta_entrega_id', 'Seleccione primero el acta de entrega.');
             return;
         }
@@ -242,7 +251,7 @@ class SalidaForm extends Component
     public function agregarProducto(): void
     {
         $this->validate([
-            'nuevoDetalle.detalle_acta_entrega_id' => 'required|exists:detalle_acta_entrega,id',
+            'nuevoDetalle.detalle_acta_entrega_id' => $this->tipoActaPendiente === 'intermedia' ? 'required|integer' : 'required|exists:detalle_acta_entrega,id',
             'nuevoDetalle.producto_id' => 'required|exists:inventario_productos,id',
             'nuevoDetalle.lote_id' => 'required|exists:inventario_lotes,id',
             'nuevoDetalle.cantidad' => 'required|numeric|min:0.01',
@@ -306,9 +315,16 @@ class SalidaForm extends Component
 
             $this->validate();
 
-            $this->prepararContextoActa($this->acta_entrega_id, false);
+            if ($this->tipoActaPendiente !== 'intermedia') {
+                $this->prepararContextoActa($this->acta_entrega_id, false);
+            }
 
             $salida = DB::transaction(function () use ($service) {
+                if ($this->tipoActaPendiente === 'intermedia') {
+                    $acta = $this->crearActaIntermediaDesdeSalida();
+                    $this->acta_entrega_id = $acta->id;
+                }
+
                 $salida = InventarioSalida::updateOrCreate(['id' => $this->salidaId], [
                     'numero_salida' => $this->numero_salida,
                     'bodega_id' => $this->bodega_id,
@@ -423,6 +439,151 @@ class SalidaForm extends Component
                 'created_by' => Auth::id(),
             ]);
         }
+    }
+
+    private function prepararContextoIntermediaPendiente(int $requisicionId): void
+    {
+        $requisicion = Requisicion::with('departamento')->findOrFail($requisicionId);
+
+        $this->requisicion_id = $requisicion->id;
+        $this->departamento_id = $requisicion->idDepartamento;
+        $this->tipo_salida = 'entrega';
+        $this->productosPorDetalleActa = [];
+        $this->detallesActaDisponibles = [];
+
+        $ejecuciones = DetalleEjecucionPresupuestaria::with(['detalleRequisicion.recurso'])
+            ->whereHas('detalleRequisicion', fn ($query) => $query->where('idRequisicion', $requisicionId))
+            ->orderBy('id')
+            ->get();
+
+        foreach ($ejecuciones as $ejecucion) {
+            $detalleRequisicion = $ejecucion->detalleRequisicion;
+            $recursoId = $detalleRequisicion?->idRecurso;
+            $cantidadPendiente = $this->cantidadPendienteEjecucion($ejecucion);
+
+            if (! $detalleRequisicion || ! $recursoId || $cantidadPendiente <= 0) {
+                continue;
+            }
+
+            $productos = InventarioProducto::where('activo', true)
+                ->whereHas('recursos', fn ($query) => $query->where('tareas_historicos.id', $recursoId))
+                ->orderBy('nombre')
+                ->get(['id', 'codigo_interno', 'nombre']);
+
+            $this->productosPorDetalleActa[$ejecucion->id] = $productos->map(fn ($producto) => [
+                'id' => $producto->id,
+                'nombre' => $producto->codigo_interno . ' - ' . $producto->nombre,
+                'text' => $producto->codigo_interno . ' - ' . $producto->nombre,
+            ])->all();
+
+            $this->detallesActaDisponibles[] = [
+                'id' => $ejecucion->id,
+                'text' => $detalleRequisicion->recurso?->nombre ?? 'Recurso no disponible',
+                'recurso' => $detalleRequisicion->recurso?->nombre ?? 'Recurso no disponible',
+                'cantidad_autorizada' => $cantidadPendiente,
+                'detalle_requisicion_id' => $detalleRequisicion->id,
+                'detalle_ejecucion_id' => $ejecucion->id,
+            ];
+        }
+
+        $this->detalles = collect($this->detallesActaDisponibles)->map(function ($detalleDisponible) {
+            $productos = $this->productosPorDetalleActa[$detalleDisponible['id']] ?? [];
+            $productoId = count($productos) === 1 ? $productos[0]['id'] : null;
+            $cantidad = (float) $detalleDisponible['cantidad_autorizada'];
+
+            return [
+                'detalle_acta_entrega_id' => $detalleDisponible['id'],
+                'producto_id' => $productoId,
+                'lote_id' => $productoId ? $this->loteDisponiblePara($productoId, $cantidad) : null,
+                'cantidad' => $cantidad,
+                'recurso' => $detalleDisponible['recurso'],
+                'cantidad_autorizada' => $cantidad,
+            ];
+        })->values()->all();
+    }
+
+    private function crearActaIntermediaDesdeSalida(): ActaEntrega
+    {
+        if (! $this->requisicion_id) {
+            throw ValidationException::withMessages(['requisicion_id' => 'No se encontró la requisición para generar el acta intermedia.']);
+        }
+
+        if (empty($this->detalles)) {
+            throw ValidationException::withMessages(['detalles' => 'Debe agregar al menos un producto antes de generar la entrega intermedia.']);
+        }
+
+        $tipoId = TipoActaEntrega::whereRaw('LOWER(tipo) = ?', ['intermedia'])->value('id');
+
+        if (! $tipoId) {
+            throw ValidationException::withMessages(['acta' => 'No se encontró el tipo de acta intermedia.']);
+        }
+
+        $ejecuciones = DetalleEjecucionPresupuestaria::with('detalleRequisicion')
+            ->whereIn('id', collect($this->detalles)->pluck('detalle_acta_entrega_id')->filter()->unique()->values())
+            ->whereHas('detalleRequisicion', fn ($query) => $query->where('idRequisicion', $this->requisicion_id))
+            ->lockForUpdate()
+            ->get()
+            ->keyBy('id');
+
+        if ($ejecuciones->isEmpty()) {
+            throw ValidationException::withMessages(['detalles' => 'No se encontraron ejecuciones válidas para generar el acta intermedia.']);
+        }
+
+        $acta = ActaEntrega::create([
+            'correlativo' => $this->siguienteCorrelativoActa(),
+            'fecha_extendida' => now(),
+            'idTipoActaEntrega' => $tipoId,
+            'idRequisicion' => $this->requisicion_id,
+            'idEjecucionPresupuestaria' => $ejecuciones->first()->idEjecucion,
+            'created_by' => Auth::id(),
+        ]);
+
+        foreach ($this->detalles as $index => $detalle) {
+            $ejecucion = $ejecuciones->get((int) $detalle['detalle_acta_entrega_id']);
+
+            if (! $ejecucion) {
+                throw ValidationException::withMessages(['detalles' => 'Uno de los productos no corresponde a una ejecución válida.']);
+            }
+
+            $detalleActa = DetalleActaEntrega::create([
+                'log_cant_ejecutada' => $detalle['cantidad'],
+                'log_monto_unitario_ejecutado' => $ejecucion->monto_unitario_ejecutado,
+                'log_fechaEjecucion' => $ejecucion->fechaEjecucion,
+                'idActaEntrega' => $acta->id,
+                'idRequisicion' => $this->requisicion_id,
+                'idDetalleRequisicion' => $ejecucion->idDetalleRequisicion,
+                'idEjecucionPresupuestaria' => $ejecucion->idEjecucion,
+                'idDetalleEjecucionPresupuestaria' => $ejecucion->id,
+                'created_by' => Auth::id(),
+            ]);
+
+            $this->detalles[$index]['detalle_acta_entrega_id'] = $detalleActa->id;
+        }
+
+        $this->tipoActaPendiente = null;
+
+        return $acta;
+    }
+
+    private function cantidadPendienteEjecucion(DetalleEjecucionPresupuestaria $ejecucion): float
+    {
+        $yaDespachado = InventarioSalidaDetalle::query()
+            ->join('inventario_salidas', 'inventario_salidas.id', '=', 'inventario_salida_detalles.salida_id')
+            ->join('detalle_acta_entrega', 'detalle_acta_entrega.id', '=', 'inventario_salida_detalles.detalle_acta_entrega_id')
+            ->where('inventario_salidas.estado', 'confirmado')
+            ->whereNull('inventario_salidas.deleted_at')
+            ->where('detalle_acta_entrega.idDetalleEjecucionPresupuestaria', $ejecucion->id)
+            ->when($this->salidaId, fn ($query) => $query->where('inventario_salidas.id', '!=', $this->salidaId))
+            ->sum('inventario_salida_detalles.cantidad');
+
+        return max((float) $ejecucion->cant_ejecutada - (float) $yaDespachado, 0);
+    }
+
+    private function siguienteCorrelativoActa(): string
+    {
+        $numero = ((int) ActaEntrega::withTrashed()->max('id')) + 1;
+
+        return 'ACT-' . str_pad((string) $numero, 6, '0', STR_PAD_LEFT) . '-' . now()->format('Y');
     }
 
     private function prepararContextoActa(int $actaId, bool $cargarDetalles = true): void
@@ -581,8 +742,18 @@ class SalidaForm extends Component
         $actaSeleccionada = $this->acta_entrega_id
             ? ActaEntrega::with(['tipoActaEntrega', 'requisicion:id,correlativo'])->find($this->acta_entrega_id)
             : null;
+        $requisicionPendiente = $this->tipoActaPendiente === 'intermedia' && $this->requisicion_id
+            ? Requisicion::find($this->requisicion_id, ['id', 'correlativo'])
+            : null;
         $tipoActaSeleccionada = mb_strtolower((string) $actaSeleccionada?->tipoActaEntrega?->tipo);
         $actaRouteBase = $tipoActaSeleccionada === 'final' ? 'acta-entrega-pdf' : 'acta-entrega-intermedia-pdf';
+        $actaPdfUrl = $actaSeleccionada ? route($actaRouteBase, $actaSeleccionada->idRequisicion) : null;
+        $actaDownloadUrl = $actaSeleccionada ? route($actaRouteBase . '-download', $actaSeleccionada->idRequisicion) : null;
+
+        if ($actaSeleccionada && $tipoActaSeleccionada === 'intermedia') {
+            $actaPdfUrl .= '?acta_id=' . $actaSeleccionada->id;
+            $actaDownloadUrl .= '?acta_id=' . $actaSeleccionada->id;
+        }
 
         return view('livewire.inventario.salida-form', [
             'bodegas' => InventarioBodega::where('activo', true)->orderBy('nombre')->get(),
@@ -592,8 +763,9 @@ class SalidaForm extends Component
                 ->whereHas('tipoActaEntrega', fn ($query) => $query->whereRaw('LOWER(tipo) in (?, ?)', ['intermedia', 'final']))
                 ->latest()->limit(100)->get(['id', 'correlativo', 'idRequisicion']),
             'actaSeleccionada' => $actaSeleccionada,
-            'actaPdfUrl' => $actaSeleccionada ? route($actaRouteBase, $actaSeleccionada->idRequisicion) : null,
-            'actaDownloadUrl' => $actaSeleccionada ? route($actaRouteBase . '-download', $actaSeleccionada->idRequisicion) : null,
+            'requisicionPendiente' => $requisicionPendiente,
+            'actaPdfUrl' => $actaPdfUrl,
+            'actaDownloadUrl' => $actaDownloadUrl,
             'actaTitulo' => $tipoActaSeleccionada === 'final' ? 'Acta de entrega final' : 'Acta de entrega intermedia',
             'departamentos' => Departamento::orderBy('name')->get(['id', 'name']),
             'empleados' => Empleado::orderBy('nombre')->get(['id', 'nombre', 'apellido']),

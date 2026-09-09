@@ -12,7 +12,6 @@ use App\Models\EjecucionPresupuestaria\EstadoEjecucionPresupuestaria;
 use App\Models\Actas\ActaEntrega;
 use App\Models\Actas\DetalleActaEntrega;
 use App\Models\Actas\TipoActaEntrega;
-use App\Services\ActaIntermediaService;
 use App\Services\RequisicionCorreoService;
 use Livewire\Attributes\Layout;
 use Livewire\WithFileUploads;
@@ -500,16 +499,12 @@ class EntregaRecursos extends Component
 
     public function iniciarEntregaIntermedia()
     {
-        app(ActaIntermediaService::class)->crearPendientes(Auth::id());
-
-        $acta = $this->actaPorTipo('Intermedia');
-
-        if (! $acta) {
-            $this->errorMessage = 'No se pudo generar el acta intermedia. Registre primero ejecución en al menos un recurso.';
+        if (collect($this->recursosParaEntregar)->where('entregado', '>', 0)->count() === 0) {
+            $this->errorMessage = 'Debe registrar ejecución en al menos un recurso antes de generar una entrega intermedia.';
             return null;
         }
 
-        return redirect()->route('inventario.salidas.create.acta', $acta);
+        return redirect()->route('inventario.salidas.create.requisicion.intermedia', $this->requisicion);
     }
 
     public function iniciarEntregaFinal()
@@ -631,8 +626,18 @@ class EntregaRecursos extends Component
 
     public function confirmarFinalizarRequisicion()
     {
-        $this->finalizarRequisicion();
+        $actaEntrega = $this->finalizarRequisicion();
         $this->showConfirmFinalizarModal = false;
+
+        if (! $actaEntrega) {
+            return;
+        }
+
+        $this->abrirPdfModal(
+            '/acta-entrega/' . $this->requisicionId . '/descargar',
+            '/acta-entrega/' . $this->requisicionId . '/descargar/download',
+            'Acta Final - ' . ($actaEntrega->correlativo ?? $this->detalleRequisicion['correlativo'] ?? 'Requisición')
+        );
     }
 
     public function finalizarRequisicion(): ?ActaEntrega

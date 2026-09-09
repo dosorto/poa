@@ -13,6 +13,8 @@
         @php
             $bodegaSeleccionada = $bodegas->firstWhere('id', $bodega_id) ?? $bodegas->first();
             $actaVista = $actaSeleccionada ?? $actas->firstWhere('id', $acta_entrega_id);
+            $tipoEntregaVista = $tipoActaPendiente === 'intermedia' ? 'Entrega intermedia' : 'Entrega por acta';
+            $referenciaVista = $actaVista?->requisicion?->correlativo ?? $actaVista?->correlativo ?? $requisicionPendiente?->correlativo ?? 'Seleccione acta';
         @endphp
 
         <div class="mb-6 grid grid-cols-1 gap-3 md:grid-cols-3">
@@ -20,10 +22,10 @@
                 {{ $bodegaSeleccionada?->nombre ?? 'No hay bodega activa' }}
             </div>
             <div class="rounded border px-3 py-2 text-sm font-semibold text-zinc-800 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100">
-                Entrega por acta
+                {{ $tipoEntregaVista }}
             </div>
             <div class="rounded border px-3 py-2 text-sm font-semibold text-zinc-800 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100">
-                {{ $actaVista?->requisicion?->correlativo ?? $actaVista?->correlativo ?? 'Seleccione acta' }}
+                {{ $referenciaVista }}
             </div>
         </div>
 
@@ -61,11 +63,11 @@
 
                 <div class="rounded border px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800">
                     <p class="text-xs uppercase text-zinc-500">Número de acta</p>
-                    <p class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ $actaVista?->correlativo ?? 'Seleccione acta' }}</p>
+                    <p class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ $actaVista?->correlativo ?? ($tipoActaPendiente === 'intermedia' ? 'Se generará al crear la entrega' : 'Seleccione acta') }}</p>
                 </div>
                 <div class="rounded border px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800">
                     <p class="text-xs uppercase text-zinc-500">Requisición</p>
-                    <p class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ $actaVista?->requisicion?->correlativo ?? 'Pendiente' }}</p>
+                    <p class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ $actaVista?->requisicion?->correlativo ?? $referenciaVista }}</p>
                 </div>
                 <div>
                     <label class="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Empleado recibe</label>
