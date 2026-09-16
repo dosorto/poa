@@ -135,8 +135,10 @@
             </x-slot>
 
             <x-slot name="content">
-                <div class="mx-auto max-w-5xl">
+                <div class="-mx-6 -my-4 max-h-[calc(100vh-18rem)] overflow-y-auto overscroll-contain px-6 py-4">
+                    <div class="mx-auto max-w-5xl">
                     @include('livewire.seguimiento.Requisicion.partials.detalle-requisicion-view')
+                    </div>
                 </div>
             </x-slot>
 
@@ -357,8 +359,28 @@
                                 $rutaActa = $tipoActaEntrega === 'final' ? 'acta-entrega-pdf' : 'acta-entrega-intermedia-pdf';
                                 $rutaActaDownload = $rutaActa . '-download';
                                 $tituloActa = $tipoActaEntrega === 'final' ? 'Acta de Entrega Final' : 'Acta de Entrega Intermedia';
+                                $actaUrl = $entrega->actaEntrega
+                                    ? route($rutaActa, $entrega->actaEntrega->idRequisicion)
+                                    : null;
+                                $actaDownloadUrl = $entrega->actaEntrega
+                                    ? route($rutaActaDownload, $entrega->actaEntrega->idRequisicion)
+                                    : null;
+
+                                if ($entrega->actaEntrega && $tipoActaEntrega !== 'final') {
+                                    $actaUrl .= '?acta_id=' . $entrega->actaEntrega->id;
+                                    $actaDownloadUrl .= '?acta_id=' . $entrega->actaEntrega->id;
+                                }
                             @endphp
-                            <tr class="border-b dark:border-zinc-700">
+                            <tr
+                                @if ($entrega->actaEntrega)
+                                    wire:click="abrirPdfModal(@js($actaUrl), @js($actaDownloadUrl), @js($tituloActa))"
+                                    wire:keydown.enter="abrirPdfModal(@js($actaUrl), @js($actaDownloadUrl), @js($tituloActa))"
+                                    role="button"
+                                    tabindex="0"
+                                    title="Ver acta"
+                                @endif
+                                class="border-b dark:border-zinc-700 {{ $entrega->actaEntrega ? 'cursor-pointer transition hover:bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 focus:ring-offset-white dark:hover:bg-zinc-800/60 dark:focus:ring-offset-zinc-900' : '' }}"
+                            >
                                 <td class="py-3 pr-4 font-medium text-zinc-900 dark:text-zinc-100">{{ $entrega->numero_salida }}</td>
                                 <td class="py-3 pr-4">{{ $entrega->requisicion?->correlativo ?? 'Sin requisición' }}</td>
                                 <td class="py-3 pr-4">{{ $entrega->actaEntrega?->correlativo ?? 'Sin acta' }}</td>
@@ -368,11 +390,7 @@
                                 <td class="py-3 text-right">
                                     @if ($entrega->actaEntrega)
                                         <button
-                                            wire:click="abrirPdfModal(
-                                                '{{ route($rutaActa, $entrega->actaEntrega->idRequisicion) }}',
-                                                '{{ route($rutaActaDownload, $entrega->actaEntrega->idRequisicion) }}',
-                                                '{{ $tituloActa }}'
-                                            )"
+                                            wire:click.stop="abrirPdfModal(@js($actaUrl), @js($actaDownloadUrl), @js($tituloActa))"
                                             class="rounded px-3 py-1.5 text-sm font-semibold text-blue-600 hover:bg-blue-50 dark:hover:bg-zinc-800"
                                         >
                                             Ver acta

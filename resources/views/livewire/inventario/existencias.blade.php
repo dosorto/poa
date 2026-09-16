@@ -1,6 +1,18 @@
 <div class="mx-auto mt-6">
     <div class="bg-white dark:bg-zinc-900 overflow-hidden shadow sm:rounded-lg p-6">
-        <h2 class="text-xl font-semibold mb-4">Existencias</h2>
+        <div class="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+                <h2 class="text-xl font-semibold">Existencias</h2>
+                <p class="text-sm text-zinc-500 dark:text-zinc-400">Se actualiza automáticamente mientras la pantalla está abierta.</p>
+            </div>
+            <button
+                type="button"
+                wire:click="$refresh"
+                class="inline-flex w-fit items-center rounded-md border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            >
+                Actualizar
+            </button>
+        </div>
         <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
             <x-input wire:model.live="search" class="px-3 py-2" placeholder="Producto o código" />
             <x-select wire:model.live="bodega_id" class="px-3 py-2">
@@ -19,7 +31,7 @@
                 <option value="bloqueado">Bloqueado</option>
             </x-select>
         </div>
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto" wire:poll.10s>
             <table class="min-w-full text-sm">
                 <thead><tr class="text-left border-b dark:border-zinc-700"><th class="py-2">Bodega</th><th>Producto</th><th>Lote</th><th>Disponible</th><th>Reservada</th><th>Vence</th><th>Ubicacion</th></tr></thead>
                 <tbody>
