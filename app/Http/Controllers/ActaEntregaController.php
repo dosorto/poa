@@ -78,6 +78,30 @@ class ActaEntregaController extends Controller
                 ->header('Content-Disposition', 'inline; filename="acta-intermedia-ejecucion-' . $detalleEjecucionId . '-' . $requisicion->correlativo . '.pdf"');
         }
 
+        $actaId = $request->integer('acta_id') ?: null;
+
+        if ($actaId) {
+            $actaEntrega = \App\Models\Actas\ActaEntrega::with('detalles.detalleRequisicion.presupuesto')
+                ->whereKey($actaId)
+                ->where('idRequisicion', $requisicionId)
+                ->where('idTipoActaEntrega', 2)
+                ->firstOrFail();
+
+            $data = [
+                'requisicion' => $requisicion,
+                'acta' => $actaEntrega,
+                'detalles' => $actaEntrega->detalles,
+                'recursosGestionados' => $actaEntrega->detalles->pluck('detalleRequisicion')->filter()->unique('id')->values(),
+                'pdfTheme' => $this->resolverTemaPdf($request),
+            ];
+
+            $pdf = Pdf::loadView('pdf.acta-entrega-intermedia', $data);
+
+            return response($pdf->output(), 200)
+                ->header('Content-Type', 'application/pdf')
+                ->header('Content-Disposition', 'inline; filename="acta-intermedia-' . $actaEntrega->correlativo . '.pdf"');
+        }
+
         // Buscar o crear, pero SIEMPRE actualizar los detalles
         $actaEntrega = \App\Models\Actas\ActaEntrega::where('idRequisicion', $requisicionId)
             ->where('idTipoActaEntrega', 2)
@@ -161,11 +185,14 @@ class ActaEntregaController extends Controller
             return $pdf->download('acta-entrega-intermedia-ejecucion-' . $detalleEjecucionId . '-' . $requisicion->correlativo . '.pdf');
         }
 
+        $actaId = $request->integer('acta_id') ?: null;
+
         $actaEntrega = \App\Models\Actas\ActaEntrega::with([
             'detalles.detalleRequisicion.presupuesto'
         ])
         ->where('idRequisicion', $requisicionId)
         ->where('idTipoActaEntrega', 2)
+        ->when($actaId, fn ($query) => $query->whereKey($actaId))
         ->latest('id')
         ->first();
 

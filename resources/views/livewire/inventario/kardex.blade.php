@@ -7,45 +7,45 @@
             </div>
             <label class="w-full sm:w-40">
                 <span class="mb-1 block text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400">Por pagina</span>
-                <select wire:model.live="perPage" class="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-900 shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white">
+                <x-select wire:model.live="perPage" class="h-10 px-3 text-sm">
                     <option value="10">10 filas</option>
                     <option value="15">15 filas</option>
                     <option value="25">25 filas</option>
                     <option value="50">50 filas</option>
-                </select>
+                </x-select>
             </label>
         </div>
 
         <div class="grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-6">
             <label class="block">
                 <span class="mb-1 block text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400">Desde</span>
-                <input wire:model.live="fecha_inicio" type="date" class="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-900 shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white">
+                <x-input wire:model.live="fecha_inicio" type="date" class="h-10 w-full px-3 text-sm" />
             </label>
             <label class="block">
                 <span class="mb-1 block text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400">Hasta</span>
-                <input wire:model.live="fecha_fin" type="date" class="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-900 shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white">
+                <x-input wire:model.live="fecha_fin" type="date" class="h-10 w-full px-3 text-sm" />
             </label>
             <label class="block">
                 <span class="mb-1 block text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400">Bodega</span>
-                <select wire:model.live="bodega_id" class="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-900 shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white">
+                <x-select wire:model.live="bodega_id" class="h-10 px-3 text-sm">
                     <option value="">Todas</option>
                     @foreach ($bodegas as $bodega)
                         <option value="{{ $bodega->id }}">{{ $bodega->nombre }}</option>
                     @endforeach
-                </select>
+                </x-select>
             </label>
             <label class="block">
                 <span class="mb-1 block text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400">Producto</span>
-                <select wire:model.live="producto_id" class="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-900 shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white">
+                <x-select wire:model.live="producto_id" class="h-10 px-3 text-sm">
                     <option value="">Todos</option>
                     @foreach ($productos as $producto)
                         <option value="{{ $producto->id }}">{{ $producto->nombre }}</option>
                     @endforeach
-                </select>
+                </x-select>
             </label>
             <label class="block">
                 <span class="mb-1 block text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400">Tipo</span>
-                <select wire:model.live="tipo_movimiento" class="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-900 shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white">
+                <x-select wire:model.live="tipo_movimiento" class="h-10 px-3 text-sm">
                     <option value="">Todos</option>
                     <option value="saldo_inicial">Saldo inicial</option>
                     <option value="entrada">Entrada</option>
@@ -53,11 +53,11 @@
                     <option value="ajuste_positivo">Ajuste positivo</option>
                     <option value="ajuste_negativo">Ajuste negativo</option>
                     <option value="devolucion">Devolucion</option>
-                </select>
+                </x-select>
             </label>
             <label class="block">
                 <span class="mb-1 block text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400">Referencia</span>
-                <input wire:model.live="referencia" class="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-900 shadow-sm outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-white" placeholder="Buscar">
+                <x-input wire:model.live="referencia" class="h-10 w-full px-3 text-sm" placeholder="Buscar" />
             </label>
         </div>
     </section>

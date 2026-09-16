@@ -5,7 +5,7 @@
                 <h2 class="text-xl font-semibold">{{ $salidaId ? 'Editar salida' : 'Nueva salida' }}</h2>
                 <p class="text-sm text-zinc-500">Complete los datos y genere la entrega de inventario.</p>
             </div>
-            <a href="{{ route('inventario.salidas') }}" class="px-4 py-2 border rounded">Volver</a>
+            <a href="{{ route('inventario.salidas') }}" class="inline-flex items-center rounded-md border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800">Volver</a>
         </div>
 
         @if (session()->has('message')) <div class="mb-4 text-green-700">{{ session('message') }}</div> @endif
@@ -13,6 +13,8 @@
         @php
             $bodegaSeleccionada = $bodegas->firstWhere('id', $bodega_id) ?? $bodegas->first();
             $actaVista = $actaSeleccionada ?? $actas->firstWhere('id', $acta_entrega_id);
+            $tipoEntregaVista = $tipoActaPendiente === 'intermedia' ? 'Entrega intermedia' : 'Entrega por acta';
+            $referenciaVista = $actaVista?->requisicion?->correlativo ?? $actaVista?->correlativo ?? $requisicionPendiente?->correlativo ?? 'Seleccione acta';
         @endphp
 
         <div class="mb-6 grid grid-cols-1 gap-3 md:grid-cols-3">
@@ -20,10 +22,10 @@
                 {{ $bodegaSeleccionada?->nombre ?? 'No hay bodega activa' }}
             </div>
             <div class="rounded border px-3 py-2 text-sm font-semibold text-zinc-800 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100">
-                Entrega por acta
+                {{ $tipoEntregaVista }}
             </div>
             <div class="rounded border px-3 py-2 text-sm font-semibold text-zinc-800 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100">
-                {{ $actaVista?->requisicion?->correlativo ?? $actaVista?->correlativo ?? 'Seleccione acta' }}
+                {{ $referenciaVista }}
             </div>
         </div>
 
@@ -49,34 +51,34 @@
                 @unless ($actaBloqueada)
                     <div class="md:col-span-2">
                         <label class="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Acta de entrega <span class="text-red-500">*</span></label>
-                        <select wire:model.live="acta_entrega_id" class="w-full rounded border px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800">
+                        <x-select wire:model.live="acta_entrega_id" class="px-3 py-2">
                             <option value="">Seleccione acta</option>
                             @foreach ($actas as $acta)
                                 <option value="{{ $acta->id }}">{{ $acta->correlativo }} - {{ $acta->requisicion?->correlativo }}</option>
                             @endforeach
-                        </select>
+                        </x-select>
                         @error('acta_entrega_id') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
                     </div>
                 @endunless
 
                 <div class="rounded border px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800">
                     <p class="text-xs uppercase text-zinc-500">Número de acta</p>
-                    <p class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ $actaVista?->correlativo ?? 'Seleccione acta' }}</p>
+                    <p class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ $actaVista?->correlativo ?? ($tipoActaPendiente === 'intermedia' ? 'Se generará al crear la entrega' : 'Seleccione acta') }}</p>
                 </div>
                 <div class="rounded border px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800">
                     <p class="text-xs uppercase text-zinc-500">Requisición</p>
-                    <p class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ $actaVista?->requisicion?->correlativo ?? 'Pendiente' }}</p>
+                    <p class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ $actaVista?->requisicion?->correlativo ?? $referenciaVista }}</p>
                 </div>
                 <div>
                     <label class="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Empleado recibe</label>
-                    <select wire:model.live="empleado_recibe_id" class="w-full rounded border px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800">
+                    <x-select wire:model.live="empleado_recibe_id" class="px-3 py-2">
                         <option value="">Empleado recibe</option>
                         @foreach ($empleados as $empleado) <option value="{{ $empleado->id }}">{{ $empleado->nombre }} {{ $empleado->apellido }}</option> @endforeach
-                    </select>
+                    </x-select>
                 </div>
                 <div class="md:col-span-2">
                     <label class="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Observación</label>
-                    <textarea wire:model.live="observacion" class="w-full rounded border px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800" placeholder="Observación"></textarea>
+                    <x-textarea wire:model.live="observacion" placeholder="Observación" />
                 </div>
             </div>
         @endif
@@ -146,13 +148,43 @@
                         <p class="mt-1 text-sm text-zinc-500">Lista para imprimir o descargar.</p>
                     </div>
                     @if ($actaDownloadUrl)
-                        <a href="{{ $actaDownloadUrl }}" target="_blank" class="rounded bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition active:translate-y-px">Descargar</a>
+                        <a
+                            x-data="{
+                                downloadUrl: @js($actaDownloadUrl),
+                                dark: document.documentElement.classList.contains('dark'),
+                                init() {
+                                    new MutationObserver(() => this.dark = document.documentElement.classList.contains('dark'))
+                                        .observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+                                },
+                                themed(url) {
+                                    return url + (url.includes('?') ? '&' : '?') + 'theme=' + (this.dark ? 'dark' : 'light');
+                                }
+                            }"
+                            x-bind:href="themed(downloadUrl)"
+                            target="_blank"
+                            class="inline-flex items-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white transition hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 active:bg-zinc-900 dark:bg-indigo-800 dark:border-indigo-700 dark:hover:bg-indigo-700 dark:focus:bg-indigo-900 dark:focus:ring-offset-indigo-800"
+                        >Descargar</a>
                     @endif
                 </div>
                 @if ($actaPdfUrl)
-                    <iframe src="{{ $actaPdfUrl }}" class="h-[70vh] w-full rounded-lg border border-zinc-200 bg-white dark:border-zinc-700 dark:bg-zinc-950" type="application/pdf">
-                        <p class="p-6 text-center text-zinc-500">Tu navegador no puede mostrar el PDF.</p>
-                    </iframe>
+                    <div
+                        x-data="{
+                            pdfUrl: @js($actaPdfUrl),
+                            dark: document.documentElement.classList.contains('dark'),
+                            init() {
+                                new MutationObserver(() => this.dark = document.documentElement.classList.contains('dark'))
+                                    .observe(document.documentElement, { attributes: true, attributeFilter: ['class'] });
+                            },
+                            themed(url) {
+                                return url + (url.includes('?') ? '&' : '?') + 'theme=' + (this.dark ? 'dark' : 'light');
+                            }
+                        }"
+                        class="flex justify-center overflow-auto bg-white dark:bg-zinc-950"
+                    >
+                        <iframe x-bind:src="themed(pdfUrl)" class="block h-[74vh] border-0 bg-white dark:bg-zinc-950" style="width: min(100%, calc(74vh * 8.5 / 11));" type="application/pdf">
+                            <p class="p-6 text-center text-zinc-500">Tu navegador no puede mostrar el PDF.</p>
+                        </iframe>
+                    </div>
                 @else
                     <div class="rounded-lg bg-zinc-50 py-12 text-center text-zinc-500 dark:bg-zinc-800">Seleccione un acta para ver la impresión.</div>
                 @endif
@@ -167,15 +199,15 @@
                     <x-searchable-select wire:model.live="nuevoDetalle.producto_id" wire:key="producto-salida-{{ $nuevoDetalle['detalle_acta_entrega_id'] ?: 'empty' }}-{{ $nuevoDetalle['producto_id'] ?: 'empty' }}" label="Producto de inventario" :required="true" placeholder="Buscar producto..." defaultText="Seleccione un producto" :options="$productosPorDetalleActa[$nuevoDetalle['detalle_acta_entrega_id'] ?? 0] ?? []" :disabled="!$nuevoDetalle['detalle_acta_entrega_id']" :error="$errors->first('nuevoDetalle.producto_id')" />
                     <div>
                         <label class="block mb-1 text-sm font-medium text-zinc-700 dark:text-zinc-300">Lote <span class="text-red-500">*</span></label>
-                        <select wire:model.live="nuevoDetalle.lote_id" class="w-full border rounded-md px-3 py-2 dark:bg-zinc-800 dark:border-zinc-700">
+                        <x-select wire:model.live="nuevoDetalle.lote_id" class="px-3 py-2">
                             <option value="">Seleccione lote disponible</option>
                             @foreach ($existencias->where('producto_id', $nuevoDetalle['producto_id'] ?? null)->where('bodega_id', $bodega_id) as $existencia)<option value="{{ $existencia->lote_id }}">{{ $existencia->lote?->codigo_lote }} / disponible {{ $existencia->cantidad_disponible }}</option>@endforeach
-                        </select>
+                        </x-select>
                         @error('nuevoDetalle.lote_id') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
                     </div>
                     <div>
                         <label class="block mb-1 text-sm font-medium text-zinc-700 dark:text-zinc-300">Cantidad <span class="text-red-500">*</span></label>
-                        <input wire:model="nuevoDetalle.cantidad" type="number" min="0.01" step="0.01" class="w-full border rounded-md px-3 py-2 dark:bg-zinc-800 dark:border-zinc-700">
+                        <x-input wire:model="nuevoDetalle.cantidad" type="number" min="0.01" step="0.01" class="w-full px-3 py-2" />
                         @error('nuevoDetalle.cantidad') <p class="mt-1 text-sm text-red-500">{{ $message }}</p> @enderror
                     </div>
                 </div>
@@ -225,15 +257,15 @@
 
         @if ($errors->any()) <div class="mt-4 text-sm text-red-600">{{ $errors->first() }}</div> @endif
         <div class="flex justify-end gap-2 mt-6">
-            <a href="{{ route('inventario.salidas') }}" class="px-4 py-2 border rounded">Cancelar</a>
+            <a href="{{ route('inventario.salidas') }}" class="inline-flex items-center rounded-md border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800">Cancelar</a>
             @if ($paso === 1)
-                <button type="button" wire:click="siguientePaso" class="cursor-pointer px-4 py-2 bg-blue-600 text-white rounded">Siguiente</button>
+                <x-spinner-button type="button" wire:click="siguientePaso" loadingTarget="siguientePaso" :loadingText="__('Validando...')">Siguiente</x-spinner-button>
             @elseif ($paso === 2)
-                <button type="button" wire:click="pasoAnterior" class="cursor-pointer px-4 py-2 border rounded">Atrás</button>
-                <button type="button" wire:click="save" class="cursor-pointer px-4 py-2 bg-blue-600 text-white rounded">Generar entrega</button>
+                <x-secondary-button type="button" wire:click="pasoAnterior">Atrás</x-secondary-button>
+                <x-spinner-button type="button" wire:click="save" loadingTarget="save" :loadingText="__('Generando...')">Generar entrega</x-spinner-button>
             @else
-                <button type="button" wire:click="pasoAnterior" class="cursor-pointer px-4 py-2 border rounded">Atrás</button>
-                <button type="button" wire:click="abrirConfirmacionFinalizar" class="cursor-pointer px-4 py-2 bg-blue-600 text-white rounded">Finalizar</button>
+                <x-secondary-button type="button" wire:click="pasoAnterior">Atrás</x-secondary-button>
+                <x-spinner-button type="button" wire:click="abrirConfirmacionFinalizar" loadingTarget="abrirConfirmacionFinalizar" :loadingText="__('Abriendo...')">Finalizar</x-spinner-button>
             @endif
         </div>
     </div>

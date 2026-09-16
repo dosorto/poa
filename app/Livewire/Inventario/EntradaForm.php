@@ -7,7 +7,10 @@ use App\Models\Inventario\InventarioEntrada;
 use App\Models\Inventario\InventarioEntradaDetalle;
 use App\Models\Inventario\InventarioProducto;
 use App\Models\Requisicion\Requisicion;
+use App\Services\Inventario\InventarioService;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
 use Livewire\Component;
 
@@ -25,15 +28,21 @@ class EntradaForm extends Component
     public string $fecha_entrada = '';
     public ?string $observacion = null;
     public array $detalles = [];
+    public int $paso = 1;
     public bool $showProductoModal = false;
+    public bool $showFinalizarModal = false;
+    public bool $showAdvertenciaModal = false;
+    public string $advertenciaTitulo = '';
+    public string $advertenciaMensaje = '';
     public array $nuevoDetalle = [];
 
     public function mount(?InventarioEntrada $entrada = null): void
     {
         if ($entrada?->exists) {
-            abort_unless($entrada->estado === 'borrador', 404);
+            abort_unless(in_array($entrada->estado, ['borrador', 'confirmado'], true), 404);
             $entrada->load('detalles');
             $this->entradaId = $entrada->id;
+            $this->paso = $entrada->estado === 'confirmado' ? 3 : 1;
             $this->fill($entrada->only(['numero_entrada', 'numero_factura', 'proveedor', 'orden_compra_referencia', 'requisicion_id', 'bodega_id', 'observacion']));
             $this->fecha_factura = $entrada->fecha_factura?->format('Y-m-d');
             $this->fecha_entrada = $entrada->fecha_entrada?->format('Y-m-d') ?? now()->toDateString();
@@ -100,39 +109,109 @@ class EntradaForm extends Component
         $this->detalles = array_values($this->detalles);
     }
 
-    public function save()
+    public function siguientePaso(): void
     {
-        $this->validate();
-
-        $entrada = InventarioEntrada::updateOrCreate(['id' => $this->entradaId], [
-            'numero_entrada' => $this->numero_entrada,
-            'numero_factura' => $this->numero_factura,
-            'proveedor' => $this->proveedor,
-            'fecha_factura' => $this->fecha_factura,
-            'orden_compra_referencia' => $this->orden_compra_referencia,
-            'requisicion_id' => $this->requisicion_id,
-            'bodega_id' => $this->bodega_id,
-            'fecha_entrada' => $this->fecha_entrada,
-            'usuario_id' => Auth::id(),
-            'observacion' => $this->observacion,
-            'estado' => 'borrador',
-        ]);
-
-        $entrada->detalles()->delete();
-        foreach ($this->detalles as $detalle) {
-            InventarioEntradaDetalle::create([
-                'entrada_id' => $entrada->id,
-                'producto_id' => $detalle['producto_id'],
-                'codigo_lote' => $detalle['codigo_lote'] ?: null,
-                'cantidad' => $detalle['cantidad'],
-                'costo_unitario' => $detalle['costo_unitario'] ?: null,
-                'total' => $detalle['costo_unitario'] ? (float) $detalle['cantidad'] * (float) $detalle['costo_unitario'] : null,
-                'fecha_vencimiento' => $detalle['fecha_vencimiento'] ?: null,
-            ]);
+        if ($this->paso === 1) {
+            try {
+                $this->validate([
+                    'numero_entrada' => 'required|string|max:255|unique:inventario_entradas,numero_entrada,' . $this->entradaId,
+                    'numero_factura' => 'required|string|max:255',
+                    'proveedor' => 'required|string|max:255',
+                    'fecha_factura' => 'required|date',
+                    'orden_compra_referencia' => 'nullable|string|max:255',
+                    'requisicion_id' => 'nullable|exists:requisicion,id',
+                    'bodega_id' => 'required|exists:inventario_bodegas,id',
+                    'fecha_entrada' => 'required|date',
+                    'observacion' => 'nullable|string',
+                ]);
+            } catch (ValidationException $e) {
+                $this->mostrarAdvertencia('Datos incompletos', collect($e->errors())->flatten()->first() ?? $e->getMessage());
+                return;
+            }
         }
 
-        session()->flash('message', 'Entrada guardada en borrador.');
+        $this->paso = min($this->paso + 1, 3);
+    }
+
+    public function pasoAnterior(): void
+    {
+        $this->paso = max($this->paso - 1, 1);
+    }
+
+    public function mostrarAdvertencia(string $titulo, string $mensaje): void
+    {
+        $this->advertenciaTitulo = $titulo;
+        $this->advertenciaMensaje = $mensaje;
+        $this->showAdvertenciaModal = true;
+    }
+
+    public function cerrarAdvertencia(): void
+    {
+        $this->showAdvertenciaModal = false;
+        $this->advertenciaTitulo = '';
+        $this->advertenciaMensaje = '';
+    }
+
+    public function abrirConfirmacionFinalizar(): void
+    {
+        $this->showFinalizarModal = true;
+    }
+
+    public function cerrarConfirmacionFinalizar(): void
+    {
+        $this->showFinalizarModal = false;
+    }
+
+    public function finalizarFlujo()
+    {
+        $this->showFinalizarModal = false;
+
         return redirect()->route('inventario.entradas');
+    }
+
+    public function save(InventarioService $service)
+    {
+        try {
+            $this->validate();
+
+            $entrada = DB::transaction(function () use ($service) {
+                $entrada = InventarioEntrada::updateOrCreate(['id' => $this->entradaId], [
+                    'numero_entrada' => $this->numero_entrada,
+                    'numero_factura' => $this->numero_factura,
+                    'proveedor' => $this->proveedor,
+                    'fecha_factura' => $this->fecha_factura,
+                    'orden_compra_referencia' => $this->orden_compra_referencia,
+                    'requisicion_id' => $this->requisicion_id,
+                    'bodega_id' => $this->bodega_id,
+                    'fecha_entrada' => $this->fecha_entrada,
+                    'usuario_id' => Auth::id(),
+                    'observacion' => $this->observacion,
+                    'estado' => 'borrador',
+                ]);
+
+                $entrada->detalles()->delete();
+                foreach ($this->detalles as $detalle) {
+                    InventarioEntradaDetalle::create([
+                        'entrada_id' => $entrada->id,
+                        'producto_id' => $detalle['producto_id'],
+                        'codigo_lote' => $detalle['codigo_lote'] ?: null,
+                        'cantidad' => $detalle['cantidad'],
+                        'costo_unitario' => $detalle['costo_unitario'] ?: null,
+                        'total' => $detalle['costo_unitario'] ? (float) $detalle['cantidad'] * (float) $detalle['costo_unitario'] : null,
+                        'fecha_vencimiento' => $detalle['fecha_vencimiento'] ?: null,
+                    ]);
+                }
+
+                return $service->confirmarEntrada($entrada);
+            });
+
+            session()->flash('message', 'Entrada confirmada y registrada en kardex.');
+            return redirect()->route('inventario.entradas.acta', $entrada);
+        } catch (ValidationException $e) {
+            $this->mostrarAdvertencia('No se puede generar la entrada', collect($e->errors())->flatten()->first() ?? $e->getMessage());
+        } catch (\Throwable $e) {
+            $this->mostrarAdvertencia('No se puede generar la entrada', $e->getMessage());
+        }
     }
 
     public function render()
@@ -144,6 +223,8 @@ class EntradaForm extends Component
             'requisiciones' => Requisicion::latest()->limit(100)->get(['id', 'correlativo']),
             'productosOptions' => $productos->map(fn ($producto) => ['id' => $producto->id, 'text' => $producto->codigo_interno . ' - ' . $producto->nombre])->all(),
             'productosPorId' => $productos->keyBy('id'),
+            'actaRecepcionUrl' => $this->entradaId ? route('inventario.entradas.acta-recepcion', $this->entradaId) : null,
+            'actaRecepcionDownloadUrl' => $this->entradaId ? route('inventario.entradas.acta-recepcion.download', $this->entradaId) : null,
         ]);
     }
 }

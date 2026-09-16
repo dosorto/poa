@@ -5,9 +5,9 @@
         <div class="flex flex-col md:flex-row md:items-center md:justify-between gap-3 mb-4">
             <h2 class="text-xl font-semibold">Salidas de inventario</h2>
             <div class="flex gap-2">
-                <input wire:model.live="search" class="border rounded px-3 py-2 dark:bg-zinc-800 dark:border-zinc-700" placeholder="Buscar salida">
+                <x-input wire:model.live="search" class="px-3 py-2" placeholder="Buscar salida" />
                 @can('inventario.salidas.crear')
-                    <a href="{{ route('inventario.salidas.create') }}" class="bg-blue-600 text-white px-4 py-2 rounded transition active:translate-y-px">Nueva</a>
+                    <a href="{{ route('inventario.salidas.create') }}" class="inline-flex items-center rounded-md border border-transparent bg-indigo-600 px-4 py-2 text-xs font-semibold uppercase tracking-widest text-white transition hover:bg-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 active:bg-zinc-900 dark:bg-indigo-800 dark:border-indigo-700 dark:hover:bg-indigo-700 dark:focus:bg-indigo-900 dark:focus:ring-offset-indigo-800">Nueva</a>
                 @endcan
             </div>
         </div>

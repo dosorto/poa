@@ -15,11 +15,12 @@
     @endphp
     <style>
         @page {
-            margin: 2cm 1.5cm;
+            margin: {{ $isDarkPdf ? '0' : '2cm 1.5cm' }};
             background-color: {{ $pageBg }};
         }
         html {
             background-color: {{ $pageBg }};
+            margin: 0;
         }
         body {
             font-family: Arial, sans-serif;
@@ -27,15 +28,23 @@
             line-height: 1.4;
             color: {{ $textColor }};
             background-color: {{ $pageBg }};
+            margin: 0;
+            padding: {{ $isDarkPdf ? '2cm 1.5cm' : '0' }};
+            box-sizing: border-box;
         }
         .page-background {
             position: fixed;
-            top: -2cm;
-            right: -1.5cm;
-            bottom: -2cm;
-            left: -1.5cm;
+            top: {{ $isDarkPdf ? '0' : '-2cm' }};
+            right: {{ $isDarkPdf ? '0' : '-1.5cm' }};
+            bottom: {{ $isDarkPdf ? '0' : '-2cm' }};
+            left: {{ $isDarkPdf ? '0' : '-1.5cm' }};
             background-color: {{ $pageBg }};
-            z-index: -1;
+            z-index: 0;
+        }
+        .page-content {
+            position: relative;
+            z-index: 1;
+            background-color: {{ $pageBg }};
         }
         .logo-row {
             width: 100%;
@@ -173,6 +182,7 @@
 </head>
 <body>
     <div class="page-background"></div>
+    <div class="page-content">
     @php
         $directorDecano = $requisicion->departamento?->unidadEjecutora?->directorDecano;
         $directorEmpleado = $directorDecano?->empleado;
@@ -285,5 +295,6 @@
         </div>
     </div>
 
+    </div>
 </body>
 </html>

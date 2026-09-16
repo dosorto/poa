@@ -2,22 +2,22 @@
     <div class="bg-white dark:bg-zinc-900 overflow-hidden shadow sm:rounded-lg p-6">
         <h2 class="text-xl font-semibold mb-4">Existencias</h2>
         <div class="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
-            <input wire:model.live="search" class="border rounded px-3 py-2 dark:bg-zinc-800 dark:border-zinc-700" placeholder="Producto o codigo">
-            <select wire:model.live="bodega_id" class="border rounded px-3 py-2 dark:bg-zinc-800 dark:border-zinc-700">
+            <x-input wire:model.live="search" class="px-3 py-2" placeholder="Producto o código" />
+            <x-select wire:model.live="bodega_id" class="px-3 py-2">
                 <option value="">Todas las bodegas</option>
                 @foreach ($bodegas as $bodega) <option value="{{ $bodega->id }}">{{ $bodega->nombre }}</option> @endforeach
-            </select>
-            <select wire:model.live="producto_id" class="border rounded px-3 py-2 dark:bg-zinc-800 dark:border-zinc-700">
+            </x-select>
+            <x-select wire:model.live="producto_id" class="px-3 py-2">
                 <option value="">Todos los productos</option>
                 @foreach ($productos as $producto) <option value="{{ $producto->id }}">{{ $producto->nombre }}</option> @endforeach
-            </select>
-            <select wire:model.live="estado" class="border rounded px-3 py-2 dark:bg-zinc-800 dark:border-zinc-700">
+            </x-select>
+            <x-select wire:model.live="estado" class="px-3 py-2">
                 <option value="">Todos los estados</option>
                 <option value="disponible">Disponible</option>
                 <option value="agotado">Agotado</option>
                 <option value="vencido">Vencido</option>
                 <option value="bloqueado">Bloqueado</option>
-            </select>
+            </x-select>
         </div>
         <div class="overflow-x-auto">
             <table class="min-w-full text-sm">
