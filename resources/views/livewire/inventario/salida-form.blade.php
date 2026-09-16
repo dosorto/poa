@@ -15,6 +15,9 @@
             $actaVista = $actaSeleccionada ?? $actas->firstWhere('id', $acta_entrega_id);
             $tipoEntregaVista = $tipoActaPendiente === 'intermedia' ? 'Entrega intermedia' : 'Entrega por acta';
             $referenciaVista = $actaVista?->requisicion?->correlativo ?? $actaVista?->correlativo ?? $requisicionPendiente?->correlativo ?? 'Seleccione acta';
+            $puedeAgregarProductos = $acta_entrega_id || $tipoActaPendiente === 'intermedia';
+            $fechaSolicitudVista = $requisicionVista?->fechaSolicitud ? \Carbon\Carbon::parse($requisicionVista->fechaSolicitud)->format('d/m/Y') : '-';
+            $fechaRequeridaVista = $requisicionVista?->fechaRequerido ? \Carbon\Carbon::parse($requisicionVista->fechaRequerido)->format('d/m/Y') : '-';
         @endphp
 
         <div class="mb-6 grid grid-cols-1 gap-3 md:grid-cols-3">
@@ -47,7 +50,64 @@
         </div>
 
         @if ($paso === 1)
-            <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
+            <div class="space-y-4">
+                <div class="rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800/70">
+                    <div class="mb-3 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
+                        <div>
+                            <p class="text-xs font-semibold uppercase text-zinc-500 dark:text-zinc-400">Detalle de la entrega</p>
+                            <h3 class="text-base font-semibold text-zinc-900 dark:text-zinc-100">
+                                {{ $tipoEntregaVista }} - {{ $referenciaVista }}
+                            </h3>
+                        </div>
+                        <span class="inline-flex w-fit rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700 dark:bg-blue-900/40 dark:text-blue-200">
+                            {{ $requisicionVista?->estado?->estado ?? 'Sin estado' }}
+                        </span>
+                    </div>
+
+                    <div class="grid grid-cols-1 gap-3 text-sm md:grid-cols-3">
+                        <div class="rounded border border-zinc-200 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900">
+                            <p class="text-xs uppercase text-zinc-500">Acta de entrega</p>
+                            <p class="font-semibold text-zinc-900 dark:text-zinc-100">
+                                {{ $actaVista?->correlativo ?? ($actaPendientePreview ? $actaPendientePreview . ' (pendiente)' : 'Seleccione acta') }}
+                            </p>
+                        </div>
+                        <div class="rounded border border-zinc-200 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900">
+                            <p class="text-xs uppercase text-zinc-500">Departamento</p>
+                            <p class="font-semibold text-zinc-900 dark:text-zinc-100">{{ $requisicionVista?->departamento?->name ?? 'Sin departamento' }}</p>
+                        </div>
+                        <div class="rounded border border-zinc-200 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900">
+                            <p class="text-xs uppercase text-zinc-500">Bodega</p>
+                            <p class="font-semibold text-zinc-900 dark:text-zinc-100">{{ $bodegaSeleccionada?->nombre ?? 'No hay bodega activa' }}</p>
+                        </div>
+                        <div class="rounded border border-zinc-200 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900">
+                            <p class="text-xs uppercase text-zinc-500">Fecha solicitud</p>
+                            <p class="font-semibold text-zinc-900 dark:text-zinc-100">{{ $fechaSolicitudVista }}</p>
+                        </div>
+                        <div class="rounded border border-zinc-200 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900">
+                            <p class="text-xs uppercase text-zinc-500">Fecha requerida</p>
+                            <p class="font-semibold text-zinc-900 dark:text-zinc-100">{{ $fechaRequeridaVista }}</p>
+                        </div>
+                        <div class="rounded border border-zinc-200 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900">
+                            <p class="text-xs uppercase text-zinc-500">Fecha entrega</p>
+                            <p class="font-semibold text-zinc-900 dark:text-zinc-100">{{ $fecha_salida ? \Carbon\Carbon::parse($fecha_salida)->format('d/m/Y') : '-' }}</p>
+                        </div>
+                    </div>
+
+                    @if ($requisicionVista?->descripcion || $requisicionVista?->observacion)
+                        <div class="mt-3 grid grid-cols-1 gap-3 md:grid-cols-2">
+                            <div class="rounded border border-zinc-200 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900">
+                                <p class="text-xs uppercase text-zinc-500">Propósito / actividad</p>
+                                <p class="text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ $requisicionVista?->descripcion ?: '-' }}</p>
+                            </div>
+                            <div class="rounded border border-zinc-200 bg-white px-3 py-2 dark:border-zinc-700 dark:bg-zinc-900">
+                                <p class="text-xs uppercase text-zinc-500">Observación de requisición</p>
+                                <p class="text-sm font-medium text-zinc-900 dark:text-zinc-100">{{ $requisicionVista?->observacion ?: '-' }}</p>
+                            </div>
+                        </div>
+                    @endif
+                </div>
+
+                <div class="grid grid-cols-1 gap-3 md:grid-cols-2">
                 @unless ($actaBloqueada)
                     <div class="md:col-span-2">
                         <label class="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Acta de entrega <span class="text-red-500">*</span></label>
@@ -63,22 +123,30 @@
 
                 <div class="rounded border px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800">
                     <p class="text-xs uppercase text-zinc-500">Número de acta</p>
-                    <p class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ $actaVista?->correlativo ?? ($tipoActaPendiente === 'intermedia' ? 'Se generará al crear la entrega' : 'Seleccione acta') }}</p>
+                    <p class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ $actaVista?->correlativo ?? ($actaPendientePreview ? $actaPendientePreview . ' (se generará al crear la entrega)' : 'Seleccione acta') }}</p>
                 </div>
                 <div class="rounded border px-3 py-2 dark:border-zinc-700 dark:bg-zinc-800">
                     <p class="text-xs uppercase text-zinc-500">Requisición</p>
                     <p class="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{{ $actaVista?->requisicion?->correlativo ?? $referenciaVista }}</p>
                 </div>
                 <div>
-                    <label class="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Empleado recibe</label>
-                    <x-select wire:model.live="empleado_recibe_id" class="px-3 py-2">
-                        <option value="">Empleado recibe</option>
-                        @foreach ($empleados as $empleado) <option value="{{ $empleado->id }}">{{ $empleado->nombre }} {{ $empleado->apellido }}</option> @endforeach
-                    </x-select>
+                    <x-searchable-select
+                        wire:model.live="empleado_recibe_id"
+                        label="Empleado recibe"
+                        placeholder="Buscar empleado..."
+                        defaultText="Seleccione empleado que recibe"
+                        clearText="Sin empleado"
+                        :options="$empleados"
+                        :error="$errors->first('empleado_recibe_id')"
+                    />
+                    <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                        {{ $empleadosFiltradosPorDepartamento ? 'Mostrando empleados vinculados al departamento.' : 'Mostrando todos los empleados disponibles.' }}
+                    </p>
                 </div>
                 <div class="md:col-span-2">
                     <label class="mb-1 block text-sm font-medium text-zinc-700 dark:text-zinc-300">Observación</label>
                     <x-textarea wire:model.live="observacion" placeholder="Observación" />
+                </div>
                 </div>
             </div>
         @endif
@@ -88,9 +156,9 @@
             <div class="flex justify-between items-center mb-4">
                 <div>
                     <h3 class="text-lg font-semibold text-zinc-800 dark:text-zinc-200">Productos de la requisición</h3>
-                    <p class="mt-1 text-sm text-zinc-500">{{ $acta_entrega_id ? 'Agregue los productos y lotes que se despacharán.' : 'Seleccione un acta para cargar sus productos.' }}</p>
+                <p class="mt-1 text-sm text-zinc-500">{{ $puedeAgregarProductos ? 'Agregue los productos y lotes que se despacharán.' : 'Seleccione un acta para cargar sus productos.' }}</p>
                 </div>
-                <x-spinner-button wire:click="openProductoModal" loadingTarget="openProductoModal" :loadingText="__('Abriendo...')" :disabled="!$acta_entrega_id" class="{{ !$acta_entrega_id ? 'opacity-50 cursor-not-allowed pointer-events-none' : '' }}">
+                <x-spinner-button wire:click="openProductoModal" loadingTarget="openProductoModal" :loadingText="__('Abriendo...')" :disabled="!$puedeAgregarProductos" class="{{ !$puedeAgregarProductos ? 'opacity-50 cursor-not-allowed pointer-events-none' : '' }}">
                     <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" /></svg>
                     Agregar producto
                 </x-spinner-button>

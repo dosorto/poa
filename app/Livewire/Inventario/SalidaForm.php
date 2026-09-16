@@ -740,15 +740,32 @@ class SalidaForm extends Component
     public function render()
     {
         $actaSeleccionada = $this->acta_entrega_id
-            ? ActaEntrega::with(['tipoActaEntrega', 'requisicion:id,correlativo'])->find($this->acta_entrega_id)
+            ? ActaEntrega::with([
+                'tipoActaEntrega',
+                'requisicion:id,correlativo,descripcion,observacion,idDepartamento,idEstado,fechaSolicitud,fechaRequerido',
+                'requisicion.departamento:id,name,siglas',
+                'requisicion.estado:id,estado',
+            ])->find($this->acta_entrega_id)
             : null;
         $requisicionPendiente = $this->tipoActaPendiente === 'intermedia' && $this->requisicion_id
-            ? Requisicion::find($this->requisicion_id, ['id', 'correlativo'])
+            ? Requisicion::with(['departamento:id,name,siglas', 'estado:id,estado'])
+                ->find($this->requisicion_id, [
+                    'id',
+                    'correlativo',
+                    'descripcion',
+                    'observacion',
+                    'idDepartamento',
+                    'idEstado',
+                    'fechaSolicitud',
+                    'fechaRequerido',
+                ])
             : null;
+        $requisicionVista = $actaSeleccionada?->requisicion ?? $requisicionPendiente;
         $tipoActaSeleccionada = mb_strtolower((string) $actaSeleccionada?->tipoActaEntrega?->tipo);
         $actaRouteBase = $tipoActaSeleccionada === 'final' ? 'acta-entrega-pdf' : 'acta-entrega-intermedia-pdf';
         $actaPdfUrl = $actaSeleccionada ? route($actaRouteBase, $actaSeleccionada->idRequisicion) : null;
         $actaDownloadUrl = $actaSeleccionada ? route($actaRouteBase . '-download', $actaSeleccionada->idRequisicion) : null;
+        $empleados = $this->empleadosDisponibles();
 
         if ($actaSeleccionada && $tipoActaSeleccionada === 'intermedia') {
             $actaPdfUrl .= '?acta_id=' . $actaSeleccionada->id;
@@ -764,11 +781,52 @@ class SalidaForm extends Component
                 ->latest()->limit(100)->get(['id', 'correlativo', 'idRequisicion']),
             'actaSeleccionada' => $actaSeleccionada,
             'requisicionPendiente' => $requisicionPendiente,
+            'requisicionVista' => $requisicionVista,
+            'actaPendientePreview' => $this->tipoActaPendiente === 'intermedia' ? $this->siguienteCorrelativoActa() : null,
             'actaPdfUrl' => $actaPdfUrl,
             'actaDownloadUrl' => $actaDownloadUrl,
             'actaTitulo' => $tipoActaSeleccionada === 'final' ? 'Acta de entrega final' : 'Acta de entrega intermedia',
             'departamentos' => Departamento::orderBy('name')->get(['id', 'name']),
-            'empleados' => Empleado::orderBy('nombre')->get(['id', 'nombre', 'apellido']),
+            'empleados' => $empleados['items'],
+            'empleadosFiltradosPorDepartamento' => $empleados['filtrados'],
         ]);
+    }
+
+    private function empleadosDisponibles(): array
+    {
+        $columnas = ['id', 'nombre', 'apellido', 'num_empleado', 'dni'];
+        $empleados = collect();
+        $filtrados = false;
+
+        if ($this->departamento_id) {
+            $empleados = Empleado::whereHas('departamentos', function ($query) {
+                $query->where('departamentos.id', $this->departamento_id);
+            })
+                ->orderBy('nombre')
+                ->get($columnas);
+
+            $filtrados = $empleados->isNotEmpty();
+        }
+
+        if ($empleados->isEmpty()) {
+            $empleados = Empleado::orderBy('nombre')->get($columnas);
+        }
+
+        if ($this->empleado_recibe_id && ! $empleados->contains('id', $this->empleado_recibe_id)) {
+            $empleadoSeleccionado = Empleado::find($this->empleado_recibe_id, $columnas);
+
+            if ($empleadoSeleccionado) {
+                $empleados->prepend($empleadoSeleccionado);
+            }
+        }
+
+        return [
+            'items' => $empleados->map(fn (Empleado $empleado) => [
+                'id' => $empleado->id,
+                'text' => trim($empleado->nombre . ' ' . $empleado->apellido)
+                    . ($empleado->num_empleado ? ' - ' . $empleado->num_empleado : ''),
+            ])->values()->all(),
+            'filtrados' => $filtrados,
+        ];
     }
 }
