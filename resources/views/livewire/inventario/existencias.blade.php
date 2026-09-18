@@ -33,20 +33,25 @@
         </div>
         <div class="overflow-x-auto" wire:poll.10s>
             <table class="min-w-full text-sm">
-                <thead><tr class="text-left border-b dark:border-zinc-700"><th class="py-2">Bodega</th><th>Producto</th><th>Lote</th><th>Disponible</th><th>Reservada</th><th>Vence</th><th>Ubicacion</th></tr></thead>
+                <thead><tr class="text-left border-b dark:border-zinc-700"><th class="py-2">Bodega</th><th>Producto</th><th>Lote</th><th>Disponible</th><th>Reservada</th><th>Vence</th></tr></thead>
                 <tbody>
                     @forelse ($existencias as $existencia)
                         <tr class="border-b dark:border-zinc-700">
                             <td class="py-2">{{ $existencia->bodega?->nombre }}</td>
                             <td>{{ $existencia->producto?->codigo_interno }} - {{ $existencia->producto?->nombre }}</td>
-                            <td>{{ $existencia->lote?->codigo_lote ?? 'SIN-LOTE' }}</td>
+                            <td>{{ $existencia->lote?->codigo_lote ?: 'SIN-LOTE' }}</td>
                             <td>{{ $existencia->cantidad_disponible }} {{ $existencia->producto?->unidadMedida?->nombre }}</td>
                             <td>{{ $existencia->cantidad_reservada }}</td>
-                            <td>{{ $existencia->lote?->fecha_vencimiento?->format('Y-m-d') ?? 'N/A' }}</td>
-                            <td>{{ $existencia->lote?->ubicacion }}</td>
+                            <td>
+                                @if($existencia->lote?->fecha_vencimiento)
+                                    {{ $existencia->lote->fecha_vencimiento->format('d/m/Y') }}
+                                @else
+                                    <span class="text-zinc-500 dark:text-zinc-400">Sin vencimiento</span>
+                                @endif
+                            </td>
                         </tr>
                     @empty
-                        <tr><td colspan="7" class="py-4 text-center text-zinc-500">Sin existencias.</td></tr>
+                        <tr><td colspan="6" class="py-4 text-center text-zinc-500">Sin existencias.</td></tr>
                     @endforelse
                 </tbody>
             </table>

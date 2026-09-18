@@ -115,8 +115,18 @@ class RequisicionCorreoService
         ])
             ->filter()
             ->map(fn ($email) => strtolower(trim($email)))
+            ->reject(fn ($email) => $this->correoEstaDeshabilitado($email))
             ->unique()
             ->values()
             ->all();
+    }
+
+    private function correoEstaDeshabilitado(string $email): bool
+    {
+        $emailsDeshabilitados = collect(config('mail.disabled_recipients', []))
+            ->map(fn ($email) => strtolower(trim($email)))
+            ->filter();
+
+        return $emailsDeshabilitados->contains(strtolower(trim($email)));
     }
 }

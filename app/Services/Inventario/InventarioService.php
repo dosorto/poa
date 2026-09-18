@@ -104,7 +104,6 @@ class InventarioService
                 $data['codigo_lote'] ?? null,
                 $data['fecha_ingreso'] ?? now()->toDateString(),
                 $data['fecha_vencimiento'] ?? null,
-                $data['ubicacion'] ?? null,
                 $data['usuario_id'],
             );
 
@@ -228,28 +227,37 @@ class InventarioService
             codigoLote: $codigoLote,
             fechaIngreso: $entrada->fecha_entrada,
             fechaVencimiento: $detalle->fecha_vencimiento,
-            ubicacion: null,
             usuarioId: $entrada->usuario_id,
         );
     }
 
-    private function resolverLote(InventarioProducto $producto, ?string $codigoLote, mixed $fechaIngreso, mixed $fechaVencimiento, ?string $ubicacion, int $usuarioId): InventarioLote
+    private function resolverLote(InventarioProducto $producto, ?string $codigoLote, mixed $fechaIngreso, mixed $fechaVencimiento, int $usuarioId): InventarioLote
     {
         $codigoLote = trim((string) ($codigoLote ?: 'SIN-LOTE'));
+        $codigoLoteFinal = $codigoLote !== 'SIN-LOTE' ? $codigoLote : ($producto->maneja_lote ? $codigoLote : 'SIN-LOTE');
+        $fechaVencimientoFinal = $fechaVencimiento ?: null;
 
-        return InventarioLote::firstOrCreate(
+        $lote = InventarioLote::firstOrCreate(
             [
                 'producto_id' => $producto->id,
-                'codigo_lote' => $producto->maneja_lote ? $codigoLote : 'SIN-LOTE',
+                'codigo_lote' => $codigoLoteFinal,
             ],
             [
                 'fecha_ingreso' => $fechaIngreso,
-                'fecha_vencimiento' => $producto->maneja_vencimiento ? $fechaVencimiento : null,
-                'ubicacion' => $ubicacion,
+                'fecha_vencimiento' => $fechaVencimientoFinal,
                 'estado' => 'disponible',
                 'created_by' => $usuarioId,
             ],
         );
+
+        if ($fechaVencimientoFinal && ! $lote->fecha_vencimiento) {
+            $lote->forceFill([
+                'fecha_vencimiento' => $lote->fecha_vencimiento ?: $fechaVencimientoFinal,
+                'updated_by' => $usuarioId,
+            ])->save();
+        }
+
+        return $lote;
     }
 
     private function aumentarExistencia(int $bodegaId, int $productoId, ?int $loteId, float $cantidad, int $usuarioId, ?string $documentoTipo, ?int $documentoId, ?string $referencia, mixed $fecha, ?string $observacion, string $tipoMovimiento): InventarioExistencia

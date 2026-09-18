@@ -299,7 +299,6 @@ class InventarioServiceTest extends TestCase
             $table->string('codigo_lote');
             $table->date('fecha_ingreso');
             $table->date('fecha_vencimiento')->nullable();
-            $table->string('ubicacion')->nullable();
             $table->string('estado')->default('disponible');
             $table->unsignedBigInteger('created_by')->nullable();
             $table->unsignedBigInteger('updated_by')->nullable();

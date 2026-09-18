@@ -31,6 +31,7 @@ class EntradaForm extends Component
     public int $paso = 1;
     public bool $showProductoModal = false;
     public bool $showFinalizarModal = false;
+    public bool $flujoFinalizado = false;
     public bool $showAdvertenciaModal = false;
     public string $advertenciaTitulo = '';
     public string $advertenciaMensaje = '';
@@ -43,6 +44,7 @@ class EntradaForm extends Component
             $entrada->load('detalles');
             $this->entradaId = $entrada->id;
             $this->paso = $entrada->estado === 'confirmado' ? 3 : 1;
+            $this->flujoFinalizado = (bool) session("inventario_entrada_{$entrada->id}_finalizada", false);
             $this->fill($entrada->only(['numero_entrada', 'numero_factura', 'proveedor', 'orden_compra_referencia', 'requisicion_id', 'bodega_id', 'observacion']));
             $this->fecha_factura = $entrada->fecha_factura?->format('Y-m-d');
             $this->fecha_entrada = $entrada->fecha_entrada?->format('Y-m-d') ?? now()->toDateString();
@@ -154,6 +156,10 @@ class EntradaForm extends Component
 
     public function abrirConfirmacionFinalizar(): void
     {
+        if ($this->flujoFinalizado) {
+            return;
+        }
+
         $this->showFinalizarModal = true;
     }
 
@@ -165,8 +171,11 @@ class EntradaForm extends Component
     public function finalizarFlujo()
     {
         $this->showFinalizarModal = false;
+        $this->flujoFinalizado = true;
 
-        return redirect()->route('inventario.entradas');
+        if ($this->entradaId) {
+            session()->put("inventario_entrada_{$this->entradaId}_finalizada", true);
+        }
     }
 
     public function save(InventarioService $service)

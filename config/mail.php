@@ -115,4 +115,9 @@ return [
         'name' => env('MAIL_FROM_NAME', 'Example'),
     ],
 
+    'disabled_recipients' => array_filter(array_map(
+        'trim',
+        explode(',', env('CORREOS_DESHABILITADOS', ''))
+    )),
+
 ];

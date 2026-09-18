@@ -97,6 +97,7 @@ class ActividadCorreoService
             $actividad->unidadEjecutora?->asistenteEstrategico,
         ])
             ->filter(fn ($destinatario) => $destinatario?->email)
+            ->reject(fn ($destinatario) => $this->correoEstaDeshabilitado($destinatario->email))
             ->map(fn ($destinatario) => [
                 'email' => strtolower(trim($destinatario->email)),
                 'user' => $destinatario,
@@ -104,5 +105,14 @@ class ActividadCorreoService
             ->unique('email')
             ->values()
             ->all();
+    }
+
+    private function correoEstaDeshabilitado(string $email): bool
+    {
+        $emailsDeshabilitados = collect(config('mail.disabled_recipients', []))
+            ->map(fn ($email) => strtolower(trim($email)))
+            ->filter();
+
+        return $emailsDeshabilitados->contains(strtolower(trim($email)));
     }
 }

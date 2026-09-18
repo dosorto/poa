@@ -15,7 +15,6 @@ class InventarioLote extends Model
         'codigo_lote',
         'fecha_ingreso',
         'fecha_vencimiento',
-        'ubicacion',
         'estado',
         'created_by',
         'updated_by',
