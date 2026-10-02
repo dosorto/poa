@@ -242,6 +242,7 @@ return [
             [
                 'titulo' => 'Salidas',
                 'route' => 'inventario.salidas',
+                'header_visible' => false,
                 'routes' => ['inventario.salidas', 'inventario.salidas.create', 'inventario.salidas.edit'],
                 'permisos' => ['inventario.salidas.ver'],
                 'icono' => '',
