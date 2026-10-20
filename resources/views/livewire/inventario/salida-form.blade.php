@@ -2,8 +2,8 @@
     <div class="bg-white dark:bg-zinc-900 shadow sm:rounded-lg p-6">
         <div class="flex items-center justify-between mb-6">
             <div>
-                <h2 class="text-xl font-semibold">{{ $salidaId ? 'Editar salida' : 'Nueva salida' }}</h2>
-                <p class="text-sm text-zinc-500">Complete los datos y genere la entrega de inventario.</p>
+                <h2 class="text-xl font-semibold">{{ $soloLectura ? 'Detalle de entrega' : 'Entrega de requisición' }}</h2>
+                <p class="text-sm text-zinc-500">{{ $soloLectura ? 'Consulte la entrega y su acta de respaldo.' : 'Complete los datos y genere la entrega de esta requisición.' }}</p>
             </div>
             <a href="{{ route('inventario.salidas') }}" class="inline-flex items-center rounded-md border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800">Volver</a>
         </div>
@@ -22,7 +22,18 @@
 
         <div class="mb-6 grid grid-cols-1 gap-3 md:grid-cols-3">
             <div class="rounded border px-3 py-2 text-sm font-semibold text-zinc-800 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100">
-                {{ $bodegaSeleccionada?->nombre ?? 'No hay bodega activa' }}
+                @if ($soloLectura)
+                    {{ $bodegaSeleccionada?->nombre ?? 'Bodega no disponible' }}
+                @else
+                    <label for="bodega-despacho" class="mb-1 block text-xs font-medium">Bodega de despacho</label>
+                    <x-select id="bodega-despacho" wire:model.live="bodega_id" class="border px-3 py-2">
+                        <option value="">Seleccione una bodega</option>
+                        @foreach ($bodegas as $bodega)
+                            <option value="{{ $bodega->id }}">{{ $bodega->nombre }}</option>
+                        @endforeach
+                    </x-select>
+                    @error('bodega_id') <p class="mt-1 text-xs text-red-500">{{ $message }}</p> @enderror
+                @endif
             </div>
             <div class="rounded border px-3 py-2 text-sm font-semibold text-zinc-800 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100">
                 {{ $tipoEntregaVista }}
@@ -32,6 +43,7 @@
             </div>
         </div>
 
+        @unless ($soloLectura)
         <div class="mb-6 flex items-center gap-3">
             <button type="button" wire:click="$set('paso', 1)" class="flex items-center gap-2 text-sm font-semibold {{ $paso === 1 ? 'text-blue-600' : 'text-zinc-500' }}">
                 <span class="flex h-7 w-7 items-center justify-center rounded-full border {{ $paso === 1 ? 'border-blue-600 bg-blue-600 text-white' : 'border-zinc-300 dark:border-zinc-600' }}">1</span>
@@ -49,7 +61,8 @@
             </button>
         </div>
 
-        @if ($paso === 1)
+        @endunless
+        @if (! $soloLectura && $paso === 1)
             <div class="space-y-4">
                 <div class="rounded-lg border border-zinc-200 bg-zinc-50 p-4 dark:border-zinc-700 dark:bg-zinc-800/70">
                     <div class="mb-3 flex flex-col gap-1 sm:flex-row sm:items-start sm:justify-between">
@@ -133,14 +146,14 @@
                     <x-searchable-select
                         wire:model.live="empleado_recibe_id"
                         label="Empleado recibe"
-                        placeholder="Buscar empleado..."
+                        placeholder="Buscar por nombre, apellido o número de empleado..."
                         defaultText="Seleccione empleado que recibe"
                         clearText="Sin empleado"
                         :options="$empleados"
                         :error="$errors->first('empleado_recibe_id')"
                     />
                     <p class="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-                        {{ $empleadosFiltradosPorDepartamento ? 'Mostrando empleados vinculados al departamento.' : 'Mostrando todos los empleados disponibles.' }}
+                        Puede seleccionar cualquier empleado, independientemente del departamento de la requisición.
                     </p>
                 </div>
                 <div class="md:col-span-2">
@@ -151,7 +164,7 @@
             </div>
         @endif
 
-        @if ($paso === 2)
+        @if (! $soloLectura && $paso === 2)
         <div class="mt-6">
             <div class="flex justify-between items-center mb-4">
                 <div>
@@ -189,11 +202,32 @@
                                     $detalleActa = collect($detallesActaDisponibles)->firstWhere('id', (int) $detalle['detalle_acta_entrega_id']);
                                     $productoDetalle = collect($productosPorDetalleActa[$detalle['detalle_acta_entrega_id']] ?? [])->firstWhere('id', (int) $detalle['producto_id']);
                                     $existenciaDetalle = $existencias->first(fn ($item) => (int) $item->producto_id === (int) $detalle['producto_id'] && (int) $item->lote_id === (int) $detalle['lote_id'] && (int) $item->bodega_id === (int) $bodega_id);
+                                    $stockEnBodega = $existencias->where('producto_id', $detalle['producto_id'])->where('bodega_id', $bodega_id)->sum('cantidad_disponible');
+                                    $stockOtrasBodegas = $existencias->where('producto_id', $detalle['producto_id'])->where('bodega_id', '!=', $bodega_id)->sum('cantidad_disponible');
                                 @endphp
                                 <tr wire:key="salida-producto-{{ $index }}">
                                     <td class="px-4 py-3 text-sm font-medium">{{ $detalleActa['recurso'] ?? $detalle['recurso'] ?? 'Recurso' }}</td>
                                     <td class="px-4 py-3 text-sm font-medium">{{ $productoDetalle['text'] ?? $detalle['producto_nombre'] ?? 'Producto no disponible' }}</td>
-                                    <td class="px-4 py-3 text-sm">{{ $existenciaDetalle?->lote?->codigo_lote ?? 'Sin existencia disponible' }}</td>
+                                    <td class="px-4 py-3 text-sm">
+                                        @if ($existenciaDetalle)
+                                            {{ $existenciaDetalle->lote?->codigo_lote ?? 'Sin código de lote' }}
+                                            <p class="text-xs text-zinc-500 dark:text-zinc-400">Disponible en lote: {{ number_format((float) $existenciaDetalle->cantidad_disponible, 2) }}</p>
+                                        @elseif (empty($detalle['producto_id']))
+                                            Seleccione un producto de inventario
+                                        @elseif (! $bodega_id)
+                                            Seleccione una bodega de despacho
+                                        @elseif ($stockEnBodega > 0)
+                                            Cantidad pendiente de asignar a un lote
+                                            <p class="text-xs text-zinc-500 dark:text-zinc-400">Revise las cantidades ya asignadas a otros renglones.</p>
+                                        @else
+                                            Sin existencias en esta bodega
+                                            @if ($stockOtrasBodegas > 0)
+                                                <p class="text-xs text-amber-700 dark:text-amber-400">Hay existencias en otra bodega. Cambie la bodega de despacho.</p>
+                                            @else
+                                                <p class="text-xs text-zinc-500 dark:text-zinc-400">Verifique que la entrada de este producto esté confirmada.</p>
+                                            @endif
+                                        @endif
+                                    </td>
                                     <td class="px-4 py-3 text-center text-sm">{{ number_format((float) $detalle['cantidad'], 2) }}</td>
                                     <td class="px-4 py-3 text-center text-sm">{{ number_format((float) ($detalleActa['cantidad_autorizada'] ?? $detalle['cantidad_autorizada'] ?? 0), 2, ',', '.') }}</td>
                                     <td class="px-4 py-3 text-center">
@@ -210,7 +244,13 @@
 
         @if ($paso === 3)
             <div class="mt-6">
-                <div class="mb-4 flex items-center justify-between">
+                @if ($soloLectura)
+                    <div role="status" class="mb-4 rounded-lg border border-emerald-300 bg-emerald-50 px-4 py-3 text-emerald-900 dark:border-emerald-700 dark:bg-emerald-950 dark:text-emerald-100">
+                        <p class="font-semibold">Entrega registrada correctamente</p>
+                        <p class="mt-1 text-sm">La entrega ya quedó confirmada. Puede descargar el acta, volver al seguimiento o salir al historial de entregas.</p>
+                    </div>
+                @endif
+                <div class="mb-4 flex flex-wrap items-center justify-between gap-3">
                     <div>
                         <h3 class="text-lg font-semibold text-zinc-800 dark:text-zinc-200">{{ $actaTitulo }}</h3>
                         <p class="mt-1 text-sm text-zinc-500">Lista para imprimir o descargar.</p>
@@ -249,7 +289,7 @@
                         }"
                         class="flex justify-center overflow-auto bg-white dark:bg-zinc-950"
                     >
-                        <iframe x-bind:src="themed(pdfUrl)" class="block h-[74vh] border-0 bg-white dark:bg-zinc-950" style="width: min(100%, calc(74vh * 8.5 / 11));" type="application/pdf">
+                        <iframe x-bind:src="themed(pdfUrl)" class="block h-[60vh] border-0 bg-white dark:bg-zinc-950" style="width: min(100%, calc(60vh * 8.5 / 11));" type="application/pdf" title="Vista previa del acta de entrega">
                             <p class="p-6 text-center text-zinc-500">Tu navegador no puede mostrar el PDF.</p>
                         </iframe>
                     </div>
@@ -283,6 +323,36 @@
             <x-slot name="footer">
                 <x-secondary-button wire:click="$set('showProductoModal', false)">Cancelar</x-secondary-button>
                 <x-spinner-button wire:click="agregarProducto" class="ml-2" loadingTarget="agregarProducto" :loadingText="__('Agregando...')">Agregar producto</x-spinner-button>
+            </x-slot>
+        </x-dialog-modal>
+
+        <x-dialog-modal wire:model="showGuardarModal" max-width="lg">
+            <x-slot name="title">Confirmar entrega y generar acta</x-slot>
+            <x-slot name="content">
+                <div class="flex gap-4">
+                    <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600 dark:bg-amber-900/30 dark:text-amber-400">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v4m0 4h.01M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0Z" />
+                        </svg>
+                    </div>
+                    <div class="space-y-3 text-sm text-zinc-700 dark:text-zinc-300">
+                        <p class="font-semibold text-zinc-900 dark:text-zinc-100">¿Desea confirmar esta entrega?</p>
+                        <p>Requisición: <strong>{{ $referenciaVista }}</strong><br>Bodega de despacho: <strong>{{ $bodegaSeleccionada?->nombre ?? 'Sin seleccionar' }}</strong></p>
+                        @if (count($detalles) > 0)
+                            <p>Se generará el acta, se descontarán del inventario las cantidades indicadas y se registrará la salida en el kardex.</p>
+                        @else
+                            <p>Se generará la entrega final sin productos y sin movimiento de inventario. El sistema verificará que no queden cantidades ejecutadas pendientes de despachar.</p>
+                        @endif
+                        @if (mb_strtolower((string) $actaSeleccionada?->tipoActaEntrega?->tipo) === 'final')
+                            <p class="font-medium">Esta entrega también finalizará la requisición y su ejecución presupuestaria.</p>
+                        @endif
+                        <p class="rounded-md border border-amber-300 bg-amber-50 p-3 text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200">Después de confirmar, la entrega quedará registrada y no podrá editarse. Revise los productos, cantidades, bodega y empleado que recibe antes de continuar.</p>
+                    </div>
+                </div>
+            </x-slot>
+            <x-slot name="footer">
+                <x-secondary-button type="button" wire:click="cerrarConfirmacionGuardar" wire:loading.attr="disabled" wire:target="save">Cancelar</x-secondary-button>
+                <x-spinner-button type="button" wire:click="save" class="ml-2" loadingTarget="save" :loadingText="__('Generando...')">Confirmar y generar acta</x-spinner-button>
             </x-slot>
         </x-dialog-modal>
 
@@ -324,16 +394,29 @@
         </x-dialog-modal>
 
         @if ($errors->any()) <div class="mt-4 text-sm text-red-600">{{ $errors->first() }}</div> @endif
-        <div class="flex justify-end gap-2 mt-6">
+        <div @class([
+            'mt-6 flex flex-wrap items-center justify-end gap-3',
+            'sticky bottom-0 z-10 border-t border-zinc-200 bg-white py-4 dark:border-zinc-700 dark:bg-zinc-900' => $soloLectura,
+        ])>
+            @if ($soloLectura)
+                @if ($actaDownloadUrl)
+                    <a href="{{ $actaDownloadUrl }}" target="_blank" rel="noopener" class="inline-flex min-h-11 items-center justify-center rounded-md border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 dark:border-zinc-500 dark:text-zinc-100 dark:hover:bg-zinc-800">Descargar acta</a>
+                @endif
+                @if ($requisicion_id)
+                    <a href="{{ route('entregarecursos', ['requisicionId' => $requisicion_id]) }}" class="inline-flex min-h-11 items-center justify-center rounded-md border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-800 hover:bg-zinc-100 focus-visible:outline focus-visible:outline-2 focus-visible:outline-indigo-500 dark:border-zinc-500 dark:text-zinc-100 dark:hover:bg-zinc-800">Volver al seguimiento</a>
+                @endif
+                <a href="{{ route('inventario.salidas') }}" class="inline-flex min-h-11 items-center justify-center rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-500 dark:bg-indigo-500 dark:hover:bg-indigo-400">Salir al historial de entregas</a>
+            @else
             <a href="{{ route('inventario.salidas') }}" class="inline-flex items-center rounded-md border border-zinc-300 px-4 py-2 text-sm font-semibold text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800">Cancelar</a>
             @if ($paso === 1)
                 <x-spinner-button type="button" wire:click="siguientePaso" loadingTarget="siguientePaso" :loadingText="__('Validando...')">Siguiente</x-spinner-button>
             @elseif ($paso === 2)
                 <x-secondary-button type="button" wire:click="pasoAnterior">Atrás</x-secondary-button>
-                <x-spinner-button type="button" wire:click="save" loadingTarget="save" :loadingText="__('Generando...')">Generar entrega</x-spinner-button>
+                <x-spinner-button type="button" wire:click="abrirConfirmacionGuardar" loadingTarget="abrirConfirmacionGuardar" :loadingText="__('Revisando...')">Generar entrega</x-spinner-button>
             @else
                 <x-secondary-button type="button" wire:click="pasoAnterior">Atrás</x-secondary-button>
                 <x-spinner-button type="button" wire:click="abrirConfirmacionFinalizar" loadingTarget="abrirConfirmacionFinalizar" :loadingText="__('Abriendo...')">Finalizar</x-spinner-button>
+            @endif
             @endif
         </div>
     </div>

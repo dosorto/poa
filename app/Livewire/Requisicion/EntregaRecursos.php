@@ -647,7 +647,8 @@ class EntregaRecursos extends Component
         try {
             DB::beginTransaction();
 
-            $requisicion = Requisicion::findOrFail($this->requisicionId);
+            $requisicion = Requisicion::whereKey($this->requisicionId)->lockForUpdate()->firstOrFail();
+            app(\App\Services\Inventario\InventarioService::class)->validarDespachoCompleto($requisicion->id);
 
             // Verificar que el estado actual no sea "Finalizado"
             if ($requisicion->estado->estado === 'Finalizado') {

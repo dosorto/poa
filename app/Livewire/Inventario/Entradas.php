@@ -4,7 +4,9 @@ namespace App\Livewire\Inventario;
 
 use App\Models\Inventario\InventarioEntrada;
 use App\Services\Inventario\InventarioService;
+use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -15,6 +17,7 @@ class Entradas extends Component
 
     public string $search = '';
     public bool $showConfirmarModal = false;
+    #[Locked]
     public ?int $entradaConfirmarId = null;
 
     public function updatedSearch(): void
@@ -24,6 +27,7 @@ class Entradas extends Component
 
     public function abrirConfirmacion(int $id): void
     {
+        $this->authorize('inventario.entradas.confirmar');
         $entrada = InventarioEntrada::findOrFail($id);
 
         if ($entrada->estado !== 'borrador') {
@@ -43,15 +47,26 @@ class Entradas extends Component
 
     public function confirmar(InventarioService $service): void
     {
-        $service->confirmarEntrada(InventarioEntrada::findOrFail($this->entradaConfirmarId));
-        $this->cerrarConfirmacion();
-        session()->flash('message', 'Entrada confirmada y registrada en kardex.');
+        $this->authorize('inventario.entradas.confirmar');
+        try {
+            $service->confirmarEntrada(InventarioEntrada::findOrFail($this->entradaConfirmarId));
+            $this->cerrarConfirmacion();
+            session()->flash('message', 'Entrada confirmada y registrada en kardex.');
+        } catch (ValidationException $e) {
+            $this->cerrarConfirmacion();
+            session()->flash('error', collect($e->errors())->flatten()->first());
+        }
     }
 
     public function anular(int $id, InventarioService $service): void
     {
-        $service->anularEntrada(InventarioEntrada::findOrFail($id));
-        session()->flash('message', 'Entrada anulada con movimiento reverso.');
+        $this->authorize('inventario.ajustes.crear');
+        try {
+            $service->anularEntrada(InventarioEntrada::findOrFail($id));
+            session()->flash('message', 'Entrada anulada con movimiento reverso.');
+        } catch (ValidationException $e) {
+            session()->flash('error', collect($e->errors())->flatten()->first());
+        }
     }
 
     public function render()

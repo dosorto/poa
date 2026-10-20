@@ -71,10 +71,6 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
         ->name('inventario.entradas.acta-recepcion.download')
         ->middleware('can:inventario.entradas.ver');
 
-    Route::get('/inventario/salidas/crear', \App\Livewire\Inventario\SalidaForm::class)
-        ->name('inventario.salidas.create')
-        ->middleware('can:inventario.salidas.crear');
-
     Route::get('/inventario/salidas/crear/acta/{acta}', \App\Livewire\Inventario\SalidaForm::class)
         ->name('inventario.salidas.create.acta')
         ->middleware('can:inventario.salidas.crear');
@@ -86,10 +82,6 @@ Route::middleware(['auth:sanctum', 'verified'])->group(function () {
     Route::get('/inventario/salidas/{salida}/acta', \App\Livewire\Inventario\SalidaForm::class)
         ->name('inventario.salidas.acta')
         ->middleware('can:inventario.salidas.ver');
-
-    Route::get('/inventario/salidas/{salida}/editar', \App\Livewire\Inventario\SalidaForm::class)
-        ->name('inventario.salidas.edit')
-        ->middleware('can:inventario.salidas.crear');
 
     Route::get('/inventario/entradas/crear', \App\Livewire\Inventario\EntradaForm::class)
         ->name('inventario.entradas.create')
