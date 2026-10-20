@@ -198,8 +198,8 @@ return [
 
             RkNavigation::make('inventario.salidas')
                 ->setParentId('inventario')
-                ->setDescription('Registra salidas de bodega')
-                ->setLabel('Salidas')
+                ->setDescription('Consulta entregas realizadas desde el seguimiento de requisiciones')
+                ->setLabel('Historial de entregas')
                 ->setHeroIcon('arrow-up-tray')
                 ->setItems([])
                 ->setEndBlock('inventario.salidas'),

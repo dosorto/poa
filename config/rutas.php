@@ -240,9 +240,10 @@ return [
                 'breadcrumb' => true,
             ],
             [
-                'titulo' => 'Salidas',
+                'titulo' => 'Historial de entregas',
                 'route' => 'inventario.salidas',
-                'routes' => ['inventario.salidas', 'inventario.salidas.create', 'inventario.salidas.edit'],
+                'header_visible' => false,
+                'routes' => ['inventario.salidas', 'inventario.salidas.acta'],
                 'permisos' => ['inventario.salidas.ver'],
                 'icono' => '',
                 'breadcrumb' => true,

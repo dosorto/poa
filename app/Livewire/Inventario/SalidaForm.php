@@ -23,15 +23,21 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use Livewire\Attributes\Layout;
+use Livewire\Attributes\Locked;
 use Livewire\Component;
 
 #[Layout('layouts.app')]
 class SalidaForm extends Component
 {
+    #[Locked]
+    public bool $soloLectura = true;
+
+    #[Locked]
     public ?int $salidaId = null;
     public string $numero_salida = '';
     public ?int $bodega_id = null;
     public ?int $acta_entrega_id = null;
+    #[Locked]
     public ?int $requisicion_id = null;
     public ?string $tipoActaPendiente = null;
     public string $tipo_salida = 'entrega';
@@ -86,6 +92,9 @@ class SalidaForm extends Component
 
             return;
         }
+
+        abort_unless($acta?->exists || $requisicion?->exists, 404);
+        $this->soloLectura = false;
 
         $this->numero_salida = 'SAL-' . now()->format('YmdHis');
         $this->bodega_id = $this->defaultBodegaId();
@@ -155,7 +164,23 @@ class SalidaForm extends Component
             return;
         }
 
+        if (! $this->soloLectura) {
+            $this->asignarLotesDisponibles();
+        }
         $this->paso = min($this->paso + 1, 3);
+    }
+
+    public function updatedBodegaId(): void
+    {
+        if ($this->soloLectura) {
+            return;
+        }
+
+        foreach ($this->detalles as $index => $detalle) {
+            $this->detalles[$index]['lote_id'] = null;
+        }
+        $this->nuevoDetalle['lote_id'] = null;
+        $this->asignarLotesDisponibles();
     }
 
     public function pasoAnterior(): void
@@ -165,15 +190,18 @@ class SalidaForm extends Component
 
     public function abrirConfirmacionGuardar(): void
     {
+        if ($this->soloLectura) {
+            return;
+        }
+
         $this->resetValidation();
+        $this->showGuardarModal = false;
 
         if (empty($this->detalles)) {
             if (! $this->esActaFinal()) {
                 $this->mostrarAdvertencia('Sin productos', 'Debe agregar al menos un producto antes de generar la entrega.');
                 return;
             }
-
-            $this->mostrarAdvertencia('Entrega final sin productos', 'No hay productos pendientes para despachar. Puede finalizar esta requisición sin movimiento de inventario.');
         }
 
         $this->showGuardarModal = true;
@@ -196,16 +224,6 @@ class SalidaForm extends Component
 
     public function finalizarFlujo()
     {
-        if ($this->esActaFinal()) {
-            try {
-                DB::transaction(fn () => $this->cerrarRequisicionPorEntregaFinal());
-            } catch (\Throwable $e) {
-                $this->showFinalizarModal = false;
-                $this->mostrarAdvertencia('No se puede finalizar', $e->getMessage());
-                return null;
-            }
-        }
-
         $this->showFinalizarModal = false;
 
         return redirect()->route('inventario.salidas');
@@ -255,6 +273,17 @@ class SalidaForm extends Component
             'nuevoDetalle.producto_id' => 'required|exists:inventario_productos,id',
             'nuevoDetalle.lote_id' => 'required|exists:inventario_lotes,id',
             'nuevoDetalle.cantidad' => 'required|numeric|min:0.01',
+        ], [
+            'nuevoDetalle.detalle_acta_entrega_id.required' => 'Seleccione un recurso de la requisición.',
+            'nuevoDetalle.detalle_acta_entrega_id.integer' => 'Seleccione un recurso válido de la requisición.',
+            'nuevoDetalle.detalle_acta_entrega_id.exists' => 'El recurso seleccionado no está disponible.',
+            'nuevoDetalle.producto_id.required' => 'Seleccione un producto de inventario.',
+            'nuevoDetalle.producto_id.exists' => 'El producto seleccionado no está disponible.',
+            'nuevoDetalle.lote_id.required' => 'Seleccione un lote disponible.',
+            'nuevoDetalle.lote_id.exists' => 'El lote seleccionado no está disponible.',
+            'nuevoDetalle.cantidad.required' => 'Ingrese la cantidad a entregar.',
+            'nuevoDetalle.cantidad.numeric' => 'La cantidad debe ser un número.',
+            'nuevoDetalle.cantidad.min' => 'La cantidad debe ser mayor o igual a 0.01.',
         ]);
 
         $detalleActaId = (int) $this->nuevoDetalle['detalle_acta_entrega_id'];
@@ -305,7 +334,19 @@ class SalidaForm extends Component
 
     public function save(InventarioService $service)
     {
+        $contextoOriginal = [$this->acta_entrega_id, $this->tipoActaPendiente, $this->detalles, $this->salidaId];
         try {
+            if ($this->soloLectura) {
+                throw ValidationException::withMessages(['salida' => 'El historial es de consulta. Genere la entrega desde el seguimiento de la requisición.']);
+            }
+            $this->authorize('inventario.salidas.crear');
+            if (! $this->showGuardarModal) {
+                $this->abrirConfirmacionGuardar();
+                return null;
+            }
+            if ($this->salidaId && InventarioSalida::findOrFail($this->salidaId)->estado !== 'borrador') {
+                throw ValidationException::withMessages(['salida' => 'Una salida confirmada no puede modificarse. Anúlela antes de crear otra.']);
+            }
             $this->bodega_id ??= $this->defaultBodegaId();
             $this->asignarLotesDisponibles();
 
@@ -320,6 +361,10 @@ class SalidaForm extends Component
             }
 
             $salida = DB::transaction(function () use ($service) {
+                Requisicion::whereKey($this->requisicion_id)->lockForUpdate()->firstOrFail();
+                if ($this->salidaId && InventarioSalida::whereKey($this->salidaId)->lockForUpdate()->firstOrFail()->estado !== 'borrador') {
+                    throw ValidationException::withMessages(['salida' => 'La salida ya fue confirmada.']);
+                }
                 if ($this->tipoActaPendiente === 'intermedia') {
                     $acta = $this->crearActaIntermediaDesdeSalida();
                     $this->acta_entrega_id = $acta->id;
@@ -358,6 +403,11 @@ class SalidaForm extends Component
                         $salida->forceFill(['estado' => 'confirmado'])->save();
                     })->refresh();
 
+                if ($this->esActaFinal()) {
+                    $this->salidaId = $salida->id;
+                    $this->cerrarRequisicionPorEntregaFinal();
+                }
+
                 return $salida;
             });
 
@@ -367,9 +417,11 @@ class SalidaForm extends Component
             session()->flash('message', 'Entrega generada y registrada en kardex.');
             return redirect()->route('inventario.salidas.acta', $salida);
         } catch (ValidationException $e) {
+            [$this->acta_entrega_id, $this->tipoActaPendiente, $this->detalles, $this->salidaId] = $contextoOriginal;
             $this->showGuardarModal = false;
             $this->mostrarAdvertencia('No se puede generar la entrega', collect($e->errors())->flatten()->first() ?? $e->getMessage());
         } catch (\Throwable $e) {
+            [$this->acta_entrega_id, $this->tipoActaPendiente, $this->detalles, $this->salidaId] = $contextoOriginal;
             $this->showGuardarModal = false;
             $this->mostrarAdvertencia('No se puede generar la entrega', $e->getMessage());
         }
@@ -407,6 +459,13 @@ class SalidaForm extends Component
         }
 
         $requisicion = Requisicion::with('estado')->lockForUpdate()->findOrFail($this->requisicion_id);
+
+        $salida = InventarioSalida::whereKey($this->salidaId)->where('requisicion_id', $requisicion->id)
+            ->where('acta_entrega_id', $this->acta_entrega_id)->where('estado', 'confirmado')->first();
+        if (! $salida) {
+            throw ValidationException::withMessages(['salida' => 'Genere y confirme la entrega antes de finalizar.']);
+        }
+        app(InventarioService::class)->validarDespachoCompleto($requisicion->id);
 
         if (($requisicion->estado?->estado ?? '') !== 'Finalizado') {
             $estadoFinalizado = EstadoRequisicion::where('estado', 'Finalizado')->firstOrFail();
@@ -494,12 +553,14 @@ class SalidaForm extends Component
             return [
                 'detalle_acta_entrega_id' => $detalleDisponible['id'],
                 'producto_id' => $productoId,
-                'lote_id' => $productoId ? $this->loteDisponiblePara($productoId, $cantidad) : null,
+                'lote_id' => null,
                 'cantidad' => $cantidad,
                 'recurso' => $detalleDisponible['recurso'],
                 'cantidad_autorizada' => $cantidad,
             ];
         })->values()->all();
+
+        $this->asignarLotesDisponibles();
     }
 
     private function crearActaIntermediaDesdeSalida(): ActaEntrega
@@ -527,6 +588,13 @@ class SalidaForm extends Component
 
         if ($ejecuciones->isEmpty()) {
             throw ValidationException::withMessages(['detalles' => 'No se encontraron ejecuciones válidas para generar el acta intermedia.']);
+        }
+
+        foreach (collect($this->detalles)->groupBy('detalle_acta_entrega_id') as $ejecucionId => $detalles) {
+            $ejecucion = $ejecuciones->get($ejecucionId);
+            if (! $ejecucion || (float) $detalles->sum('cantidad') > $this->cantidadPendienteEjecucion($ejecucion)) {
+                throw ValidationException::withMessages(['cantidad' => 'La cantidad supera el pendiente actual de la ejecución.']);
+            }
         }
 
         $acta = ActaEntrega::create([
@@ -646,46 +714,64 @@ class SalidaForm extends Component
             return [
                 'detalle_acta_entrega_id' => $detalleActa->id,
                 'producto_id' => $productoId,
-                'lote_id' => $productoId ? $this->loteDisponiblePara($productoId, $cantidad) : null,
+                'lote_id' => null,
                 'cantidad' => $cantidad,
                 'recurso' => $detalleActa->detalleRequisicion?->recurso?->nombre ?? 'Recurso no disponible',
                 'cantidad_autorizada' => $cantidad,
             ];
         })->filter()->values()->all();
+
+        $this->asignarLotesDisponibles();
     }
 
     private function cantidadPendienteActa(DetalleActaEntrega $detalleActa, string $tipoActa): float
     {
-        $cantidadActa = (float) $detalleActa->log_cant_ejecutada;
+        $despachado = app(InventarioService::class)->cantidadDespachadaPorEjecucion(
+            (int) $detalleActa->idDetalleEjecucionPresupuestaria, $this->salidaId,
+        );
+        $ejecutado = (float) $detalleActa->detalleEjecucionPresupuestaria?->cant_ejecutada;
+        $despachadoActa = InventarioSalidaDetalle::where('detalle_acta_entrega_id', $detalleActa->id)
+            ->whereHas('salida', fn ($query) => $query->where('estado', 'confirmado'))
+            ->when($this->salidaId, fn ($query) => $query->where('salida_id', '!=', $this->salidaId))
+            ->sum('cantidad');
 
-        if ($tipoActa !== 'final' || ! $detalleActa->idDetalleRequisicion) {
-            return $cantidadActa;
-        }
-
-        $yaDespachado = InventarioSalidaDetalle::query()
-            ->join('inventario_salidas', 'inventario_salidas.id', '=', 'inventario_salida_detalles.salida_id')
-            ->join('detalle_acta_entrega', 'detalle_acta_entrega.id', '=', 'inventario_salida_detalles.detalle_acta_entrega_id')
-            ->where('inventario_salidas.estado', 'confirmado')
-            ->whereNull('inventario_salidas.deleted_at')
-            ->where('detalle_acta_entrega.idDetalleRequisicion', $detalleActa->idDetalleRequisicion)
-            ->when($this->salidaId, fn ($query) => $query->where('inventario_salidas.id', '!=', $this->salidaId))
-            ->sum('inventario_salida_detalles.cantidad');
-
-        return max($cantidadActa - (float) $yaDespachado, 0);
+        return max(min((float) $detalleActa->log_cant_ejecutada - (float) $despachadoActa, $ejecutado - $despachado), 0);
     }
 
     private function asignarLotesDisponibles(): void
     {
-        foreach ($this->detalles as $index => $detalle) {
-            if (! empty($detalle['lote_id']) || empty($detalle['producto_id'])) {
+        $asignados = [];
+        $usado = [];
+        foreach ($this->detalles as $detalle) {
+            if (! empty($detalle['lote_id'])) {
+                $key = $detalle['producto_id'] . ':' . $detalle['lote_id'];
+                $usado[$key] = ($usado[$key] ?? 0) + (float) $detalle['cantidad'];
+            }
+        }
+        foreach ($this->detalles as $detalle) {
+            if (! empty($detalle['lote_id']) || empty($detalle['producto_id']) || ! $this->bodega_id) {
+                $asignados[] = $detalle;
                 continue;
             }
-
-            $this->detalles[$index]['lote_id'] = $this->loteDisponiblePara(
-                (int) $detalle['producto_id'],
-                (float) ($detalle['cantidad'] ?? 0),
-            );
+            $pendiente = (float) $detalle['cantidad'];
+            foreach (app(InventarioService::class)->sugerirLotes($this->bodega_id, (int) $detalle['producto_id']) as $lote) {
+                $key = $detalle['producto_id'] . ':' . $lote['lote_id'];
+                $cantidad = min($pendiente, max((float) $lote['cantidad_disponible'] - ($usado[$key] ?? 0), 0));
+                if ($cantidad <= 0) {
+                    continue;
+                }
+                $asignados[] = array_replace($detalle, ['lote_id' => $lote['lote_id'], 'cantidad' => $cantidad]);
+                $usado[$key] = ($usado[$key] ?? 0) + $cantidad;
+                $pendiente = round($pendiente - $cantidad, 2);
+                if ($pendiente <= 0) {
+                    break;
+                }
+            }
+            if ($pendiente > 0) {
+                $asignados[] = array_replace($detalle, ['lote_id' => null, 'cantidad' => $pendiente]);
+            }
         }
+        $this->detalles = $asignados;
     }
 
     private function prepararDetallesParaValidacion(): bool
@@ -698,15 +784,6 @@ class SalidaForm extends Component
             return true;
         }
 
-        if ($this->esActaFinal()) {
-            $this->detalles = collect($this->detalles)
-                ->filter(fn ($detalle) => ! empty($detalle['producto_id']) && ! empty($detalle['lote_id']))
-                ->values()
-                ->all();
-
-            return true;
-        }
-
         $recurso = $detallesIncompletos->first()['recurso'] ?? 'uno de los recursos';
 
         $this->showGuardarModal = false;
@@ -716,20 +793,6 @@ class SalidaForm extends Component
         );
 
         return false;
-    }
-
-    private function loteDisponiblePara(int $productoId, float $cantidad): ?int
-    {
-        if (! $this->bodega_id || $cantidad <= 0) {
-            return null;
-        }
-
-        return InventarioExistencia::query()
-            ->where('bodega_id', $this->bodega_id)
-            ->where('producto_id', $productoId)
-            ->where('cantidad_disponible', '>=', $cantidad)
-            ->orderBy('lote_id')
-            ->value('lote_id');
     }
 
     private function defaultBodegaId(): ?int
@@ -787,46 +850,21 @@ class SalidaForm extends Component
             'actaDownloadUrl' => $actaDownloadUrl,
             'actaTitulo' => $tipoActaSeleccionada === 'final' ? 'Acta de entrega final' : 'Acta de entrega intermedia',
             'departamentos' => Departamento::orderBy('name')->get(['id', 'name']),
-            'empleados' => $empleados['items'],
-            'empleadosFiltradosPorDepartamento' => $empleados['filtrados'],
+            'empleados' => $empleados,
         ]);
     }
 
     private function empleadosDisponibles(): array
     {
-        $columnas = ['id', 'nombre', 'apellido', 'num_empleado', 'dni'];
-        $empleados = collect();
-        $filtrados = false;
-
-        if ($this->departamento_id) {
-            $empleados = Empleado::whereHas('departamentos', function ($query) {
-                $query->where('departamentos.id', $this->departamento_id);
-            })
-                ->orderBy('nombre')
-                ->get($columnas);
-
-            $filtrados = $empleados->isNotEmpty();
-        }
-
-        if ($empleados->isEmpty()) {
-            $empleados = Empleado::orderBy('nombre')->get($columnas);
-        }
-
-        if ($this->empleado_recibe_id && ! $empleados->contains('id', $this->empleado_recibe_id)) {
-            $empleadoSeleccionado = Empleado::find($this->empleado_recibe_id, $columnas);
-
-            if ($empleadoSeleccionado) {
-                $empleados->prepend($empleadoSeleccionado);
-            }
-        }
-
-        return [
-            'items' => $empleados->map(fn (Empleado $empleado) => [
+        return Empleado::query()
+            ->orderBy('nombre')
+            ->orderBy('apellido')
+            ->orderBy('id')
+            ->get(['id', 'nombre', 'apellido', 'num_empleado'])
+            ->map(fn (Empleado $empleado) => [
                 'id' => $empleado->id,
                 'text' => trim($empleado->nombre . ' ' . $empleado->apellido)
                     . ($empleado->num_empleado ? ' - ' . $empleado->num_empleado : ''),
-            ])->values()->all(),
-            'filtrados' => $filtrados,
-        ];
+            ])->all();
     }
 }

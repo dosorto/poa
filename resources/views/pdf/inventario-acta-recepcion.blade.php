@@ -3,32 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <title>Acta de Recepcion</title>
+    @php
+        $esOscuro = ($pdfTheme ?? 'light') === 'dark';
+        $fondo = $esOscuro ? '#050505' : '#ffffff';
+        $texto = $esOscuro ? '#f5f5f5' : '#111111';
+        $borde = $esOscuro ? '#525252' : '#333333';
+    @endphp
     <style>
-        @page { margin: 1.6cm 1.5cm 2.2cm; }
-        body { font-family: Arial, sans-serif; font-size: 10pt; color: #111; }
+        @page { margin: {{ $esOscuro ? '0' : '1.6cm 1.5cm 2.2cm' }}; background-color: {{ $fondo }}; }
+        html { margin: 0; background-color: {{ $fondo }}; }
+        body {
+            font-family: Arial, sans-serif;
+            font-size: 10pt;
+            color: {{ $texto }};
+            background-color: {{ $fondo }};
+            margin: 0;
+            padding: {{ $esOscuro ? '1.6cm 1.5cm 2.2cm' : '0' }};
+            box-sizing: border-box;
+        }
+        .page-background {
+            position: fixed;
+            top: {{ $esOscuro ? '0' : '-1.6cm' }};
+            right: {{ $esOscuro ? '0' : '-1.5cm' }};
+            bottom: {{ $esOscuro ? '0' : '-2.2cm' }};
+            left: {{ $esOscuro ? '0' : '-1.5cm' }};
+            background-color: {{ $fondo }};
+            z-index: 0;
+        }
+        .content { position: relative; z-index: 1; background-color: {{ $fondo }}; }
         .header { text-align: center; margin-bottom: 18px; padding-top: 75px; position: relative; }
         .logo { position: absolute; left: 0; top: -20px; width: 145px; }
-        .watermark { position: fixed; bottom: 20px; right: -1.5cm; width: 55%; }
+        .watermark { position: fixed; bottom: 20px; right: {{ $esOscuro ? '0' : '-1.5cm' }}; width: 55%; }
         .title { font-size: 12pt; font-weight: bold; margin: 0; }
         .subtitle { font-size: 11pt; font-weight: bold; margin: 4px 0; }
         .meta { margin: 18px 0; line-height: 1.65; }
         .label { font-weight: bold; }
         .intro { margin: 16px 0 12px; line-height: 1.5; text-align: justify; }
         table { width: 100%; border-collapse: collapse; margin-top: 12px; }
-        th, td { border: 1px solid #333; padding: 6px; vertical-align: top; }
-        th { text-align: center; font-weight: bold; background: #f0f0f0; }
+        th, td { border: 1px solid {{ $borde }}; padding: 6px; vertical-align: top; }
+        th { text-align: center; font-weight: bold; background: {{ $esOscuro ? '#27272a' : '#f0f0f0' }}; }
         .center { text-align: center; }
         .right { text-align: right; }
         .total-label { font-weight: bold; text-align: center; }
         .signature { margin-top: 70px; text-align: center; }
-        .signature-line { border-top: 1px solid #111; display: inline-block; min-width: 260px; padding-top: 5px; }
-        .footer { position: fixed; bottom: -6px; left: 0; width: 100%; text-align: center; font-size: 10pt; line-height: 1.2; }
+        .signature-line { border-top: 1px solid {{ $borde }}; display: inline-block; min-width: 260px; padding-top: 5px; }
+        .footer { position: fixed; bottom: {{ $esOscuro ? '0.6cm' : '-6px' }}; left: {{ $esOscuro ? '1.5cm' : '0' }}; right: {{ $esOscuro ? '1.5cm' : '0' }}; text-align: center; font-size: 10pt; line-height: 1.2; color: {{ $texto }}; }
         .footer-motto { white-space: nowrap; }
         .footer-line { margin: 0 auto 2px; width: 100%; overflow: hidden; white-space: nowrap; }
         .small { font-size: 8pt; }
     </style>
 </head>
 <body>
+    <div class="page-background"></div>
     <img class="watermark" src="{{ $marcaAgua }}" alt="">
 
     <div class="content">

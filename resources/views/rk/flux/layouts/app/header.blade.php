@@ -46,6 +46,7 @@
         <flux:navbar class="-mb-px " scrollable>
             @if (!is_null($activeNode))
                 @foreach ($activeNode?->items as $item)
+                    @continue($item->id === 'inventario.salidas')
                     @if ($item->isGroup())
                         <flux:dropdown>
                             <flux:navbar.item icon="chevron-down">{{ $item->getLabel() }}</flux:navbar.item>

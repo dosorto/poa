@@ -4,12 +4,16 @@ namespace App\Http\Controllers;
 
 use App\Models\Inventario\InventarioEntrada;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Http\Request;
 
 class InventarioEntradaActaController extends Controller
 {
-    public function show(InventarioEntrada $entrada)
+    public function show(InventarioEntrada $entrada, Request $request)
     {
-        $pdf = Pdf::loadView('pdf.inventario-acta-recepcion', $this->datosActa($entrada));
+        $pdf = Pdf::loadView('pdf.inventario-acta-recepcion', [
+            ...$this->datosActa($entrada),
+            'pdfTheme' => $request->query('theme') === 'dark' ? 'dark' : 'light',
+        ]);
         $pdf->setPaper('letter', 'portrait');
 
         return response($pdf->output(), 200)

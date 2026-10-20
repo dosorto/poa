@@ -177,7 +177,9 @@ class RequisicionObserver
 
             // Crear Acta de Entrega si no existe y enviar correo con PDF
             try {
-                $actaExistente = ActaEntrega::where('idRequisicion', $requisicion->id)->first();
+                $actaExistente = ActaEntrega::where('idRequisicion', $requisicion->id)
+                    ->whereHas('tipoActaEntrega', fn ($query) => $query->whereRaw('LOWER(tipo) = ?', ['final']))
+                    ->first();
 
                 if (!$actaExistente) {
                     $tipoActaFinal = TipoActaEntrega::where('tipo', 'Final')->first();

@@ -2,6 +2,9 @@
 
 namespace App\Services\Inventario;
 
+use App\Models\Requisicion\Requisicion;
+use App\Models\Requisicion\DetalleRequisicion;
+use App\Models\EjecucionPresupuestaria\DetalleEjecucionPresupuestaria;
 use App\Models\Actas\ActaEntrega;
 use App\Models\Actas\DetalleActaEntrega;
 use App\Models\Inventario\InventarioEntrada;
@@ -57,18 +60,21 @@ class InventarioService
     public function confirmarSalida(InventarioSalida $salida): InventarioSalida
     {
         return DB::transaction(function () use ($salida) {
+            if ($salida->requisicion_id) {
+                Requisicion::whereKey($salida->requisicion_id)->lockForUpdate()->firstOrFail();
+            }
             $salida = InventarioSalida::with('detalles.producto')->lockForUpdate()->findOrFail($salida->id);
 
             if ($salida->estado !== 'borrador') {
                 throw ValidationException::withMessages(['salida' => 'Solo se pueden confirmar salidas en borrador.']);
             }
 
-            if ($salida->detalles->isEmpty()) {
-                throw ValidationException::withMessages(['detalles' => 'La salida debe tener al menos un producto.']);
+            if (! $salida->requisicion_id || ! $salida->acta_entrega_id || $salida->tipo_salida !== 'entrega') {
+                throw ValidationException::withMessages(['salida' => 'Las entregas solo pueden generarse desde el seguimiento de una requisición y con su acta.']);
             }
 
-            if ($salida->acta_entrega_id === null && $salida->tipo_salida === 'manual') {
-                $this->validarSalidaManual($salida);
+            if ($salida->detalles->isEmpty()) {
+                throw ValidationException::withMessages(['detalles' => 'La salida debe tener al menos un producto.']);
             }
 
             $this->validarSalidaDesdeActa($salida);
@@ -173,6 +179,7 @@ class InventarioService
                     now(),
                     'Anulacion de entrada confirmada.',
                     'ajuste_negativo',
+                    'No se puede anular la entrada: parte de sus existencias ya fue consumida. Revise los movimientos de los productos.',
                 );
             }
 
@@ -185,6 +192,12 @@ class InventarioService
     public function anularSalida(InventarioSalida $salida): InventarioSalida
     {
         return DB::transaction(function () use ($salida) {
+            if ($salida->requisicion_id) {
+                $requisicion = Requisicion::with('estado')->whereKey($salida->requisicion_id)->lockForUpdate()->firstOrFail();
+                if (in_array($requisicion->estado?->estado, ['Finalizado', 'Completado'], true)) {
+                    throw ValidationException::withMessages(['salida' => 'No se puede anular una entrega de una requisición finalizada.']);
+                }
+            }
             $salida = InventarioSalida::with('detalles')->lockForUpdate()->findOrFail($salida->id);
 
             if ($salida->estado !== 'confirmado') {
@@ -280,7 +293,7 @@ class InventarioService
         return $existencia;
     }
 
-    private function descontarExistencia(int $bodegaId, int $productoId, ?int $loteId, float $cantidad, int $usuarioId, ?string $documentoTipo, ?int $documentoId, ?string $referencia, mixed $fecha, ?string $observacion, string $tipoMovimiento): InventarioExistencia
+    private function descontarExistencia(int $bodegaId, int $productoId, ?int $loteId, float $cantidad, int $usuarioId, ?string $documentoTipo, ?int $documentoId, ?string $referencia, mixed $fecha, ?string $observacion, string $tipoMovimiento, ?string $errorExistencia = null): InventarioExistencia
     {
         if ($cantidad <= 0) {
             throw ValidationException::withMessages(['cantidad' => 'La cantidad debe ser mayor a cero.']);
@@ -290,7 +303,7 @@ class InventarioService
         $saldoAnterior = (float) $existencia->cantidad_disponible;
 
         if ($saldoAnterior < $cantidad) {
-            throw ValidationException::withMessages(['existencia' => 'No hay existencia suficiente para confirmar la salida.']);
+            throw ValidationException::withMessages(['existencia' => $errorExistencia ?? 'No hay existencia suficiente para confirmar la salida.']);
         }
 
         $saldoNuevo = $saldoAnterior - $cantidad;
@@ -348,12 +361,39 @@ class InventarioService
         ]);
     }
 
-    private function validarSalidaManual(InventarioSalida $salida): void
+    public function cantidadDespachadaPorRequisicion(int $detalleId, ?int $excluirSalidaId = null): float
     {
-        if (! $salida->motivo || (! $salida->departamento_id && ! $salida->empleado_recibe_id) || ! $salida->responsable_entrega_id || ! $salida->observacion) {
-            throw ValidationException::withMessages([
-                'salida_manual' => 'La salida manual requiere motivo, receptor o departamento, observacion y responsable.',
-            ]);
+        return (float) InventarioSalidaDetalle::query()
+            ->join('inventario_salidas', 'inventario_salidas.id', '=', 'inventario_salida_detalles.salida_id')
+            ->join('detalle_acta_entrega', 'detalle_acta_entrega.id', '=', 'inventario_salida_detalles.detalle_acta_entrega_id')
+            ->where('inventario_salidas.estado', 'confirmado')
+            ->whereNull('inventario_salidas.deleted_at')
+            ->where('detalle_acta_entrega.idDetalleRequisicion', $detalleId)
+            ->when($excluirSalidaId, fn ($query) => $query->where('inventario_salidas.id', '!=', $excluirSalidaId))
+            ->sum('inventario_salida_detalles.cantidad');
+    }
+
+    public function cantidadDespachadaPorEjecucion(int $ejecucionId, ?int $excluirSalidaId = null): float
+    {
+        return (float) InventarioSalidaDetalle::query()
+            ->join('inventario_salidas', 'inventario_salidas.id', '=', 'inventario_salida_detalles.salida_id')
+            ->join('detalle_acta_entrega', 'detalle_acta_entrega.id', '=', 'inventario_salida_detalles.detalle_acta_entrega_id')
+            ->where('inventario_salidas.estado', 'confirmado')
+            ->whereNull('inventario_salidas.deleted_at')
+            ->where('detalle_acta_entrega.idDetalleEjecucionPresupuestaria', $ejecucionId)
+            ->when($excluirSalidaId, fn ($query) => $query->where('inventario_salidas.id', '!=', $excluirSalidaId))
+            ->sum('inventario_salida_detalles.cantidad');
+    }
+
+    public function validarDespachoCompleto(int $requisicionId): void
+    {
+        $ejecuciones = DetalleEjecucionPresupuestaria::whereHas('detalleRequisicion',
+            fn ($query) => $query->where('idRequisicion', $requisicionId))->get();
+
+        foreach ($ejecuciones as $ejecucion) {
+            if ($this->cantidadDespachadaPorEjecucion($ejecucion->id) < (float) $ejecucion->cant_ejecutada) {
+                throw ValidationException::withMessages(['entrega' => 'Hay cantidades ejecutadas pendientes de despachar. Complete la entrega antes de finalizar.']);
+            }
         }
     }
 
@@ -370,6 +410,9 @@ class InventarioService
 
             return;
         }
+
+        // Serialize deliveries across all acts belonging to the same requisition.
+        Requisicion::whereKey($salida->requisicion_id)->lockForUpdate()->firstOrFail();
 
         $acta = ActaEntrega::with('tipoActaEntrega')
             ->lockForUpdate()
@@ -425,6 +468,35 @@ class InventarioService
             }
 
             $cantidadNuevaPorDetalle[$detalleActa->id] = ($cantidadNuevaPorDetalle[$detalleActa->id] ?? 0) + (float) $detalleSalida->cantidad;
+        }
+
+        $porRequisicion = [];
+        $porEjecucion = [];
+        foreach ($cantidadNuevaPorDetalle as $detalleId => $cantidad) {
+            $ejecucionId = $detallesActa[$detalleId]->idDetalleEjecucionPresupuestaria;
+            if (! $ejecucionId) {
+                throw ValidationException::withMessages(['acta' => 'El detalle del acta no tiene ejecución asociada.']);
+            }
+            $detalleRequisicionId = $detallesActa[$detalleId]->idDetalleRequisicion;
+            $porRequisicion[$detalleRequisicionId] = ($porRequisicion[$detalleRequisicionId] ?? 0) + $cantidad;
+            if ($ejecucionId) {
+                $porEjecucion[$ejecucionId] = ($porEjecucion[$ejecucionId] ?? 0) + $cantidad;
+            }
+        }
+
+        foreach ($porRequisicion as $detalleId => $cantidad) {
+            $detalle = DetalleRequisicion::where('idRequisicion', $salida->requisicion_id)->lockForUpdate()->findOrFail($detalleId);
+            if (round($this->cantidadDespachadaPorRequisicion($detalleId, $salida->id) + $cantidad, 2) > (float) $detalle->cantidad) {
+                throw ValidationException::withMessages(['cantidad' => 'La entrega acumulada supera la cantidad solicitada en la requisición.']);
+            }
+        }
+
+        foreach ($porEjecucion as $ejecucionId => $cantidad) {
+            $ejecucion = DetalleEjecucionPresupuestaria::whereKey($ejecucionId)->lockForUpdate()->firstOrFail();
+            $despachado = $this->cantidadDespachadaPorEjecucion($ejecucionId, $salida->id);
+            if (round($despachado + $cantidad, 2) > (float) $ejecucion->cant_ejecutada) {
+                throw ValidationException::withMessages(['cantidad' => 'La entrega acumulada supera la cantidad ejecutada entre todas las actas.']);
+            }
         }
 
         foreach ($cantidadNuevaPorDetalle as $detalleActaId => $cantidadNueva) {

@@ -34,6 +34,8 @@
     @if($placeholder)
         <option value="">{{ $placeholder }}</option>
     @endif
+
+    {{ $slot }}
     
     @foreach($options as $option)
         @php

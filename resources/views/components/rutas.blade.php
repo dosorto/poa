@@ -25,6 +25,10 @@
     
     if (is_array($items)) {
         foreach ($items as $item) {
+            if (($item['header_visible'] ?? true) === false) {
+                continue;
+            }
+
             // Si el ítem es always_visible, se muestra independientemente del permiso general
             $alwaysVisible = isset($item['always_visible']) && $item['always_visible'];
             
